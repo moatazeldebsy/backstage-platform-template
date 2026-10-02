@@ -63,7 +63,9 @@ Each of these is tracked, none is scheduled:
   below.**
 - **Team-scoped authorization** — restrict scaffolder and catalog writes to the
   owning group. Existing issues #153 (ArgoCD RBAC per team) and #155 (catalog
-  permission policies) cover the shape. Still open: sign-in is now restricted
+  permission policies) cover the shape. *Update (2026-10-02):* #155 is done for
+  catalog deletes, which are now owner-scoped with `platform-team` as admin;
+  template execution and #153 remain. Still open: sign-in is now restricted
   to org members (see below), but once signed in, any authenticated user can
   still run any template against any team's namespace — `idpPermissionPolicy.ts`
   does no group-membership check.
