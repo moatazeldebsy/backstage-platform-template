@@ -21,7 +21,7 @@ rds_allocated_storage = 500
 
 # Networking — /16 is the largest CIDR AWS allows on a VPC (/16–/28); the /8 this
 # used to set was rejected by CreateVpc. The /20 private subnets it yields (~4k IPs
-# each) cover this tier once VPC-CNI prefix delegation is on; beyond that, add a
+# each) cover this tier with VPC-CNI prefix delegation (on, eks.tf); beyond that, add a
 # secondary CIDR (100.64.0.0/16) for pods rather than widening the primary one.
 vpc_cidr = "10.0.0.0/16"
 

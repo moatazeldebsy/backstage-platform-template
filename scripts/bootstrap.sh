@@ -135,12 +135,21 @@ case "$TF_PROFILE" in
   medium|large)
     PLATFORM_HA=true
     ARGOCD_HA_VALUES=(--values aws/argocd/argocd-ha-values.yaml)
+    # Admission webhooks and ESO: one replica means a node drain or a single
+    # pod crash blocks (Kyverno, failurePolicy Fail) or silently un-enforces
+    # (Gatekeeper, fail-open) admission, and stalls every ExternalSecret.
+    ADMISSION_REPLICAS=3
+    ESO_HA_ARGS=(--set replicaCount=2 --set leaderElect=true
+                 --set podDisruptionBudget.enabled=true
+                 --set webhook.replicaCount=2 --set webhook.podDisruptionBudget.enabled=true)
     BACKSTAGE_REPLICAS=2
     # Ceiling for aws/backstage/hpa.yaml; the floor is BACKSTAGE_REPLICAS.
     if [[ "$TF_PROFILE" == "large" ]]; then BACKSTAGE_MAX_REPLICAS=6; else BACKSTAGE_MAX_REPLICAS=4; fi ;;
   *)
     PLATFORM_HA=false
     ARGOCD_HA_VALUES=()
+    ADMISSION_REPLICAS=1
+    ESO_HA_ARGS=()
     BACKSTAGE_REPLICAS=1
     BACKSTAGE_MAX_REPLICAS=1 ;;
 esac
@@ -381,6 +390,7 @@ helm_upgrade_cached external-secrets external-secrets external-secrets/external-
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true \
+  ${ESO_HA_ARGS[@]+"${ESO_HA_ARGS[@]}"} \
   --wait --timeout "${HELM_WAIT_MED}"
 
 # ── Phase 3.6a: Create ClusterSecretStore (AWS Secrets Manager backend for ESO) ─
@@ -654,10 +664,14 @@ else
   log "  No domain_name configured — monitoring ALB ingresses stay HTTP-only."
 fi
 
+# Prometheus/Alertmanager HA follows the profile, like Grafana's above.
+OBS_HA_VALUES=()
+[[ "$PLATFORM_HA" == "true" ]] && OBS_HA_VALUES=(--values aws/observability/prometheus-ha-values.yaml)
 helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
+  ${OBS_HA_VALUES[@]+"${OBS_HA_VALUES[@]}"} \
   ${GRAFANA_VALUES[@]+"${GRAFANA_VALUES[@]}"} \
   --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
   --wait --timeout "${HELM_WAIT_MED}"
@@ -732,10 +746,13 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
   (
     set -e
     log "Phase 3.8: Installing OPA/Gatekeeper policy engine..."
+    # The chart's PDB is minAvailable 1. On one replica that allows zero
+    # disruptions and blocks every node drain / EKS upgrade, as in #318.
     helm_upgrade_cached gatekeeper gatekeeper-system gatekeeper/gatekeeper \
       --namespace gatekeeper-system \
       --create-namespace \
-      --set replicas=1 \
+      --set replicas="${ADMISSION_REPLICAS}" \
+      --set pdb.controllerManager.minAvailable="$(( ADMISSION_REPLICAS > 1 ? 1 : 0 ))" \
       --set auditInterval=60 \
       --set logLevel=WARNING \
       --wait \
@@ -791,11 +808,16 @@ _p39_log=$(mktemp)
   # has no shell (Kyverno's job templates invoke /bin/bash directly) and runs as
   # root, which the CronJob-based cleanup jobs' runAsNonRoot requirement rejects.
   # bitnamilegacy/kubectl keeps the same non-root default and has a real shell.
+  #
+  # admissionController.replicas / admissionController.container.resources, not
+  # replicaCount / resources: chart 3.x silently ignores those 2.x keys, so this
+  # ran ONE admission controller behind a failurePolicy: Fail webhook. The chart
+  # adds a minAvailable-1 PDB itself when replicas > 1.
   helm_upgrade_cached kyverno kyverno kyverno/kyverno \
     --namespace kyverno \
     --create-namespace \
     --version 3.2.7 \
-    --set replicaCount=2 \
+    --set admissionController.replicas="${ADMISSION_REPLICAS}" \
     --set cleanupJobs.admissionReports.image.registry=docker.io \
     --set cleanupJobs.admissionReports.image.repository=bitnamilegacy/kubectl \
     --set cleanupJobs.admissionReports.image.tag=1.28.5 \
@@ -814,8 +836,8 @@ _p39_log=$(mktemp)
     --set webhooksCleanup.image.registry=docker.io \
     --set webhooksCleanup.image.repository=bitnamilegacy/kubectl \
     --set webhooksCleanup.image.tag=1.28.5 \
-    --set resources.requests.cpu=100m \
-    --set resources.requests.memory=256Mi \
+    --set admissionController.container.resources.requests.cpu=100m \
+    --set admissionController.container.resources.requests.memory=256Mi \
     --wait --timeout "${HELM_WAIT_SHORT}"
 
   kubectl wait deployment kyverno-admission-controller \
@@ -1577,6 +1599,11 @@ configuration:
         region: ${AWS_REGION}
 snapshotsEnabled: true
 deployNodeAgent: true
+# The node agent backs up pod volumes on every node, including Karpenter's
+# tainted services nodes (idp/services:NoSchedule, terraform/karpenter.tf).
+nodeAgent:
+  tolerations:
+    - operator: Exists
 EOF
 
       helm_upgrade_cached velero velero vmware-tanzu/velero \

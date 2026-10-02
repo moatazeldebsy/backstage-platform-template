@@ -1,0 +1,41 @@
+# Prometheus + Alertmanager HA — layered on top of prometheus-stack-values.yaml
+# by bootstrap.sh for --profile medium|large only (PLATFORM_HA), same as
+# grafana-ha-values.yaml. small/no-profile keep one of each.
+#
+# Without this, monitoring was itself the single point of failure: one
+# Prometheus on one single-AZ EBS volume and one Alertmanager with no storage.
+# A node drain, a spot reclaim or an AZ outage took out alerting for exactly the
+# window in which it was needed, and nothing said so.
+#
+# Two Prometheus replicas scrape independently (no Thanos/remote storage); each
+# sends every alert to every Alertmanager, and the Alertmanager cluster
+# deduplicates. Grafana's datasource hits the Service, so consecutive refreshes
+# can come from different replicas with slightly different recent samples.
+prometheus:
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  prometheusSpec:
+    replicas: 2
+    # Different zones, so one AZ (and its EBS volume) going away leaves a replica.
+    podAntiAffinity: "soft"
+    podAntiAffinityTopologyKey: topology.kubernetes.io/zone
+
+alertmanager:
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  alertmanagerSpec:
+    # Three for a gossip quorum; silences and notification state now survive a
+    # pod restart via the volume below (they lived in an emptyDir before).
+    replicas: 3
+    podAntiAffinity: "soft"
+    podAntiAffinityTopologyKey: topology.kubernetes.io/zone
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi

@@ -39,6 +39,14 @@ spec:
         - name: backstage
           image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:BACKSTAGE_IMAGE_TAG
           imagePullPolicy: IfNotPresent
+          # Keep serving while the NLB deregisters this target and kube-proxy
+          # drops the endpoint; without it a rollout or node drain (HPA scale-in,
+          # Karpenter consolidation) cut in-flight requests with 502s. Native
+          # sleep action, so it does not depend on a shell in the image.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 15
           ports:
             - containerPort: 7007
             # Prometheus metrics from instrumentation.js (#604). Scraped through

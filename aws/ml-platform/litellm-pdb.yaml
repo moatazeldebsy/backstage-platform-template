@@ -1,0 +1,16 @@
+# LiteLLM PodDisruptionBudget — AWS/EKS only (bootstrap-ai.sh --aws runs LiteLLM
+# at 2 replicas there; local stays at 1, where a minAvailable PDB would block
+# every drain). maxUnavailable rather than minAvailable for the same reason the
+# golden-path chart uses it (#318): it can never pin a node.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: litellm
+  namespace: ml-platform
+  labels:
+    app: litellm
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: litellm
