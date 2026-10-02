@@ -26,7 +26,8 @@ variable "platform_repo" {
     Name of the platform repository allowed to assume the GitHub Actions role.
     Scopes the OIDC trust policy to a single repo rather than the whole org —
     important because the scaffolder creates new repos under the same org, and
-    the role carries PowerUserAccess + IAMFullAccess. Mirrors PLATFORM_REPO in
+    the role can push to every service's ECR repo and is cluster-admin in EKS.
+    Mirrors PLATFORM_REPO in
     .idp-config.env.
   EOT
   type        = string
