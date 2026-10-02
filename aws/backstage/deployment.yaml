@@ -39,6 +39,13 @@ spec:
         - name: backstage
           image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:BACKSTAGE_IMAGE_TAG
           imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 7007
+            # Prometheus metrics from instrumentation.js (#604). Scraped through
+            # the ClusterIP Service in metrics.yaml, never the public NLB below.
+            - name: metrics
+              containerPort: 9464
+          command: ["node", "--require", "./instrumentation.js", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
           # Keep serving while the NLB deregisters this target and kube-proxy
           # drops the endpoint; without it a rollout or node drain (HPA scale-in,
           # Karpenter consolidation) cut in-flight requests with 502s. Native
@@ -47,13 +54,6 @@ spec:
             preStop:
               sleep:
                 seconds: 15
-          ports:
-            - containerPort: 7007
-            # Prometheus metrics from instrumentation.js (#604). Scraped through
-            # the ClusterIP Service in metrics.yaml, never the public NLB below.
-            - name: metrics
-              containerPort: 9464
-          command: ["node", "--require", "./instrumentation.js", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
           # LANGFUSE_BASIC_AUTH for the /langfuse proxy. Synced by
           # langfuse-external-secret.yaml, which bootstrap-ai.sh applies once
           # Langfuse exists. Optional so Backstage starts without the AI stack;

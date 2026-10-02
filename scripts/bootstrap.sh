@@ -135,6 +135,8 @@ case "$TF_PROFILE" in
   medium|large)
     PLATFORM_HA=true
     ARGOCD_HA_VALUES=(--values aws/argocd/argocd-ha-values.yaml)
+    # Prometheus x2 + Alertmanager x3 (aws/observability/prometheus-ha-values.yaml).
+    OBS_HA_VALUES=(--values aws/observability/prometheus-ha-values.yaml)
     # Admission webhooks and ESO: one replica means a node drain or a single
     # pod crash blocks (Kyverno, failurePolicy Fail) or silently un-enforces
     # (Gatekeeper, fail-open) admission, and stalls every ExternalSecret.
@@ -148,6 +150,7 @@ case "$TF_PROFILE" in
   *)
     PLATFORM_HA=false
     ARGOCD_HA_VALUES=()
+    OBS_HA_VALUES=()
     ADMISSION_REPLICAS=1
     ESO_HA_ARGS=()
     BACKSTAGE_REPLICAS=1
@@ -664,9 +667,6 @@ else
   log "  No domain_name configured — monitoring ALB ingresses stay HTTP-only."
 fi
 
-# Prometheus/Alertmanager HA follows the profile, like Grafana's above.
-OBS_HA_VALUES=()
-[[ "$PLATFORM_HA" == "true" ]] && OBS_HA_VALUES=(--values aws/observability/prometheus-ha-values.yaml)
 helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
