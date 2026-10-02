@@ -27,22 +27,18 @@ Platform SLOs that ship with the repo:
 | `observability/slo/hello-service-slos.yaml` | 99.5% availability, 99% of requests < 500 ms | page + ticket |
 | `observability/slo/mcp-servers-slos.yaml` | 99% tool-call availability for each of the 8 MCP servers (`mcp_tool_calls_total{outcome="error"}`) | ticket only: tool-call volume is too low and bursty to page on |
 
-On AWS, `bootstrap.sh` applies every file in `observability/slo/generated/`. Locally,
-`bootstrap-local.sh` still applies only hello-service's rules; apply the rest with
-`kubectl apply -f observability/slo/generated/`.
+`bootstrap.sh` (AWS) and `bootstrap-local.sh` (Kind / Rancher Desktop) both apply every file in
+`observability/slo/generated/`.
 
 ### How SLOs reach the cluster
 
 The `PrometheusServiceLevel` in `observability/slo/` is a Sloth CRD, and no Sloth operator runs
-on the local cluster — it has to be compiled into a `PrometheusRule` first. `bootstrap-local.sh`
-does this on every run:
+in either environment, so it has to be compiled into a `PrometheusRule` first. That happens ahead
+of time: `./scripts/generate-slo-rules.sh` compiles every source with a pinned sloth build into
+`observability/slo/generated/`, and the bootstraps apply that directory. No local `sloth` install
+is needed.
 
-- If the `sloth` binary is on PATH, it regenerates the rules from the source YAML and applies
-  them — so an edit to the SLO definition takes effect without re-vendoring anything.
-- Otherwise it applies the committed output at `observability/slo/generated/hello-service-slo-rules.yaml`,
-  so the bootstrap has no hard dependency on Sloth being installed.
-
-If neither is available the bootstrap warns and the Grafana SRE dashboard reports
+If `generated/` is empty the bootstrap warns and the Grafana SRE dashboard reports
 "no `sloth_slo_info` metrics found" — which is the symptom to look for when error budgets
 are empty on a fresh cluster. **After editing an SLO source file, run
 `./scripts/generate-slo-rules.sh` and commit `observability/slo/generated/`**, or the cluster
