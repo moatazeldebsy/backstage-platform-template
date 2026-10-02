@@ -78,7 +78,8 @@
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.1",
-    "@types/express": "^4.17.21"
+    "@types/express": "^4.17.21",
+    "knex": "^3.0.0"
   },
   "files": [
     "dist"

@@ -30,7 +30,7 @@ async function embedTexts(
 // The tag stripper is a manual scan rather than /<[^>]+>/g — SonarQube flags
 // that regex as super-linear (S8786). TechDocs pages can be large, so the
 // scan avoids relying on the regex engine's worst case.
-function stripHtml(html: string): string {
+export function stripHtml(html: string): string {
   let out = '';
   let inTag = false;
   for (const ch of html) {
@@ -41,11 +41,11 @@ function stripHtml(html: string): string {
   return out.replace(/\s+/g, ' ').trim();
 }
 
-function truncate(text: string, maxChars = 2000): string {
+export function truncate(text: string, maxChars = 2000): string {
   return text.length > maxChars ? text.slice(0, maxChars) : text;
 }
 
-function vectorLiteral(v: number[]): string {
+export function vectorLiteral(v: number[]): string {
   return `[${v.join(',')}]`;
 }
 
@@ -294,10 +294,15 @@ export const ragSearchPlugin = createBackendPlugin({
           res.json({ documentCount: Number(rows[0].count), lastIndexed: rows[0].last_indexed });
         });
 
+        // Default auth policy: every route needs a Backstage user or service
+        // credential. These used to be registered `allow: 'unauthenticated'`,
+        // which on AWS (Backstage on an internet-facing NLB) let anyone read
+        // indexed catalog and TechDocs content through /search, spend Voyage AI
+        // credits per query, and trigger a full paid re-embedding through
+        // /index. Both real callers already authenticate: the frontend via
+        // fetchApi (user token) and idp-mcp-server via BACKSTAGE_TOKEN, the
+        // static externalAccess token in app-config.{local,aws}.yaml.
         httpRouter.use(router);
-        httpRouter.addAuthPolicy({ path: '/search', allow: 'unauthenticated' });
-        httpRouter.addAuthPolicy({ path: '/index', allow: 'unauthenticated' });
-        httpRouter.addAuthPolicy({ path: '/status', allow: 'unauthenticated' });
       },
     });
   },
