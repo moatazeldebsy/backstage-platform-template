@@ -88,3 +88,60 @@ export function describeAgentFailure(raw: string): string {
   }
   return `The agent failed before it could answer.\n\nDetails: ${detail}`;
 }
+
+/**
+ * Tools that pause a KAgent turn until a human answers through KAgent's own
+ * UI. The AI Assistant page has no way to answer them, so a turn that calls
+ * one never finishes: the page used to poll for the full 5 minutes and report
+ * "Agent did not respond in time", and because the session is reused, every
+ * later message in that conversation hung the same way (#516). The agents'
+ * system prompts forbid calling these (#520), but that relies on the model
+ * obeying, so the page also stops as soon as it sees one.
+ */
+const HUMAN_INPUT_TOOLS = new Set(['ask_user', 'adk_request_confirmation']);
+
+export interface AgentFunctionCall {
+  name?: string;
+  args?: Record<string, unknown>;
+}
+
+export function isHumanInputCall(call: AgentFunctionCall | undefined): boolean {
+  return !!call?.name && HUMAN_INPUT_TOOLS.has(call.name);
+}
+
+/** Pull whatever question text the call carries, in whichever shape it uses. */
+function extractQuestions(args: Record<string, unknown> | undefined): string[] {
+  if (!args) return [];
+  const asText = (v: unknown): string | null => {
+    if (typeof v === 'string') return v.trim() || null;
+    if (v && typeof v === 'object') {
+      const o = v as Record<string, unknown>;
+      for (const k of ['question', 'text', 'prompt', 'message']) {
+        if (typeof o[k] === 'string' && (o[k] as string).trim()) return (o[k] as string).trim();
+      }
+    }
+    return null;
+  };
+  if (Array.isArray(args.questions)) {
+    return args.questions.map(asText).filter((q): q is string => !!q);
+  }
+  const single = asText(args);
+  return single ? [single] : [];
+}
+
+/**
+ * The chat message shown instead of waiting forever: what the agent wanted to
+ * ask (so the user can answer in their next message), and that the
+ * conversation has been restarted.
+ */
+export function describeHumanInputRequest(call: AgentFunctionCall): string {
+  const questions = extractQuestions(call.args);
+  const asked = questions.length
+    ? `\n\nIt wanted to ask:\n${questions.map(q => `- ${q}`).join('\n')}`
+    : '';
+  return (
+    `The agent paused to ask a question through \`${call.name}\`, which this chat cannot answer.` +
+    `${asked}\n\nThe conversation has been restarted so it does not stay stuck. ` +
+    'Send your request again with those details included.'
+  );
+}

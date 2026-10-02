@@ -1,4 +1,9 @@
-import { describeAgentFailure, findFailedTurn } from './aiAgentErrors';
+import {
+  describeAgentFailure,
+  describeHumanInputRequest,
+  findFailedTurn,
+  isHumanInputCall,
+} from './aiAgentErrors';
 
 // Verbatim from a real failed platform-assistant task (2026-09-26).
 const ANTHROPIC_NO_CREDIT =
@@ -73,5 +78,50 @@ describe('describeAgentFailure', () => {
     const msg = describeAgentFailure(`something odd ${'x'.repeat(1000)}`);
     expect(msg).toMatch(/^The agent failed before it could answer/);
     expect(msg.length).toBeLessThan(400);
+  });
+});
+
+describe('isHumanInputCall', () => {
+  it('flags the tools the chat cannot answer', () => {
+    expect(isHumanInputCall({ name: 'ask_user' })).toBe(true);
+    expect(isHumanInputCall({ name: 'adk_request_confirmation' })).toBe(true);
+  });
+
+  it('leaves ordinary tool calls alone', () => {
+    expect(isHumanInputCall({ name: 'scaffold_service' })).toBe(false);
+    expect(isHumanInputCall({})).toBe(false);
+    expect(isHumanInputCall(undefined)).toBe(false);
+  });
+});
+
+describe('describeHumanInputRequest', () => {
+  it('lists questions given as objects', () => {
+    const msg = describeHumanInputRequest({
+      name: 'ask_user',
+      args: { questions: [{ question: 'Which team owns it?' }, { question: 'Go or Python?' }] },
+    });
+    expect(msg).toContain('`ask_user`');
+    expect(msg).toContain('- Which team owns it?');
+    expect(msg).toContain('- Go or Python?');
+    expect(msg).toContain('restarted');
+  });
+
+  it('lists questions given as plain strings', () => {
+    const msg = describeHumanInputRequest({ name: 'ask_user', args: { questions: ['Service name?'] } });
+    expect(msg).toContain('- Service name?');
+  });
+
+  it('reads a single question field', () => {
+    const msg = describeHumanInputRequest({
+      name: 'adk_request_confirmation',
+      args: { message: 'Deploy to production?' },
+    });
+    expect(msg).toContain('- Deploy to production?');
+  });
+
+  it('still explains itself when the call carries no question text', () => {
+    const msg = describeHumanInputRequest({ name: 'ask_user', args: {} });
+    expect(msg).not.toContain('It wanted to ask');
+    expect(msg).toContain('restarted');
   });
 });
