@@ -513,10 +513,12 @@ kubernetes:
 permission:
   enabled: true
   # Policy: packages/backend/src/modules/idpPermissionPolicy.ts (registered in
-  # packages/backend/src/index.ts). Guests get read-only access: they cannot run
-  # or cancel scaffolder tasks or delete/refresh catalog entities. Authenticated
-  # users get full access.
+  # packages/backend/src/index.ts).
+  #   - Guests: read-only; no scaffolder runs, no catalog deletes.
+  #   - platform-team members (group synced from the GitHub org): everything.
+  #   - Other signed-in users: may delete only catalog entities owned by them or
+  #     one of their groups (#155); unregistering a catalog location is
+  #     platform-team only; everything else is allowed.
   #
-  # To add team-scoped template visibility or owner-based catalog writes, extend
-  # that module so it checks the user's Backstage Group membership against the
-  # entity's spec.owner — see #155.
+  # Still open: team-scoped template execution (any signed-in user can run any
+  # template). Extend the same module for it.

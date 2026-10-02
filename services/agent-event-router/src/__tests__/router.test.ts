@@ -428,6 +428,53 @@ describe('routeAlertManager', () => {
     expect(agent).toBe('incident-agent');
     expect(msg).toContain('incident issue #77');
   });
+
+  // #319: a dispatch waits for a whole agent turn, so records must not queue behind it.
+  it('files every incident record in a batch before dispatching to any agent', async () => {
+    const order: string[] = [];
+    let issue = 100;
+    const fetchImpl = jest.fn(async () => {
+      issue += 1;
+      order.push(`issue#${issue}`);
+      return { ok: true, status: 201, json: async () => ({ number: issue }) } as unknown as Response;
+    });
+    const github: GitHubIncidentConfig = { token: 't', repo: 'org/repo', fetchImpl: fetchImpl as unknown as typeof fetch };
+    postFn.mockImplementation(async (agent: string) => { order.push(`dispatch:${agent}`); });
+    const critical = (name: string) => ({
+      status: 'firing',
+      labels: { alertname: name, severity: 'critical', namespace: 'production' },
+      annotations: {},
+      fingerprint: `fp-${name}`,
+    });
+
+    await routeAlertManager(
+      { alerts: [critical('DiskFull'), critical('NodeDown')] },
+      postFn, undefined, github, new MemoryIncidentStore(),
+    );
+
+    expect(order).toEqual(['issue#101', 'issue#102', 'dispatch:incident-agent', 'dispatch:incident-agent']);
+    expect(postFn.mock.calls[0][1]).toContain('incident issue #101');
+    expect(postFn.mock.calls[1][1]).toContain('incident issue #102');
+  });
+
+  it('keeps dispatching the rest of a batch when one agent call fails', async () => {
+    postFn
+      .mockRejectedValueOnce(new Error('connect ECONNREFUSED'))
+      .mockResolvedValueOnce(undefined);
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const payload = {
+      alerts: [
+        { status: 'firing', labels: { alertname: 'HighCPU', severity: 'warning', namespace: 'ns1' }, annotations: {} },
+        { status: 'firing', labels: { alertname: 'DiskFull', severity: 'critical', namespace: 'ns2' }, annotations: {} },
+      ],
+    };
+
+    await expect(routeAlertManager(payload, postFn)).resolves.toBeUndefined();
+
+    expect(postFn).toHaveBeenCalledTimes(2);
+    expect(postFn.mock.calls[1][0]).toBe('incident-agent');
+    errSpy.mockRestore();
+  });
 });
 
 // ── incident record automation ──────────────────────────────────────────────
