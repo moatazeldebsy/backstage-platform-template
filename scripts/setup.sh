@@ -142,10 +142,6 @@ PYEOF
   # observability, ArgoCD, OPA, DORA exporter, K8s credentials, and catalog exporter.
   step "Step 1/3 — Bootstrapping Kind cluster and platform..."
 
-  # Clean up any stale/unused Helm repos before installing charts
-  log "Cleaning up unused Helm repositories..."
-  "${ROOT_DIR}/scripts/cleanup-helm-repos.sh" 2>/dev/null || true
-
   log "Running scripts/bootstrap-local.sh (this takes several minutes)..."
   # setup.sh already ran the manifest-driven sed pass above — tell bootstrap-local.sh
   # to skip _apply_personalization so we don't repeat a ~700-file scan.
