@@ -76,7 +76,7 @@
     "undici": "^7.29.1",
     "minimatch": "^10.2.6",
     "ip-address": "^10.5.1",
-    "basic-ftp": "^5.0.5",
+    "basic-ftp": "^6.2.1",
     "lodash": "^4.17.21",
     "fast-uri": "^3.1.8",
     "fast-xml-builder": "^1.2.0",
