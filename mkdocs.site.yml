@@ -1,0 +1,40 @@
+# Config for the public GitHub Pages site (docs.yml). Everything — nav, theme
+# features, fonts — comes from mkdocs.yml, which stays the Backstage TechDocs
+# config.
+#
+# Why a second file: techdocs-core rewrites the theme for Backstage. It empties
+# `palette` (no light/dark toggle) and registers search under a key the Material
+# header doesn't look for (no search box). Here it is replaced by the plugins
+# and Markdown extensions it would have added, so pages render the same.
+#
+# MkDocs INHERIT deep-merges dicts but replaces lists, so `plugins` and
+# `markdown_extensions` below are complete lists, not additions.
+INHERIT: mkdocs.yml
+
+plugins:
+  - search
+  - gh-admonitions
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.extra
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.smartsymbols
+  - pymdownx.magiclink
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - mdx_truly_sane_lists

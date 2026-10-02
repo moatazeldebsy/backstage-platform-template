@@ -209,7 +209,7 @@ deploys the service to `services-dev`. The service's `ci.yml` pushes every `main
 build to that ECR repository (and to GHCR) using the push-only role the scaffolder
 created for it; with a `GH_PAT` repository secret it also bumps the image tag in
 the platform repo's values file. See
-[Adding AWS CD to a Scaffolded Service](getting-started.md#adding-aws-cd-to-a-scaffolded-service).
+[Adding AWS CD to a Scaffolded Service](DEPLOYMENT_GUIDE.md#adding-aws-cd-to-a-scaffolded-service).
 
 Crossplane claims and secrets requested later (the `*-crossplane`,
 `add-secret` and `rds-database` templates) land in `services/<name>/claims/` and

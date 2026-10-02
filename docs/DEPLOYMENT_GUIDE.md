@@ -10,11 +10,12 @@
 1. [Pre-Deployment Checklist](#pre-deployment-checklist)
 2. [Deployment Steps](#deployment-steps)
 3. [Post-Deployment Validation](#post-deployment-validation)
-4. [Known Issues & Fixes](#known-issues--fixes)
-5. [Troubleshooting](#troubleshooting)
-6. [Cost Optimization](#cost-optimization)
-7. [Production Hardening](#production-hardening)
-8. [Cleanup & Destroy](#cleanup--destroy)
+4. [Adding AWS CD to a Scaffolded Service](#adding-aws-cd-to-a-scaffolded-service)
+5. [Known Issues & Fixes](#known-issues--fixes)
+6. [Troubleshooting](#troubleshooting)
+7. [Cost Optimization](#cost-optimization)
+8. [Production Hardening](#production-hardening)
+9. [Cleanup & Destroy](#cleanup--destroy)
 
 ---
 
@@ -181,10 +182,49 @@ IAM role ARN. The scaffold PR creates:
 - `kubernetes/teams/<name>/` with namespace, quota, RBAC, AppProject, ApplicationSet, SecretStore, Grafana folder
 - `backstage/catalog/groups/<name>.yaml` — team auto-registers in catalog
 
-Merge the PR — CI (`scaffold.yml`) applies the manifests.
+Merge the PR. ArgoCD's `idp-teams` ApplicationSet picks up `kubernetes/teams/<name>/`
+and applies it as the `team-<name>` Application.
 
 > **Service path convention**: Team service values go under `teams/<teamName>/services/<serviceName>/`,
 > **not** `services/<teamName>/`. See [docs/team-management.md](team-management.md) for details.
+
+### Step 6: GitHub Actions secrets
+
+Service repos scaffolded with **Deployment Target: AWS** get their `AWS_ROLE_ARN`
+secret automatically — a push-only role for that repository's own ECR repository
+(see [Adding AWS CD to a Scaffolded Service](#adding-aws-cd-to-a-scaffolded-service)).
+Do not give a service repository the platform's `github_actions_role_arn`: it
+only trusts the platform repo, and carries near-admin permissions.
+
+Add these to the **platform repo** to enable the auto-merge workflow (recommended over a PAT):
+
+| Secret | Value |
+|--------|-------|
+| `APP_ID` | Numeric GitHub App ID (see [docs/github-app-setup.md](github-app-setup.md)) |
+| `APP_PRIVATE_KEY` | PEM contents of the App's private key |
+
+Add this to the **platform repo** to enable Datadog deployment markers in `build-and-deploy.yml`
+(optional — the pipeline runs fine without it, just skips the marker step):
+
+| Secret | Value |
+|--------|-------|
+| `DD_API_KEY` | Datadog API key — https://app.datadoghq.eu/organization-settings/api-keys |
+
+### Rebuilding Backstage
+
+There is no separate Backstage deploy step — `bootstrap.sh` already did it. Phase 5.6
+builds the image, pushes it to ECR under a content-hash tag, applies
+`aws/backstage/deployment.yaml` with that tag substituted, waits for the
+ExternalSecret to sync and for the ALB hostname, then patches the config with the
+real URLs.
+
+To rebuild and roll out after changing Backstage, re-run the bootstrap — the image
+fingerprint changes, so it rebuilds and redeploys, and skips everything else that is
+unchanged:
+
+```bash
+./scripts/bootstrap.sh --region <region> --cluster-name <name>
+```
 
 ---
 
@@ -195,6 +235,30 @@ Merge the PR — CI (`scaffold.yml`) applies the manifests.
 ```
 
 Runs ~40 automated checks across 10 categories. All should pass.
+
+### Component checks
+
+```bash
+kubectl get pods -n services              # hello-service running
+kubectl get pods -n monitoring            # prometheus, grafana, alertmanager, pushgateway
+kubectl get pods -n external-secrets      # external-secrets operator
+kubectl get clustersecretstore            # aws-secretsmanager → Ready
+kubectl get pods -n crossplane-system     # crossplane + 5 provider-aws-* pods
+kubectl get providers.pkg.crossplane.io   # all five INSTALLED=True HEALTHY=True
+kubectl get ingress -n services           # ALB address
+```
+
+Visit the ALB hostname:
+
+```json
+{"service":"hello-service","version":"<sha>","message":"Hello from the IDP!"}
+```
+
+`bootstrap.sh` installs the full `kube-prometheus-stack` (Prometheus + Grafana +
+AlertManager + Pushgateway) at parity with the local Kind setup. Grafana is
+pre-configured with the CloudWatch datasource using IRSA — no static AWS credentials
+needed. OPA/Gatekeeper enforces all five golden-path policies (`require-health-probes`,
+`require-resource-limits`, `require-labels`, `deny-latest-tag`, `require-cost-tags`).
 
 ### Manual Smoke Tests
 
@@ -238,6 +302,28 @@ alb_ingress_url argocd-server argocd          # -> <shared-alb>:8080
 | agent-event-router | `http://<shared-alb>:8082` | AI stack |
 | KAgent UI / IDP Assistant | `http://<shared-alb>:8083` / `:8084` | AI stack |
 | MLflow / Langfuse / Argo Workflows | `http://<shared-alb>:5000` / `:3001` / `:2746` | AI stack |
+
+---
+
+## Adding AWS CD to a Scaffolded Service
+
+Nothing to add. Scaffold the service with **Deployment Target: AWS** and the
+template sets it up:
+
+1. `idp:provision-ecr` creates the ECR repository `<cluster>/<service>` and an IAM
+   role, `<cluster>-svc-push-<service>`, that only the new repository's `main`
+   branch can assume and that can only push to that ECR repository (Terraform's
+   `<cluster>-service-image-push-boundary` caps what such roles may ever do).
+2. The role's ARN is written to the new repository as the `AWS_ROLE_ARN` secret.
+3. The GitOps pull request adds `services/<service>/helm-values-aws.yaml` to the
+   platform repo, pointing at that ECR repository.
+
+From then on the service's `ci.yml` pushes every `main` build to GHCR and to ECR
+(SHA and `latest` tags); with a `GH_PAT` secret it also bumps the tag in the
+platform repo. ArgoCD deploys it — no Helm or kubectl from the service's CI.
+
+The platform's own `github-actions` role is deliberately not used here: it trusts
+only the platform repository and carries near-admin permissions.
 
 ---
 

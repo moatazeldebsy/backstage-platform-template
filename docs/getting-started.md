@@ -1,262 +1,320 @@
-# Getting Started
+# Quickstart
+
+Bring the platform up, open the developer portal, and ship your first service
+from a golden-path template.
+
+By the end you'll have:
+
+- a Kubernetes cluster running Backstage, ArgoCD, Prometheus/Grafana and the policy engine
+- `hello-service`, the reference service, deployed by GitOps
+- a new service repository of your own, scaffolded from a template, CI included
+
+Locally this takes **about 15–20 minutes** and needs no cloud account. On AWS it takes
+**40–70 minutes** and costs **about $19/day** while the cluster runs.
 
 ## Prerequisites
 
 | Tool | Version | Install |
 |------|---------|---------|
-| AWS CLI | ≥ 2.15 | `brew install awscli` |
-| Terraform | ≥ 1.5 | `brew install terraform` |
+| Docker | ≥ 24 | docker.com |
 | kubectl | ≥ 1.29 | `brew install kubectl` |
 | Helm | ≥ 3.14 | `brew install helm` |
-| Docker | ≥ 24 | docker.com |
-| Node.js | ≥ 22 | `brew install node` (for Backstage build) |
+| Node.js | ≥ 22 | `brew install node` (for the Backstage build) |
+| Kind | ≥ 0.27 | `brew install kind` (local only) |
+| AWS CLI | ≥ 2.15 | `brew install awscli` (AWS only) |
+| Terraform | ≥ 1.5 | `brew install terraform` (AWS only) |
 
-## How long does it take?
+!!! warning "The full local stack is heavy"
+    A 16 GB machine runs the core platform plus at most **one** AI component.
+    The full stack needs 24 GB. Read [Machine requirements](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them)
+    before adding the AI layer.
 
-### Local (Kind / Rancher Desktop) — ~15–20 minutes
+!!! tip "Set `GITHUB_TOKEN` first"
+    Every other integration is optional and fails soft. A GitHub PAT
+    (`repo`, `read:org`, `workflow`, `delete_repo`) is the one worth setting,
+    because scaffolding creates real repositories. See
+    [Optional third-party integrations](local-setup.md#optional-third-party-integrations).
 
-`./scripts/bootstrap-local.sh` runs end-to-end without AWS credentials.
+## 1. Start the platform
 
-| Phase | What happens | Time |
-|---|---|---|
-| Kind cluster creation | `kind create cluster`, load balancer, kubeconfig | ~2 min |
-| nginx ingress controller | Helm install + wait for pods | ~1 min |
-| ArgoCD | Helm install + wait for pods + register GitHub credentials | ~3 min |
-| Prometheus + Grafana | `kube-prometheus-stack` Helm install | ~4 min |
-| Backstage | Docker Compose build + container start + DB migrations | ~4 min |
-| DORA exporter + seed metrics | CronJob apply + one-shot job | ~1 min |
-| **Total** | | **~15–20 min** |
+Clone the repository and run the setup wizard. It personalises the placeholders
+(your GitHub org replaces `moatazeldebsy` across the repo), then bootstraps the
+environment you choose.
 
-`--skip-obs` (skip Prometheus/Grafana) saves ~4 minutes.
+=== "Local (Kind)"
 
-Adding the AI/ML stack (`./scripts/bootstrap-ai.sh`) takes an additional **10–15 minutes**:
+    ```bash
+    git clone https://github.com/moatazeldebsy/backstage-platform-template
+    cd backstage-platform-template
+    ./scripts/setup.sh        # choose "local" when prompted
+    ```
 
-| Component | Time |
-|---|---|
-| KAgent controller + idp-assistant agent | ~4 min |
-| MLflow tracking server | ~3 min |
-| IDP + QA + Contract MCP servers (3×) | ~4 min |
-| `/etc/hosts` entries + port-forward | <1 min |
+    `setup.sh` calls `bootstrap-local.sh` for you and then offers to start Backstage.
 
-`--skip-mlflow`, `--skip-mcp`, `--skip-kagent` each save ~3–4 minutes from the AI stack.
+    !!! note "Run `setup.sh`, not both"
+        Don't run `bootstrap-local.sh` yourself afterwards. That repeats the whole
+        15–20 minute install. Keep it for day-2 work: `--destroy`, `--start-backstage`,
+        `--print-urls`, or recreating the cluster.
 
----
+    ??? info "What gets installed, and how long each part takes"
 
-### AWS (EKS) — ~40–70 minutes
+        | Phase | What happens | Time |
+        |---|---|---|
+        | Kind cluster creation | `kind create cluster`, load balancer, kubeconfig | ~2 min |
+        | nginx ingress controller | Helm install + wait for pods | ~1 min |
+        | ArgoCD | Helm install + wait for pods + register GitHub credentials | ~3 min |
+        | Prometheus + Grafana | `kube-prometheus-stack` Helm install | ~4 min |
+        | Backstage | Docker Compose build + container start + DB migrations | ~4 min |
+        | DORA exporter + seed metrics | CronJob apply + one-shot job | ~1 min |
+        | **Total** | | **~15–20 min** |
 
-`./scripts/bootstrap.sh` provisions from scratch. Most of the time is AWS control-plane and ALB provisioning, which cannot be parallelised.
+        `--skip-obs` (skip Prometheus/Grafana) saves ~4 minutes. The step-by-step
+        list is in [Local Setup → Bootstrap](local-setup.md#bootstrap-1015-min).
 
-| Phase | What happens | Time |
-|---|---|---|
-| Terraform | VPC, EKS control plane + node groups, RDS, ECR, IAM/OIDC, Crossplane IRSA role | ~20–25 min |
-| ArgoCD + app-of-apps | Helm install + GitHub credentials + first sync | ~5 min |
-| External Secrets Operator | Helm install + ClusterSecretStore ready | ~3 min |
-| Prometheus + Grafana | `kube-prometheus-stack` + Grafana ALB provisioning | ~5 min |
-| OPA/Gatekeeper | CRDs + constraints | ~2 min |
-| Crossplane | Core + AWS providers healthy + compositions applied | ~5 min |
-| Backstage | ECR image push + K8s deploy + ExternalSecret sync + ALB | ~8 min |
-| hello-service + ALB | Helm install + ALB DNS propagation | ~3 min |
-| **Total** | | **~40–70 min** |
+=== "AWS (EKS)"
 
-> EKS control plane creation (~10 min) and ALB provisioning (~3–5 min per ingress) are the longest waits and are entirely AWS-side — no script change can speed them up.
+    ```bash
+    aws configure                  # or: aws sso login
+    aws sts get-caller-identity    # confirm the account
 
-Adding the AI/ML stack on AWS takes an additional **15–20 minutes**:
+    git clone https://github.com/moatazeldebsy/backstage-platform-template
+    cd backstage-platform-template
+    ./scripts/verify-secrets.sh    # check every API key before spending 40 minutes
+    ./scripts/setup.sh             # choose "aws" when prompted
+    ```
 
-| Component | Time |
-|---|---|
-| KAgent controller + idp-assistant + ALB ingresses | ~5 min |
-| MLflow (S3 backend) + ALB | ~5 min |
-| IDP + QA + Contract MCP servers + ALBs | ~5 min |
-| Backstage proxy config patch + restart | ~2 min |
+    !!! warning "Read the checklist first"
+        Go through the [Pre-Deployment Checklist](PRE_DEPLOYMENT_CHECKLIST.md) before
+        your first deploy. The [Deployment Guide](DEPLOYMENT_GUIDE.md) has the full
+        walkthrough, post-deploy steps and known issues.
 
-**Re-bootstrap (cluster already exists):** If you're re-running `bootstrap.sh` against an existing EKS cluster, Terraform applies only the diff (usually <2 min) and the rest of the phases take ~15–20 minutes total — ALB re-provisioning is skipped if the ingresses already exist.
+    ??? info "What gets installed, and how long each part takes"
 
----
+        | Phase | What happens | Time |
+        |---|---|---|
+        | Terraform | VPC, EKS control plane + node groups, RDS, ECR, IAM/OIDC, Crossplane IRSA role | ~20–25 min |
+        | ArgoCD + app-of-apps | Helm install + GitHub credentials + first sync | ~5 min |
+        | External Secrets Operator | Helm install + ClusterSecretStore ready | ~3 min |
+        | Prometheus + Grafana | `kube-prometheus-stack` + Grafana ALB provisioning | ~5 min |
+        | OPA/Gatekeeper | CRDs + constraints | ~2 min |
+        | Crossplane | Core + AWS providers healthy + compositions applied | ~5 min |
+        | Backstage | ECR image push + K8s deploy + ExternalSecret sync + ALB | ~8 min |
+        | hello-service + ALB | Helm install + ALB DNS propagation | ~3 min |
+        | **Total** | | **~40–70 min** |
 
-### Quick comparison
+        EKS control plane creation (~10 min) and ALB provisioning (~3–5 min per
+        ingress) are the longest waits and are entirely AWS-side. Re-running against
+        an existing cluster takes ~15–20 minutes: Terraform applies only the diff.
 
-| | Local (full) | Local + AI/ML | AWS (full) | AWS + AI/ML |
-|---|---|---|---|---|
-| First run | ~15–20 min | ~25–35 min | ~40–70 min | ~60–80 min |
-| Re-bootstrap | ~5–8 min | ~10–15 min | ~15–20 min | ~20–25 min |
-| Prerequisites | Docker, Kind | + `ANTHROPIC_API_KEY` | AWS account, Terraform | + `ANTHROPIC_API_KEY` |
-| Cost | Free | Free | ~$19/day | ~$25/day |
+    When it finishes, check every component in one go:
 
----
+    ```bash
+    ./scripts/validate-deployment.sh
+    ```
 
-## Local Setup (no AWS needed)
+    It runs ~40 checks across 10 categories, and exit code 0 means healthy.
 
-See [docs/local-setup.md](local-setup.md) for the full local walkthrough including Backstage, the `idp:deploy-local` action, and Kind deployment.
+## 2. Open Backstage
 
-> **Run `setup.sh` — not both.** On a fresh clone you run `./scripts/setup.sh` and nothing else. When you answer **local**, it calls `bootstrap-local.sh` for you and then offers to start Backstage. Running `bootstrap-local.sh` yourself afterwards just repeats a 15–20 minute install for no benefit.
->
-> `bootstrap-local.sh` is what you run **standalone later**, for day-2 work: recreating the cluster, `--destroy`, `--start-backstage`, `--print-urls`. You do not re-run `setup.sh` for those.
+=== "Local (Kind)"
 
-Personalisation has to happen before bootstrapping: `setup.sh` replaces `moatazeldebsy` and the other placeholders across the repo, and without it the ArgoCD ApplicationSet points at an unresolved placeholder and generates no apps.
+    If you declined the offer at the end of `setup.sh`, start it now:
 
-> **If ArgoCD shows no apps:** check that `local/argocd/app-of-apps-local.yaml` contains your GitHub org rather than `moatazeldebsy`, then re-run `setup.sh`.
+    ```bash
+    ./scripts/bootstrap-local.sh --start-backstage
+    ```
 
-## AWS Setup
+    Then open **<http://backstage.idp.local>** (fallback: <http://localhost:3000>).
+    Local Backstage runs in guest mode, so there's no login.
 
-> **🔐 CRITICAL - First:** Read [docs/PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md) and verify all API keys are set correctly. Run `./scripts/verify-secrets.sh` to validate before deployment.
+=== "AWS (EKS)"
 
-> **⚠️ NEW:** Then read [docs/DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: **40–70 minutes**.
+    `bootstrap.sh` builds and deploys Backstage itself, then prints the ALB URL.
+    Update your GitHub OAuth app's callback URL to
+    `http://<BACKSTAGE_ALB_HOSTNAME>/api/auth/github/handler/frame`
+    ([Deployment Guide, step 3](DEPLOYMENT_GUIDE.md#step-3-update-github-oauth-callback-url)),
+    then sign in with GitHub.
 
-### 1. Configure AWS
+![Backstage platform dashboard](assets/screenshots/platform-dashboard.jpg){ .screenshot }
 
-```bash
-aws configure  # or use aws sso login
-aws sts get-caller-identity  # verify
+## 3. Check the reference service
+
+ArgoCD's `idp-services` ApplicationSet deploys every service under `services/`,
+starting with `hello-service`. Call it:
+
+=== "Local (Kind)"
+
+    ```bash
+    curl http://hello-service.idp.local
+    ```
+
+=== "AWS (EKS)"
+
+    ```bash
+    kubectl get ingress -n services     # copy the ALB address
+    curl http://<alb-address>
+    ```
+
+```json title="Expected response"
+{"service":"hello-service","version":"<sha>","message":"Hello from the IDP!"}
 ```
 
-### 2. Bootstrap the platform
+In Backstage, open **Catalog → hello-service** to see its DORA metrics,
+scorecard, TechDocs and Kubernetes status in one place.
+
+??? question "ArgoCD shows no apps?"
+    `local/argocd/app-of-apps-local.yaml` still names `moatazeldebsy` instead of your
+    GitHub org, so personalisation didn't run. Re-run `./scripts/setup.sh`. Other
+    first-run failures are in [Troubleshooting](TROUBLESHOOTING.md).
+
+## 4. Scaffold your first service
+
+Pick a golden-path template. You get a new GitHub repository with the code skeleton,
+CI, Dockerfile, Helm values, catalog entry and TechDocs, all wired up.
+
+=== "Backstage UI"
+
+    Click **Create**, pick a service template (Node.js, Python FastAPI, Go, Ruby,
+    JVM or LLM App), fill in name, owner and repository, then click **Create**.
+
+    ![Scaffolder templates](assets/screenshots/scaffolder-templates.jpg){ .screenshot }
+
+=== "idp CLI"
+
+    ```bash
+    make cli-build                                       # builds ./bin/idp
+    ./bin/idp scaffold service --name order-svc --type nodejs
+    ```
+
+    Add `--dry-run` to see what it would create first. Every flag is listed in the
+    [CLI Reference](cli-reference.md#idp-scaffold-service).
+
+The service is registered in the catalog right away, and its first push runs CI:
+install → test → docker build → `/healthz` check.
+
+## 5. Deploy it
+
+=== "Local (Kind)"
+
+    Push the image to the local registry:
+
+    ```bash
+    docker build -t localhost:5003/order-svc:latest .
+    docker push localhost:5003/order-svc:latest
+    ```
+
+    Then in Backstage go to **Create → Deploy Service to local Kind cluster**, pick
+    the service and click **Create**. It's live at `http://order-svc.idp.local`.
+
+=== "AWS (EKS)"
+
+    With **Deployment Target: AWS**, scaffolding already opened a GitOps pull request
+    against the platform repo adding `services/<name>/helm-values-aws.yaml`. Merge it
+    and ArgoCD deploys the service to `services-dev`. Every `main` build then pushes to
+    the service's own ECR repository. See
+    [Adding AWS CD to a scaffolded service](DEPLOYMENT_GUIDE.md#adding-aws-cd-to-a-scaffolded-service).
+
+Watch the rollout in ArgoCD (<http://argocd.idp.local> locally, user `admin`).
+
+## 6. (Optional) Add the AI layer
+
+KAgent agents, MCP servers, MLflow, Langfuse and the AI Gateway are an opt-in layer
+on top of the core.
+
+=== "Local (Kind)"
+
+    ```bash
+    export ANTHROPIC_API_KEY=sk-ant-...   # or set it in local/.env
+    ./scripts/bootstrap-ai.sh             # adds ~10–15 minutes
+    ```
+
+=== "AWS (EKS)"
+
+    ```bash
+    ./scripts/bootstrap.sh --with-ai   # adds ~15–20 minutes
+    ```
+
+!!! tip "Short on memory?"
+    `--skip-mlflow`, `--skip-mcp` and `--skip-kagent` each save ~3–4 minutes, and
+    Langfuse is by far the largest component. See
+    [Running on less](local-setup.md#running-on-less).
+
+The assistant then appears in Backstage under **AI Assistant**. See
+[AI Assistant](ai-assistant.md) for what it can do.
+
+## The whole flow, end to end
 
 ```bash
 git clone https://github.com/moatazeldebsy/backstage-platform-template
 cd backstage-platform-template
-
-# Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)
-./scripts/setup.sh
-# → Choose "aws" when prompted for environment
+./scripts/setup.sh                                   # 1. personalise + bootstrap ("local")
+open http://backstage.idp.local                      # 2. developer portal
+curl http://hello-service.idp.local                  # 3. reference service
+./bin/idp scaffold service --name order-svc --type nodejs   # 4. your service
+./scripts/bootstrap-ai.sh                            # 6. optional AI layer
 ```
 
-Or, if you have already run `setup.sh` for personalisation and want to re-run the AWS bootstrap directly:
+| | Local | Local + AI | AWS | AWS + AI |
+|---|---|---|---|---|
+| First run | ~15–20 min | ~25–35 min | ~40–70 min | ~60–80 min |
+| Re-bootstrap | ~5–8 min | ~10–15 min | ~15–20 min | ~20–25 min |
+| Needs | Docker, Kind | + `ANTHROPIC_API_KEY` | AWS account, Terraform | + `ANTHROPIC_API_KEY` |
+| Cost | Free | Free | ~$19/day | ~$25/day |
 
-```bash
-cp terraform/terraform.tfvars.example terraform/terraform.tfvars
-# Edit terraform/terraform.tfvars — update cluster_name, region if needed
-./scripts/bootstrap.sh  # ~40–70 min
-```
+## Tear down
 
-### 3. Validate deployment
+=== "Local (Kind)"
 
-After `bootstrap.sh` completes, run the validation script to verify all components:
+    ```bash
+    ./scripts/bootstrap-local.sh --destroy
+    ```
 
-```bash
-./scripts/validate-deployment.sh
-```
+=== "AWS (EKS)"
 
-This runs ~40 automated checks across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.
+    ```bash
+    ./scripts/cleanup.sh --cluster-name idp-mvp
+    ```
 
----
+    Use `cleanup.sh` rather than a bare `terraform destroy`. It deletes the ALBs the
+    AWS Load Balancer Controller created first: Terraform doesn't own them, and they
+    hold the subnets and security groups `destroy` is trying to remove.
 
-**What gets provisioned:**
-- EKS cluster (4× t3.medium nodes, 1.35)
-- RDS PostgreSQL (for Backstage)
-- ECR repository + S3 bucket (for artifacts)
-- IAM roles + OIDC (for GitHub Actions and Crossplane)
-- All platform components (Prometheus, Grafana, ArgoCD, OPA/Gatekeeper, External Secrets Operator)
-- Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
-- `hello-service` reference deployment
+## Next steps
 
-**Cost:** ~$565/month for the core platform, ~$760/month with the AI/ML layer — measured
-against a running cluster, not estimated. Full per-component breakdown and the ways to
-spend less: [README → What it costs on AWS](https://github.com/moatazeldebsy/backstage-platform-template#what-it-costs-on-aws).
+<div class="grid cards" markdown>
 
-### 4. GitHub Actions secrets
+-   **Golden Path**
 
-Service repos scaffolded with **Deployment Target: AWS** get their `AWS_ROLE_ARN`
-secret automatically — a push-only role for that repository's own ECR repository
-(see [Adding AWS CD to a Scaffolded Service](#adding-aws-cd-to-a-scaffolded-service)).
-Do not give a service repository the platform's `github_actions_role_arn`: it
-only trusts the platform repo, and carries near-admin permissions.
+    ---
 
-Add these to the **platform repo** to enable the auto-merge workflow (recommended over a PAT):
+    The conventions every service follows, from scaffold to production, and
+    progressive delivery.
 
-| Secret | Value |
-|--------|-------|
-| `APP_ID` | Numeric GitHub App ID (see [docs/github-app-setup.md](github-app-setup.md)) |
-| `APP_PRIVATE_KEY` | PEM contents of the App's private key |
+    [→ Golden Path](golden-path.md)
 
-Add this to the **platform repo** to enable Datadog deployment markers in `build-and-deploy.yml`
-(optional — the pipeline runs fine without it, just skips the marker step):
+-   **Deploy on AWS**
 
-| Secret | Value |
-|--------|-------|
-| `DD_API_KEY` | Datadog API key — https://app.datadoghq.eu/organization-settings/api-keys |
+    ---
 
-### 5. Team namespace setup
+    The full EKS walkthrough: secrets, team namespaces, cost and production
+    hardening.
 
-After the platform is bootstrapped, onboard teams using the **Provision Team Namespace** scaffold template (tagged `blessed`). Each team gets:
-- An isolated `team-<name>` namespace with quota, LimitRange, NetworkPolicy
-- A per-team ArgoCD AppProject + ApplicationSet scanning `teams/<name>/services/*`
-- A scoped SecretStore (access only to `/<name>/*` in Secrets Manager)
-- A Grafana folder
+    [→ Deployment Guide](DEPLOYMENT_GUIDE.md)
 
-For the full walkthrough, see [docs/team-management.md](team-management.md).
+-   **Onboard a team**
 
-> **Path convention**: Team service values files go under `teams/<teamName>/services/<serviceName>/`,
-> **not** `services/<teamName>/`. The `services/` path is reserved for legacy platform-owned services.
+    ---
 
-### 6. Verify
+    An isolated namespace, SecretStore, ArgoCD project and Grafana folder per team.
 
-```bash
-kubectl get pods -n services              # hello-service running
-kubectl get pods -n monitoring            # prometheus, grafana, alertmanager, pushgateway
-kubectl get pods -n external-secrets      # external-secrets operator
-kubectl get clustersecretstore            # aws-secretsmanager → Ready
-kubectl get pods -n crossplane-system     # crossplane + 5 provider-aws-* pods
-kubectl get providers.pkg.crossplane.io   # all five INSTALLED=True HEALTHY=True
-kubectl get ingress -n services           # ALB address
-```
+    [→ Team Management](team-management.md)
 
-Visit the ALB hostname:
-```json
-{"service":"hello-service","version":"<sha>","message":"Hello from the IDP!"}
-```
+-   **Something broken?**
 
-> **Observability note:** `bootstrap.sh` installs the full `kube-prometheus-stack` (Prometheus + Grafana + AlertManager + Pushgateway) on AWS at parity with the local Kind setup. Grafana is pre-configured with the CloudWatch datasource using IRSA — no static AWS credentials needed.
->
-> OPA/Gatekeeper enforces all five golden-path policies (`require-health-probes`, `require-resource-limits`, `require-labels`, `deny-latest-tag`, `require-cost-tags`). The bootstrap waits for CRDs to be established before applying constraints rather than sleeping.
+    ---
 
-### 7. Backstage on AWS
+    Symptom-indexed fixes for the failures people actually hit.
 
-Nothing to do — `bootstrap.sh` already did it. Phase 5.6 builds the image, pushes it
-to ECR under a content-hash tag, applies `aws/backstage/deployment.yaml` with that
-tag substituted, waits for the ExternalSecret to sync and for the ALB hostname, then
-patches the config with the real URLs.
+    [→ Troubleshooting](TROUBLESHOOTING.md)
 
-This section used to describe a manual `docker build` ending in
-`# Deploy (Kubernetes manifests TBD)`. The manifests have existed for some time and
-the whole flow is automated; following the old steps would have pushed an image that
-nothing deployed.
-
-To rebuild and roll out after changing Backstage, re-run the bootstrap — the image
-fingerprint changes, so it rebuilds and redeploys, and skips everything else that is
-unchanged:
-
-```bash
-./scripts/bootstrap.sh --region <region> --cluster-name <name>
-```
-
-## Adding AWS CD to a Scaffolded Service
-
-Nothing to add. Scaffold the service with **Deployment Target: AWS** and the
-template sets it up:
-
-1. `idp:provision-ecr` creates the ECR repository `<cluster>/<service>` and an IAM
-   role, `<cluster>-svc-push-<service>`, that only the new repository's `main`
-   branch can assume and that can only push to that ECR repository (Terraform's
-   `<cluster>-service-image-push-boundary` caps what such roles may ever do).
-2. The role's ARN is written to the new repository as the `AWS_ROLE_ARN` secret.
-3. The GitOps pull request adds `services/<service>/helm-values-aws.yaml` to the
-   platform repo, pointing at that ECR repository.
-
-From then on the service's `ci.yml` pushes every `main` build to GHCR and to ECR
-(SHA and `latest` tags); with a `GH_PAT` secret it also bumps the tag in the
-platform repo. ArgoCD deploys it — no Helm or kubectl from the service's CI.
-
-The platform's own `github-actions` role is deliberately not used here: it trusts
-only the platform repository and carries near-admin permissions.
-
-## Teardown
-
-```bash
-./scripts/cleanup.sh --cluster-name idp-mvp
-```
-
-Use `cleanup.sh` rather than a bare `terraform destroy`. It deletes orphaned load
-balancers first — AWS Load Balancer Controller creates ALBs that Terraform does not
-own, and they hold the subnets and security groups `destroy` is trying to remove, so
-it fails partway and leaves the account in a half-torn-down state. The script also
-verifies the teardown afterwards.
+</div>
