@@ -288,3 +288,66 @@ spec:
             duration: 30s
             factor: 2
             maxDuration: 10m
+---
+# Team namespaces (#156). One Application per kubernetes/teams/<team>/, written
+# by the team-namespace scaffolder template: Namespace, RBAC, quota,
+# LimitRange, NetworkPolicy, and optionally the team's SecretStore,
+# AlertmanagerConfig, AppProject and per-team ApplicationSet. ArgoCD now owns
+# these (drift is corrected) instead of scaffold.yml running `kubectl apply` on
+# merge; two field managers on the same objects would conflict.
+#
+# prune: false on purpose. Pruning would turn "a team directory was deleted
+# from git" into "the team's namespace and every workload in it were deleted".
+# Removing a team stays a deliberate manual step:
+#   kubectl delete application team-<team> -n argocd && kubectl delete ns team-<team>
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: idp-teams
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        revision: HEAD
+        directories:
+          - path: kubernetes/teams/*
+  template:
+    metadata:
+      name: "team-{{path.basename}}"
+      labels:
+        idp.io/component: team-namespace
+        team: "{{path.basename}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/moatazeldebsy/backstage-platform-template.git
+        targetRevision: HEAD
+        path: "{{path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        # Every team manifest sets its own namespace (team-<team>, plus argocd
+        # for the AppProject/ApplicationSet and monitoring for the Grafana
+        # folder); this is only the fallback.
+        namespace: "team-{{path.basename}}"
+      # The deployer ServiceAccount token Secret has its data filled in by
+      # Kubernetes, not git.
+      ignoreDifferences:
+        - kind: Secret
+          jsonPointers:
+            - /data
+      syncPolicy:
+        automated:
+          prune: false
+          selfHeal: true
+        syncOptions:
+          - ServerSideApply=true
+          # SecretStore / ExternalSecret / AlertmanagerConfig kinds may not be
+          # installed yet on a fresh cluster; retry instead of failing.
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
