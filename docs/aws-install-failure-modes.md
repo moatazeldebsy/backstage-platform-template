@@ -134,9 +134,14 @@ multi-tool turn plus a couple queued behind it), and an abort logs which agent
 timed out and that the record was still created, instead of a bare
 `DOMException`.
 
-**That is a mitigation, not the fix.** The real fix is to stop awaiting the whole
-agent turn in a webhook handler — the router's job is to dispatch, not to wait
-for an LLM to finish. Left as a follow-up rather than done blind.
+The webhook handlers already answer `accepted` before routing, so Alertmanager
+is never held open for an agent turn. What remained ([#319](https://github.com/moatazeldebsy/backstage-platform-template/issues/319))
+was ordering inside one payload: each alert's incident record waited behind the
+previous alert's whole agent turn, and a dispatch that threw skipped every alert
+after it. `routeAlertManager` now files every record first and dispatches
+second, sequentially (the only throttle on how many LLM turns one alert storm
+starts), with a failed dispatch counted as `outcome="error"` instead of
+aborting the batch.
 
 **The general lesson:** a timeout tuned for an HTTP API is wrong for an LLM call
 by an order of magnitude, and when the slow call is the *last* step its failure

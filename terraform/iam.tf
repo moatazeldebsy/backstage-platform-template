@@ -47,11 +47,12 @@ resource "aws_iam_role" "github_actions" {
       }
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
-        # Scoped to the platform repo, not the whole org. This role carries
-        # PowerUserAccess + IAMFullAccess (below), and the scaffolder creates new
-        # repos under the same org — an org-wide "repo:<org>/*:*" trust would let
-        # any scaffolded repo's workflow assume a near-admin role. The trailing
-        # ":*" still needs StringLike so branches and environments match.
+        # Scoped to the platform repo, not the whole org. The role can push to
+        # every service's ECR repo and is cluster-admin inside EKS (eks.tf), and
+        # the scaffolder creates new repos under the same org — an org-wide
+        # "repo:<org>/*:*" trust would hand that to any scaffolded repo's
+        # workflow. The trailing ":*" still needs StringLike so branches and
+        # environments match.
         StringLike = {
           "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.platform_repo}:*"
         }
@@ -63,54 +64,54 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
-# Terraform CI/CD requires broad read access for plan refreshes (IAM, EC2, EKS, S3, ECR, RDS, etc.)
-# PowerUserAccess + IAMFullAccess is the standard pattern for roles that run terraform apply
-# on complex infrastructure. The role is already locked down by the OIDC trust policy to
-# only be assumable via GitHub Actions on this specific repository.
-resource "aws_iam_role_policy_attachment" "github_actions_power_user" {
-  role       = aws_iam_role.github_actions.name
-  policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
-}
-
-resource "aws_iam_role_policy_attachment" "github_actions_iam_full" {
-  role       = aws_iam_role.github_actions.name
-  policy_arn = "arn:aws:iam::aws:policy/IAMFullAccess"
-}
-
-# Explicit inline policy for Terraform remote state (belt-and-suspenders, S3/DynamoDB
-# access for the state bucket is already covered by PowerUserAccess but listed here
-# for clarity and auditability)
-resource "aws_iam_role_policy" "github_actions_tfstate" {
-  name = "terraform-state"
+# What the platform repo's workflows actually do in AWS (#315), and nothing else:
+#   - build-and-deploy.yml: ensure the service's ECR repo exists, push the image
+#     (plus its Cosign signature), let Trivy pull it back for the image scan
+#   - build-and-deploy.yml, scaffold.yml: `aws eks update-kubeconfig`, which only
+#     needs eks:DescribeCluster; what they then do inside the cluster is granted
+#     by the EKS access entry in eks.tf, not by IAM
+# No workflow runs Terraform. This role used to carry PowerUserAccess +
+# IAMFullAccess (near-admin, including creating IAM users and keys) plus a
+# Terraform-state policy, on the assumption that one would.
+resource "aws_iam_role_policy" "github_actions_ci" {
+  name = "ci-ecr-eks"
   role = aws_iam_role.github_actions.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "TerraformStateS3"
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket",
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.cluster_name}-terraform-state-${data.aws_caller_identity.current.account_id}",
-          "arn:aws:s3:::${var.cluster_name}-terraform-state-${data.aws_caller_identity.current.account_id}/*"
-        ]
+        # Account-level by design: GetAuthorizationToken has no resource scope.
+        Sid      = "EcrLogin"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
       },
       {
-        Sid    = "TerraformStateDynamoDB"
+        # Only this cluster's repositories (<cluster>/<service>), which is the
+        # naming build-and-deploy.yml and idp:provision-ecr both use.
+        Sid    = "EcrServiceRepos"
         Effect = "Allow"
         Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:DescribeTable"
+          "ecr:DescribeRepositories",
+          "ecr:CreateRepository",
+          "ecr:DescribeImages",
+          "ecr:ListImages",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:PutImage"
         ]
-        Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.cluster_name}-terraform-locks"
+        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.cluster_name}/*"
+      },
+      {
+        Sid      = "EksKubeconfig"
+        Effect   = "Allow"
+        Action   = ["eks:DescribeCluster"]
+        Resource = module.eks.cluster_arn
       }
     ]
   })

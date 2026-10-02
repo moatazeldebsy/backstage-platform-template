@@ -52,10 +52,9 @@ func routeLabel(path string) string {
 	return "other"
 }
 
-func main() {
-	port := getEnv("PORT", "8080")
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-
+// newServer wires routes and middleware. Kept out of main so tests can drive
+// the real handler chain (routing, metrics, logging) without binding a port.
+func newServer(port string, logger *slog.Logger) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
 	mux.HandleFunc("/healthz", handleLiveness)
@@ -63,13 +62,19 @@ func main() {
 	mux.HandleFunc("/openapi.json", handleOpenAPISpec)
 	mux.Handle("/metrics", promhttp.Handler())
 
-	srv := &http.Server{
+	return &http.Server{
 		Addr:         ":" + port,
 		Handler:      loggingMiddleware(logger, instrumentedMux(mux)),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+}
+
+func main() {
+	port := getEnv("PORT", "8080")
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	srv := newServer(port, logger)
 
 	go func() {
 		logger.Info("server starting", "port", port, "version", version)
