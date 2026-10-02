@@ -349,6 +349,33 @@ spike, an error-rate jump) can be correlated with "which deploy caused it."
 
 ---
 
+## Alert Routing
+
+All alerts go to `#platform-alerts`, and critical and warning alerts also go to `agent-event-router`
+(`observability/alertmanager/alertmanager-config.yaml`, in the `monitoring` namespace).
+
+**Per-team channels:** set **Team Slack alert channel** (e.g. `#payments-alerts`) when running
+the *Team Namespace* template, together with the ESO IAM role ARN. The template adds
+`kubernetes/teams/<team>/alertmanager-config.yaml`, which routes critical and warning alerts from
+`team-<team>` to that channel **in addition to** `#platform-alerts`. Store the channel's
+incoming-webhook URL first:
+
+```bash
+aws secretsmanager create-secret --name <team>/slack-webhook \
+  --secret-string '{"webhook-url":"https://hooks.slack.com/services/..."}'
+```
+
+Until that secret exists, the operator skips only that team's config; platform routing and other
+teams keep working.
+
+**Why the scoping works:** the Alertmanager runs with
+`alertmanagerConfigMatcherStrategy: OnNamespaceExceptForAlertmanagerNamespace`
+(`prometheus-stack-values.yaml`, local and AWS). The config in `monitoring` sees every alert, and
+each team's config only sees alerts from its own namespace. Under the operator's default,
+`OnNamespace`, the platform config was silently limited to alerts labelled
+`namespace="monitoring"`, so service alerts and SLO burn alerts never reached Slack or the
+router (#159).
+
 ## PagerDuty Escalation
 
 ### Configuration

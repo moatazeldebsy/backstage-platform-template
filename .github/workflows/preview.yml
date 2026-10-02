@@ -1,0 +1,378 @@
+name: PR Preview
+
+# Ephemeral preview environments (#131). Add the `preview` label to a PR that
+# changes a deployable service (services/<name>/ with a Dockerfile and
+# helm-values-aws.yaml) and this workflow:
+#   1. builds that service at the PR's head commit and pushes
+#      <cluster>/<service>:pr-<number>-<sha7> to ECR
+#   2. creates namespace services-preview-<number> (with a quota, so a preview
+#      cannot outgrow its slot) and one ArgoCD Application per service, rendered
+#      from the PR's own commit — the same chart and values as dev, plus a
+#      preview overlay
+#   3. comments the preview URL(s) on the PR, and keeps that comment current
+# New commits rebuild and redeploy. Closing/merging the PR or removing the label
+# deletes the Applications (cascade) and the namespace.
+#
+# ArgoCD still does the deploying, as everywhere else on this platform; CI only
+# creates and deletes the Application objects. Nothing is committed to git.
+#
+# Scope and limits:
+#   - AWS only, and only while the cluster is up. With no AWS_ROLE_ARN, or the
+#     stack torn down, the job reports that on the PR and exits green.
+#   - Same-repo PRs only: fork PRs get no secrets, and labelling needs triage
+#     rights anyway.
+#   - Each previewed service gets its own internet-facing ALB (its own
+#     group.name), because two services cannot share a listener on "/". That is
+#     ~$0.6/day per service while the preview exists.
+#   - Services whose IRSA role trusts only services-dev, or that read Secrets
+#     created per-namespace by bootstrap-ai.sh (most MCP servers), start without
+#     them in a preview namespace. Previews suit stateless services like
+#     hello-service and what the golden-path templates scaffold.
+#   - pr-* images are not deleted on teardown (the CI role cannot delete
+#     images); add an ECR lifecycle rule for the pr- prefix if they pile up.
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, reopened, closed]
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: idp-mvp
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+# Per PR, never cancelled: a teardown must not be cut short by a later event,
+# and a deploy finishing before the next one starts keeps the comment truthful.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # Deploy when the label is added, or on new commits/reopen while it is set.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.action != 'closed' &&
+      contains(github.event.pull_request.labels.*.name, 'preview') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'preview') &&
+      github.event.action != 'unlabeled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Find deployable services changed by this PR
+        id: changes
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_REF"
+          services=()
+          while IFS= read -r svc; do
+            [[ -z "$svc" || "$svc" == "mcp-common" ]] && continue
+            # Directory names come from the PR branch and end up in shell and in
+            # the Application YAML below; accept only DNS-label-safe names.
+            if [[ ! "$svc" =~ ^[a-z0-9]([a-z0-9-]{0,40}[a-z0-9])?$ ]]; then
+              echo "::warning::Skipping services/${svc}: not a valid service name"
+              continue
+            fi
+            [[ -f "services/$svc/Dockerfile" && -f "services/$svc/helm-values-aws.yaml" ]] || continue
+            services+=("$svc")
+          done < <(git diff --name-only "origin/${BASE_REF}...HEAD" -- services/ | cut -d/ -f2 | sort -u)
+          echo "services=${services[*]:-}" >> "$GITHUB_OUTPUT"
+          echo "Deployable services changed: ${services[*]:-none}"
+
+      - name: Check AWS_ROLE_ARN secret
+        id: guard
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then echo "has_aws=false" >> "$GITHUB_OUTPUT"; else echo "has_aws=true" >> "$GITHUB_OUTPUT"; fi
+
+      # Tolerant for the same reason as cost-context in build-and-deploy.yml: the
+      # stack is torn down between sessions while the secret stays set.
+      - name: Configure AWS credentials (OIDC)
+        id: creds
+        if: steps.guard.outputs.has_aws == 'true' && steps.changes.outputs.services != ''
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        id: kubeconfig
+        if: steps.creds.outcome == 'success'
+        continue-on-error: true
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Log in to ECR
+        id: ecr
+        if: steps.kubeconfig.outcome == 'success'
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
+
+      - name: Build and push preview images
+        id: build
+        if: steps.kubeconfig.outcome == 'success'
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          SERVICES: ${{ steps.changes.outputs.services }}
+        run: |
+          set -euo pipefail
+          tag="pr-${PR}-${HEAD_SHA:0:7}"
+          for svc in $SERVICES; do
+            repo="${EKS_CLUSTER_NAME}/${svc}"
+            aws ecr describe-repositories --repository-names "$repo" >/dev/null 2>&1 || \
+              aws ecr create-repository --repository-name "$repo" \
+                --image-scanning-configuration scanOnPush=true >/dev/null
+            docker build -t "${REGISTRY}/${repo}:${tag}" "services/${svc}"
+            docker push "${REGISTRY}/${repo}:${tag}"
+          done
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Create preview namespace and ArgoCD Applications
+        if: steps.kubeconfig.outcome == 'success'
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          SERVICES: ${{ steps.changes.outputs.services }}
+          TAG: ${{ steps.build.outputs.tag }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+        run: |
+          set -euo pipefail
+          ns="services-preview-${PR}"
+
+          # Namespace first, with the cost labels every services-* namespace
+          # carries and a hard cap, so a preview cannot crowd out dev.
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: ${ns}
+            labels:
+              idp.io/preview-pr: "${PR}"
+              environment: preview
+              team: platform-team
+              cost-center: CC-1000
+          ---
+          apiVersion: v1
+          kind: ResourceQuota
+          metadata:
+            name: preview-quota
+            namespace: ${ns}
+          spec:
+            hard:
+              requests.cpu: "1"
+              requests.memory: 2Gi
+              limits.memory: 4Gi
+              pods: "10"
+          ---
+          apiVersion: v1
+          kind: LimitRange
+          metadata:
+            name: preview-defaults
+            namespace: ${ns}
+          spec:
+            limits:
+              - type: Container
+                default: { cpu: 200m, memory: 256Mi }
+                defaultRequest: { cpu: 50m, memory: 64Mi }
+          EOF
+
+          for svc in $SERVICES; do
+            kubectl apply -f - <<EOF
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: preview-${PR}-${svc}
+            namespace: argocd
+            labels:
+              idp.io/preview-pr: "${PR}"
+              service: ${svc}
+              environment: preview
+            # Cascade: deleting the Application deletes what it deployed.
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+          spec:
+            project: default
+            sources:
+              - repoURL: ${REPO_URL}
+                targetRevision: ${HEAD_SHA}
+                path: helm/service-template
+                helm:
+                  ignoreMissingValueFiles: true
+                  valueFiles:
+                    - \$values/services/${svc}/helm-values-aws.yaml
+                  # Preview overlay, applied over the dev values file above.
+                  valuesObject:
+                    image:
+                      repository: ${REGISTRY}/${EKS_CLUSTER_NAME}/${svc}
+                      tag: ${TAG}
+                    replicaCount: 1
+                    autoscaling:
+                      enabled: false
+                    backstage:
+                      kubernetesId: ${svc}
+                    podLabels:
+                      environment: preview
+                    ingress:
+                      annotations:
+                        alb.ingress.kubernetes.io/group.name: idp-preview-${PR}-${svc}
+                        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+              - repoURL: ${REPO_URL}
+                targetRevision: ${HEAD_SHA}
+                ref: values
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: ${ns}
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - ServerSideApply=true
+          EOF
+          done
+
+      - name: Wait for preview URLs
+        id: urls
+        if: steps.kubeconfig.outcome == 'success'
+        env:
+          SERVICES: ${{ steps.changes.outputs.services }}
+        run: |
+          set -uo pipefail
+          ns="services-preview-${PR}"
+          # A new ALB takes 2-4 minutes to get a hostname.
+          : > urls.md
+          for svc in $SERVICES; do
+            host=""
+            for _ in $(seq 1 40); do
+              # ArgoCD uses the Application name as the Helm release name, and the
+              # chart labels everything with app.kubernetes.io/instance=<release>.
+              host=$(kubectl get ingress -n "$ns" -l "app.kubernetes.io/instance=preview-${PR}-${svc}" \
+                -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+              [[ -n "$host" ]] && break
+              sleep 15
+            done
+            if [[ -n "$host" ]]; then
+              echo "| \`${svc}\` | http://${host} |" >> urls.md
+            else
+              echo "| \`${svc}\` | no URL yet: check \`kubectl get ingress,pods -n ${ns}\` and the \`preview-${PR}-${svc}\` Application in ArgoCD |" >> urls.md
+            fi
+          done
+
+      - name: Comment on the PR
+        if: always()
+        env:
+          SERVICES: ${{ steps.changes.outputs.services }}
+          HAS_AWS: ${{ steps.guard.outputs.has_aws }}
+          KUBECONFIG_OUTCOME: ${{ steps.kubeconfig.outcome }}
+        run: |
+          set -euo pipefail
+          marker='<!-- idp-preview -->'
+          {
+            echo "$marker"
+            echo "### 🔍 Preview environment"
+            echo
+            if [[ -z "$SERVICES" ]]; then
+              echo "This PR changes no deployable service (\`services/<name>/\` with a Dockerfile and \`helm-values-aws.yaml\`), so there is nothing to preview."
+            elif [[ "$HAS_AWS" != "true" || "$KUBECONFIG_OUTCOME" != "success" ]]; then
+              echo "Skipped: the AWS stack is not reachable (no \`AWS_ROLE_ARN\`, or the cluster is torn down). Re-add the \`preview\` label once it is up."
+            elif [[ -f urls.md ]]; then
+              echo "Namespace \`services-preview-${PR}\`, built from \`${HEAD_SHA:0:7}\`."
+              echo
+              echo "| Service | URL |"
+              echo "|---|---|"
+              cat urls.md
+              echo
+              echo "Updated on every push while the \`preview\` label is set. Removed when the PR closes or the label is removed."
+            else
+              echo "Deploy failed before URLs were available. See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+            fi
+          } > comment.md
+          existing=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
+            -q ".[] | select(.body | startswith(\"${marker}\")) | .id" | head -1)
+          if [[ -n "$existing" ]]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${existing}" -F body=@comment.md >/dev/null
+          else
+            gh pr comment "$PR" --body-file comment.md
+          fi
+
+  teardown:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action == 'closed' ||
+       (github.event.action == 'unlabeled' && github.event.label.name == 'preview'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check AWS_ROLE_ARN secret
+        id: guard
+        env:
+          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then echo "has_aws=false" >> "$GITHUB_OUTPUT"; else echo "has_aws=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Configure AWS credentials (OIDC)
+        id: creds
+        if: steps.guard.outputs.has_aws == 'true'
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        id: kubeconfig
+        if: steps.creds.outcome == 'success'
+        continue-on-error: true
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      # Applications first, and wait: their finalizer deletes the Ingress, which
+      # is what releases the ALB. Deleting the namespace first would orphan it.
+      - name: Delete preview Applications and namespace
+        id: delete
+        if: steps.kubeconfig.outcome == 'success'
+        run: |
+          set -euo pipefail
+          kubectl delete applications.argoproj.io -n argocd -l "idp.io/preview-pr=${PR}" \
+            --ignore-not-found --wait --timeout=10m
+          kubectl delete namespace "services-preview-${PR}" --ignore-not-found --wait=false
+
+      - name: Update the PR comment
+        if: always()
+        env:
+          DELETED: ${{ steps.delete.outcome }}
+        run: |
+          set -euo pipefail
+          marker='<!-- idp-preview -->'
+          existing=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" --paginate \
+            -q ".[] | select(.body | startswith(\"${marker}\")) | .id" | head -1)
+          [[ -z "$existing" ]] && exit 0   # never had a preview
+          if [[ "$DELETED" == "success" ]]; then
+            msg="Preview removed: namespace \`services-preview-${PR}\` and its Applications were deleted."
+          else
+            msg="Preview not cleaned up automatically (cluster unreachable). If it still exists: \`kubectl delete applications -n argocd -l idp.io/preview-pr=${PR}\` then \`kubectl delete ns services-preview-${PR}\`."
+          fi
+          printf '%s\n### 🔍 Preview environment\n\n%s\n' "$marker" "$msg" > comment.md
+          gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${existing}" -F body=@comment.md >/dev/null

@@ -109,6 +109,16 @@ spec:
           type: string
           default: us-east-1
           description: AWS region for the per-team SecretStore (must match the cluster region)
+        slackChannel:
+          title: Team Slack alert channel (optional)
+          type: string
+          description: >-
+            e.g. #payments-alerts. When set, alerts from this team's namespace also go
+            to this channel (they always go to #platform-alerts too). Needs the
+            incoming-webhook URL in Secrets Manager at <teamName>/slack-webhook (key
+            webhook-url), synced by the SecretStore below, so it also needs the ESO
+            IAM role ARN. Leave blank for platform-channel only.
+          pattern: '^(#[a-z0-9][a-z0-9._-]{0,79})?$'
         iamRoleArn:
           title: ESO IAM role ARN (optional)
           type: string
@@ -145,6 +155,7 @@ spec:
           platformRepo: ${{ parameters.platformRepo }}
           awsRegion: ${{ parameters.awsRegion }}
           iamRoleArn: ${{ parameters.iamRoleArn }}
+          slackChannel: ${{ parameters.slackChannel }}
 
     - id: publish
       name: Publish to platform repo

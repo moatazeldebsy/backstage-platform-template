@@ -1,0 +1,76 @@
+{% if values.slackChannel and values.iamRoleArn %}
+# Per-team alert routing (#159): critical and warning alerts from
+# team-${{ values.teamName }} also go to ${{ values.slackChannel }}. They still go
+# to #platform-alerts through the platform config in the monitoring namespace.
+#
+# Scoped to this namespace by the Alertmanager's matcher strategy
+# (OnNamespaceExceptForAlertmanagerNamespace): the operator adds
+# namespace="team-${{ values.teamName }}" to every route here.
+#
+# The webhook URL comes from Secrets Manager via this team's SecretStore:
+#   aws secretsmanager create-secret --name ${{ values.teamName }}/slack-webhook \
+#     --secret-string '{"webhook-url":"https://hooks.slack.com/services/..."}'
+# Until it exists, the operator skips THIS config only ("skipping
+# alertmanagerconfig" in its logs); platform routing and other teams are
+# unaffected.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: team-slack-webhook
+  namespace: team-${{ values.teamName }}
+  labels:
+    team: ${{ values.teamName }}
+    managed-by: idp-backstage
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: team-${{ values.teamName }}-secrets
+    kind: SecretStore
+  target:
+    name: team-slack-webhook
+    creationPolicy: Owner
+  data:
+    - secretKey: webhook-url
+      remoteRef:
+        key: ${{ values.teamName }}/slack-webhook
+        property: webhook-url
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: team-slack-routing
+  namespace: team-${{ values.teamName }}
+  labels:
+    # Matched by alertmanagerConfigSelector in prometheus-stack-values.yaml.
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    team: ${{ values.teamName }}
+    managed-by: idp-backstage
+spec:
+  route:
+    groupBy: ['alertname', 'service']
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    receiver: slack-team
+    matchers:
+      - name: severity
+        matchType: =~
+        value: "critical|warning"
+  receivers:
+    - name: slack-team
+      slackConfigs:
+        - apiURL:
+            name: team-slack-webhook
+            key: webhook-url
+          channel: '${{ values.slackChannel }}'
+          sendResolved: true
+          title: '{{ if eq .Status "firing" }}:red_circle:{{ else }}:white_check_mark:{{ end }} [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+          text: |
+            *Team:* ${{ values.teamName }}
+            *Severity:* {{ .CommonLabels.severity }}
+            {{ range .Alerts }}
+            *Summary:* {{ .Annotations.summary }}
+            *Runbook:* <{{ .Annotations.runbook_url }}|View Runbook>
+            {{ end }}
+          footer: 'IDP Platform'
+{% endif %}

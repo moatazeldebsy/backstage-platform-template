@@ -72,6 +72,7 @@ nav:
   - Demo Runbook: demo-runbook.md
   - Readiness Checklist: readiness-checklist.md
   - SRE & Reliability: sre-reliability.md
+  - PR Preview Environments: preview-environments.md
   - Runbooks:
     - Overview: runbooks/index.md
     - Incident Severity: runbooks/incident-severity.md
