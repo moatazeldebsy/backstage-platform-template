@@ -1,8 +1,17 @@
 name: CI
 
 on:
+  # main only. On every branch, a PR's head commit got two CI runs — this push
+  # run and the pull_request run below — reporting the SAME check names. The
+  # push run diffs against the previous push, so after "Update branch" it saw
+  # only what came in from main and skipped backstage-compile; branch
+  # protection then counted that skipped check as passing while the
+  # pull_request run that actually tests the PR was still queued. Observed on
+  # #619 (lockfile change, mergeable before Backstage had been compiled).
+  # Feature branches get CI from their pull_request run; open a draft PR for
+  # early feedback.
   push:
-    branches: ['**']
+    branches: [main]
     paths:
       - 'services/**'
       - 'helm/**'
