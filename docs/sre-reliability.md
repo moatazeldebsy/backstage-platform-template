@@ -70,6 +70,27 @@ The SLO dashboard shows current error budget burn rate, remaining budget percent
 
 ---
 
+## Backstage Metrics
+
+The Backstage backend exposes Prometheus metrics on **`:9464/metrics`**
+(`backstage/app/packages/backend/src/instrumentation.js`, preloaded with
+`node --require ./instrumentation.js` by every start command). It provides:
+
+- `http_server_request_duration_seconds_*` from the OpenTelemetry HTTP
+  instrumentation, labelled by method and `http_response_status_code`. Health
+  probes (`/ready`, `/healthz`, `/healthcheck`) are excluded, so these counts
+  are real traffic: the basis for a Backstage availability or latency SLO.
+- Backstage's own metrics (catalog processing, scaffolder and scheduler tasks),
+  which it records through `@opentelemetry/api` and which had nowhere to go
+  without a MeterProvider.
+
+| Environment | How it is scraped |
+|---|---|
+| AWS | `aws/backstage/metrics.yaml`: a ClusterIP Service plus a ServiceMonitor (`release: prometheus`), applied by `bootstrap.sh`. Deliberately not on the public NLB Service. |
+| Local | Published on `127.0.0.1:9464` for `curl`. Not scraped by the in-cluster Prometheus, because Backstage runs in Docker Compose outside Kind. |
+
+Turn it off with `BACKSTAGE_METRICS_ENABLED=false`, or move it with `BACKSTAGE_METRICS_PORT`.
+
 ## PodDisruptionBudgets
 
 ### What ships by default

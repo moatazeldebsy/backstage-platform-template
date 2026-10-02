@@ -145,11 +145,20 @@ COPY --from=builder --chown=node:node /app/packages/app/config.d.ts ./packages/a
 # boot-time crash as above, not a silently ignored schema.
 COPY --from=builder --chown=node:node /app/packages/backend/config.d.ts ./packages/backend/config.d.ts
 
+# 4c. Metrics preload (#604): registers the OpenTelemetry MeterProvider and the
+# Prometheus exporter on :9464 before the backend loads. Every start command
+# (CMD below, docker-compose, aws/backstage/deployment.yaml) passes
+# --require ./instrumentation.js; it is not in NODE_OPTIONS because that would
+# also preload it into every child node process the scaffolder spawns.
+COPY --from=builder --chown=node:node /app/packages/backend/src/instrumentation.js ./instrumentation.js
+
 # 5. Copy configuration file (from build context parent directory)
 COPY --chown=node:node ../app-config.yaml ./app-config.yaml
 
 EXPOSE 7007
+# Prometheus metrics (instrumentation.js)
+EXPOSE 9464
 
 ENV NODE_OPTIONS="--no-node-snapshot"
 
-CMD ["node", "packages/backend", "--config", "app-config.yaml"]
+CMD ["node", "--require", "./instrumentation.js", "packages/backend", "--config", "app-config.yaml"]
