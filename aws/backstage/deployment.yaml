@@ -41,7 +41,11 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 7007
-          command: ["node", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
+            # Prometheus metrics from instrumentation.js (#604). Scraped through
+            # the ClusterIP Service in metrics.yaml, never the public NLB below.
+            - name: metrics
+              containerPort: 9464
+          command: ["node", "--require", "./instrumentation.js", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
           # LANGFUSE_BASIC_AUTH for the /langfuse proxy. Synced by
           # langfuse-external-secret.yaml, which bootstrap-ai.sh applies once
           # Langfuse exists. Optional so Backstage starts without the AI stack;

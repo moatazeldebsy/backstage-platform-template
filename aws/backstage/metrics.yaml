@@ -1,0 +1,39 @@
+# Prometheus scraping for Backstage (#604). Applied by bootstrap.sh right after
+# deployment.yaml.
+#
+# A separate ClusterIP Service on purpose: the main `backstage` Service is an
+# internet-facing NLB, and adding :9464 to it would publish the metrics endpoint.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage-metrics
+  namespace: backstage
+  labels:
+    app: backstage
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app: backstage
+  ports:
+    - name: metrics
+      port: 9464
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    # kube-prometheus-stack's default serviceMonitorSelector
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: backstage
+      app.kubernetes.io/component: metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
