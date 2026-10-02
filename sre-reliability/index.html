@@ -3000,20 +3000,15 @@
 </tr>
 </tbody>
 </table>
-<p>On AWS, <code>bootstrap.sh</code> applies every file in <code>observability/slo/generated/</code>. Locally,
-<code>bootstrap-local.sh</code> still applies only hello-service's rules; apply the rest with
-<code>kubectl apply -f observability/slo/generated/</code>.</p>
+<p><code>bootstrap.sh</code> (AWS) and <code>bootstrap-local.sh</code> (Kind / Rancher Desktop) both apply every file in
+<code>observability/slo/generated/</code>.</p>
 <h3 id="how-slos-reach-the-cluster">How SLOs reach the cluster<a class="headerlink" href="#how-slos-reach-the-cluster" title="Permanent link">&para;</a></h3>
 <p>The <code>PrometheusServiceLevel</code> in <code>observability/slo/</code> is a Sloth CRD, and no Sloth operator runs
-on the local cluster — it has to be compiled into a <code>PrometheusRule</code> first. <code>bootstrap-local.sh</code>
-does this on every run:</p>
-<ul>
-<li>If the <code>sloth</code> binary is on PATH, it regenerates the rules from the source YAML and applies
-  them — so an edit to the SLO definition takes effect without re-vendoring anything.</li>
-<li>Otherwise it applies the committed output at <code>observability/slo/generated/hello-service-slo-rules.yaml</code>,
-  so the bootstrap has no hard dependency on Sloth being installed.</li>
-</ul>
-<p>If neither is available the bootstrap warns and the Grafana SRE dashboard reports
+in either environment, so it has to be compiled into a <code>PrometheusRule</code> first. That happens ahead
+of time: <code>./scripts/generate-slo-rules.sh</code> compiles every source with a pinned sloth build into
+<code>observability/slo/generated/</code>, and the bootstraps apply that directory. No local <code>sloth</code> install
+is needed.</p>
+<p>If <code>generated/</code> is empty the bootstrap warns and the Grafana SRE dashboard reports
 "no <code>sloth_slo_info</code> metrics found" — which is the symptom to look for when error budgets
 are empty on a fresh cluster. <strong>After editing an SLO source file, run
 <code>./scripts/generate-slo-rules.sh</code> and commit <code>observability/slo/generated/</code></strong>, or the cluster
