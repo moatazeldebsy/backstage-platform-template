@@ -1208,24 +1208,19 @@ if ! $SKIP_OBS; then
   # SRE dashboard reports "no sloth_slo_info metrics found" on every fresh
   # cluster, which is exactly what it did before.
   #
-  # Prefer regenerating when the sloth binary is present, so an edit to the
-  # source takes effect without remembering to re-vendor. Otherwise apply the
-  # committed output, so the bootstrap has no hard dependency on sloth.
-  _slo_src="${ROOT_DIR}/observability/slo/hello-service-slos.yaml"
-  _slo_gen="${ROOT_DIR}/observability/slo/generated/hello-service-slo-rules.yaml"
-  if command -v sloth &>/dev/null; then
-    if sloth generate -i "$_slo_src" -o /tmp/idp-slo-rules.yaml &>/dev/null; then
-      kubectl apply -f /tmp/idp-slo-rules.yaml >/dev/null
-      log "  Sloth SLOs applied (regenerated from ${_slo_src##*/})."
-    else
-      warn "  sloth generate failed — falling back to the committed rules."
-      kubectl apply -f "$_slo_gen" >/dev/null
-    fi
-  elif [[ -f "$_slo_gen" ]]; then
-    kubectl apply -f "$_slo_gen" >/dev/null
-    log "  Sloth SLOs applied (committed rules; install sloth to regenerate)."
+  # Apply every committed file in generated/, the same as bootstrap.sh on AWS:
+  # hello-service and the MCP server SLOs (#314). This used to regenerate
+  # hello-service only, with whatever `sloth` happened to be on PATH. That is
+  # no longer needed: scripts/generate-slo-rules.sh compiles them with a pinned
+  # sloth, and the slo-drift CI job fails any PR whose generated rules do not
+  # match their source, so the committed output is the source compiled.
+  # After editing a source locally, run ./scripts/generate-slo-rules.sh first.
+  _slo_dir="${ROOT_DIR}/observability/slo/generated"
+  if compgen -G "${_slo_dir}/*-slo-rules.yaml" >/dev/null; then
+    kubectl apply -f "$_slo_dir" >/dev/null
+    log "  Sloth SLOs applied ($(compgen -G "${_slo_dir}/*-slo-rules.yaml" | wc -l | tr -d ' ') rule file(s) from observability/slo/generated/)."
   else
-    warn "  No SLO rules found — Grafana SRE dashboard will show no error budgets."
+    warn "  No SLO rules in ${_slo_dir} — Grafana SRE dashboard will show no error budgets."
   fi
 
   # Recent kube-prometheus-stack releases ship Grafana as a distroless image
