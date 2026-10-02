@@ -67,7 +67,7 @@ resource "aws_iam_role" "github_actions" {
 # What the platform repo's workflows actually do in AWS (#315), and nothing else:
 #   - build-and-deploy.yml: ensure the service's ECR repo exists, push the image
 #     (plus its Cosign signature), let Trivy pull it back for the image scan
-#   - build-and-deploy.yml, scaffold.yml: `aws eks update-kubeconfig`, which only
+#   - build-and-deploy.yml: `aws eks update-kubeconfig`, which only
 #     needs eks:DescribeCluster; what they then do inside the cluster is granted
 #     by the EKS access entry in eks.tf, not by IAM
 # No workflow runs Terraform. This role used to carry PowerUserAccess +

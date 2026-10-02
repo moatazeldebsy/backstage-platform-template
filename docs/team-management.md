@@ -71,8 +71,10 @@ For local (Kind) development, skip this step — the `SecretStore` is omitted wh
 
 ## Step 3 — Merge the scaffold PR
 
-Merge `team/payments-namespace` on the platform repo. The `scaffold.yml` CI workflow
-runs `kubectl apply -f kubernetes/teams/payments/` which creates:
+Merge `team/payments-namespace` on the platform repo. ArgoCD's `idp-teams`
+ApplicationSet (`aws/argocd/app-of-apps.yaml`, `local/argocd/app-of-apps-local.yaml`)
+picks up the new `kubernetes/teams/payments/` directory as Application `team-payments`
+and syncs it within its git polling interval (about 3 minutes), creating:
 
 ```
 kubernetes/teams/payments/
@@ -85,6 +87,15 @@ kubernetes/teams/payments/
 ├── applicationset.yaml     # scans teams/payments/services/*
 ├── secret-store.yaml       # namespace-scoped SecretStore (if IAM role set)
 └── grafana-folder.yaml     # ConfigMap → Grafana sidecar creates folder
+```
+
+ArgoCD keeps these in sync with git (manual `kubectl` edits are reverted), but it
+does **not** prune: deleting the directory from git leaves the namespace and its
+workloads in place. Removing a team is a deliberate manual step:
+
+```bash
+kubectl delete application team-payments -n argocd
+kubectl delete namespace team-payments
 ```
 
 The Backstage Group entity for the team is **not** part of this PR. Teams and
