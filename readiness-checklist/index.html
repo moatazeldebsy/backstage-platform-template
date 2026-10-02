@@ -3205,7 +3205,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS password uses <code>special = true</code> for full entropy ✅ (fixed)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> CI role is least-privilege ✅ — <code>aws_iam_role_policy.github_actions_ci</code> allows only ECR push/pull on <code>&lt;cluster&gt;/*</code> repos and <code>eks:DescribeCluster</code> (<a href="https://github.com/moatazeldebsy/backstage-platform-template/issues/315">#315</a>). Inside the cluster it is still <code>AmazonEKSClusterAdminPolicy</code> (<code>terraform/eks.tf</code>); narrow that if CI's kubectl use is ever reduced</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> S3 buckets for TechDocs have bucket versioning and server-side encryption enabled</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> RDS egress security group rule restricts to VPC CIDR, not <code>0.0.0.0/0</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> RDS security group has no egress rule at all (was <code>0.0.0.0/0</code>) — <code>terraform/rds.tf</code></li>
 </ul>
 <h3 id="infrastructure-crossplane">Infrastructure (Crossplane)<a class="headerlink" href="#infrastructure-crossplane" title="Permanent link">&para;</a></h3>
 <ul class="task-list">
