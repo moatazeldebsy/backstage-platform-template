@@ -99,11 +99,7 @@ nav:
     - AI Advisor: engineering-intelligence/ai-advisor.md
     - Roadmap: engineering-intelligence/roadmap.md
   - Quality & Security:
-    - Shift-Left Quality:
-      - Programme Overview: shift-left.md
-      - For Leadership: shift-left-leadership.md
-      - Pilot Kickoff: shift-left-pilot-kickoff.md
-      - Demo Cheatsheet: shift-left-demo-cheatsheet.md
+    - Shift-Left Quality: shift-left.md
     - Flaky-Test Quarantine: flaky-test-quarantine.md
     - Test-Impact Analysis: test-impact-analysis.md
     - Security: security.md
