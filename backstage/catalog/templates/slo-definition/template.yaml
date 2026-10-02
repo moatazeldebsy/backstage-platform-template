@@ -133,9 +133,18 @@ spec:
           - Latency SLO: ${{ parameters.latencyObjective }}% of requests < ${{ parameters.latencyThresholdMs }}ms
           - Multi-window burn-rate alerts (page + ticket tiers)
 
+          ### Before merge: generate the Prometheus rules
+          No Sloth operator runs in-cluster, so the source above is not read at
+          runtime. Check out this branch, run the generator, and push the result.
+          The `slo-drift` CI check fails until you do:
+          ```bash
+          ./scripts/generate-slo-rules.sh
+          git add observability/slo/generated/ && git commit -m "chore(slo): generate rules" && git push
+          ```
+
           ### Apply after merge
           ```bash
-          sloth generate -i observability/slo/${{ parameters.serviceName }}-slos.yaml | kubectl apply -f -
+          kubectl apply -f observability/slo/generated/${{ parameters.serviceName }}-slo-rules.yaml
           ```
 
           Owned by: **${{ parameters.team }}**
