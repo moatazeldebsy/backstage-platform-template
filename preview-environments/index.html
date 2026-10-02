@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../TROUBLESHOOTING/">
+        <link rel="prev" href="../sre-reliability/">
       
       
-        <link rel="next" href="../cli-reference/">
+        <link rel="next" href="../runbooks/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Docker Recovery - Internal Developer Platform</title>
+        <title>PR Preview Environments - Internal Developer Platform</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#docker-desktop-recovery" class="md-skip">
+        <a href="#pr-preview-environments" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Docker Recovery
+              PR Preview Environments
             
           </span>
         </div>
@@ -292,11 +292,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../docker-recovery/" class="md-tabs__link">
         
   
     
@@ -654,9 +652,11 @@
         
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../preview-environments/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
     
@@ -1024,30 +1024,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Docker Recovery
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1056,86 +1036,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#symptoms" class="md-nav__link">
-    <span class="md-ellipsis">
-      Symptoms
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recovery" class="md-nav__link">
-    <span class="md-ellipsis">
-      Recovery
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Recovery">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-script-fixes" class="md-nav__link">
-    <span class="md-ellipsis">
-      What the script fixes
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#manual-recovery-if-the-script-fails" class="md-nav__link">
-    <span class="md-ellipsis">
-      Manual Recovery (if the script fails)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#preventing-ip-drift" class="md-nav__link">
-    <span class="md-ellipsis">
-      Preventing IP Drift
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related" class="md-nav__link">
-    <span class="md-ellipsis">
-      Related
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2087,10 +1987,30 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../preview-environments/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    PR Preview Environments
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -2099,6 +2019,62 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-happens" class="md-nav__link">
+    <span class="md-ellipsis">
+      What happens
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-is-deployed" class="md-nav__link">
+    <span class="md-ellipsis">
+      How it is deployed
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clean-up-by-hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      Clean up by hand
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2437,7 +2413,7 @@
                   
 
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/docker-recovery.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/preview-environments.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
     </a>
@@ -2445,130 +2421,72 @@
   
 
 
-<h1 id="docker-desktop-recovery">Docker Desktop Recovery<a class="headerlink" href="#docker-desktop-recovery" title="Permanent link">&para;</a></h1>
-<p>When Docker Desktop restarts on macOS (update, crash, or sleep/wake), it shuffles the IP addresses assigned to Kind containers. This breaks <code>/etc/hosts</code> resolution, ingress routing, kubeconfig, and Backstage.</p>
-<p>The <code>recover-docker-restart.sh</code> script automates the full recovery sequence.</p>
-<hr />
-<h2 id="symptoms">Symptoms<a class="headerlink" href="#symptoms" title="Permanent link">&para;</a></h2>
-<p>After Docker Desktop restarts you may see:</p>
-<ul>
-<li><code>curl http://backstage.idp.local</code> → <code>Could not resolve host</code></li>
-<li><code>kubectl get pods</code> → <code>Unable to connect to the server</code></li>
-<li>ArgoCD, Grafana, Prometheus — all returning <code>Connection refused</code></li>
-<li>Kind nodes in <code>NotReady</code> state</li>
-</ul>
-<hr />
-<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Full automated recovery (~2–3 minutes)</span>
-./scripts/recover-docker-restart.sh
-
-<span class="c1"># Skip Backstage Docker Compose restart (faster if Backstage is already up)</span>
-./scripts/recover-docker-restart.sh<span class="w"> </span>--skip-backstage
-
-<span class="c1"># Dry-run: print steps without executing</span>
-./scripts/recover-docker-restart.sh<span class="w"> </span>--dry-run
-</code></pre></div></td></tr></table></div>
-<h3 id="what-the-script-fixes">What the script fixes<a class="headerlink" href="#what-the-script-fixes" title="Permanent link">&para;</a></h3>
-<p>The script applies fixes in order:</p>
+<h1 id="pr-preview-environments">PR Preview Environments<a class="headerlink" href="#pr-preview-environments" title="Permanent link">&para;</a></h1>
+<p>Add the <strong><code>preview</code></strong> label to a pull request in this repo that changes a deployable
+service, and <code>.github/workflows/preview.yml</code> stands up a throwaway copy of it on the
+EKS cluster and comments the URL on the PR.</p>
+<h2 id="what-happens">What happens<a class="headerlink" href="#what-happens" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Step</th>
-<th>Fix</th>
-<th>Why</th>
+<th>PR event</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>1</td>
-<td>Patch <code>kubelet.conf</code> with the new API server IP</td>
-<td>Kind's API server IP changes on restart</td>
+<td><code>preview</code> label added</td>
+<td>Changed services are built at the PR's head commit, pushed to ECR as <code>&lt;cluster&gt;/&lt;service&gt;:pr-&lt;number&gt;-&lt;sha7&gt;</code>, and deployed to namespace <code>services-preview-&lt;number&gt;</code></td>
 </tr>
 <tr>
-<td>2</td>
-<td>Restart <code>kindnet</code> and <code>kube-proxy</code> DaemonSets</td>
-<td>Pod network routes become stale</td>
+<td>New commits pushed (label still set)</td>
+<td>Rebuilt and redeployed; the PR comment is updated in place</td>
 </tr>
 <tr>
-<td>3</td>
-<td>Replace <code>ingress-nginx</code> pods</td>
-<td>Nginx binds to the old node IP at startup</td>
-</tr>
-<tr>
-<td>4</td>
-<td>Fix Grafana PVC permissions</td>
-<td><code>chmod 700</code> on Grafana data subdirs (often reset after volume remount)</td>
-</tr>
-<tr>
-<td>5</td>
-<td>Patch Prometheus operator liveness probe</td>
-<td>Operator may fail health checks on new IP</td>
-</tr>
-<tr>
-<td>6</td>
-<td>Restart Backstage Docker Compose stack</td>
-<td>Backstage proxy config references cluster IP</td>
-</tr>
-<tr>
-<td>7</td>
-<td>Smoke-test all service URLs</td>
-<td>Confirms recovery: Backstage, Grafana, ArgoCD, Prometheus, hello-service, and MCP servers</td>
+<td>PR closed or merged, or label removed</td>
+<td>Applications deleted (cascading to everything they deployed, including the ALB), then the namespace</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="manual-recovery-if-the-script-fails">Manual Recovery (if the script fails)<a class="headerlink" href="#manual-recovery-if-the-script-fails" title="Permanent link">&para;</a></h2>
-<p>If <code>recover-docker-restart.sh</code> fails on a specific step, you can run that step manually:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Get new Kind node IP</span>
-<span class="nv">CLUSTER_IP</span><span class="o">=</span><span class="k">$(</span>docker<span class="w"> </span>inspect<span class="w"> </span>idp-control-plane<span class="w"> </span>--format<span class="w"> </span><span class="s1">&#39;{{.NetworkSettings.Networks.kind.IPAddress}}&#39;</span><span class="k">)</span>
-
-<span class="c1"># 2. Update kubeconfig</span>
-kubectl<span class="w"> </span>config<span class="w"> </span>set-cluster<span class="w"> </span>kind-idp<span class="w"> </span>--server<span class="o">=</span>https://<span class="si">${</span><span class="nv">CLUSTER_IP</span><span class="si">}</span>:6443
-
-<span class="c1"># 3. Restart ingress-nginx</span>
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/ingress-nginx-controller<span class="w"> </span>-n<span class="w"> </span>ingress-nginx
-
-<span class="c1"># 4. Restart Backstage</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>restart<span class="w"> </span>backstage
-
-<span class="c1"># 5. Verify</span>
-curl<span class="w"> </span>-s<span class="w"> </span>http://backstage.idp.local<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;Backstage&quot;</span>
+<p>A <strong>deployable service</strong> is <code>services/&lt;name&gt;/</code> with both a <code>Dockerfile</code> and a
+<code>helm-values-aws.yaml</code> (<code>mcp-common</code> excluded), the same rule as everywhere else.</p>
+<h2 id="how-it-is-deployed">How it is deployed<a class="headerlink" href="#how-it-is-deployed" title="Permanent link">&para;</a></h2>
+<p>CI creates one ArgoCD <code>Application</code> per service, named <code>preview-&lt;number&gt;-&lt;service&gt;</code>
+and labelled <code>idp.io/preview-pr=&lt;number&gt;</code>. It renders the same chart
+(<code>helm/service-template</code>) and the same <code>helm-values-aws.yaml</code> as dev, <strong>from the
+PR's own commit</strong>, plus a preview overlay:</p>
+<ul>
+<li>the <code>pr-&lt;number&gt;-&lt;sha7&gt;</code> image</li>
+<li>one replica, no autoscaling</li>
+<li><code>environment: preview</code> pod label</li>
+<li>its own ALB (<code>group.name: idp-preview-&lt;number&gt;-&lt;service&gt;</code>, port 80), since two
+  services cannot share a listener on <code>/</code></li>
+</ul>
+<p>The namespace carries the usual cost labels plus a <code>ResourceQuota</code> (1 CPU / 2 GiB
+requested, 10 pods) and a <code>LimitRange</code>, so a preview cannot crowd out dev.</p>
+<p>ArgoCD does the deploying, as for every other environment. CI only creates and
+deletes <code>Application</code> objects, and nothing is committed to git.</p>
+<h2 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>AWS only, and only while the cluster is up.</strong> With no <code>AWS_ROLE_ARN</code> secret, or
+  the stack torn down, the PR comment says so and the check stays green.</li>
+<li><strong>Same-repo PRs only.</strong> Fork PRs get no secrets, and applying a label needs triage
+  rights.</li>
+<li><strong>Cost:</strong> one ALB per previewed service (about $0.60/day) while the preview exists.</li>
+<li><strong>Services that depend on per-namespace setup</strong> start without it: IRSA roles that
+  trust only <code>services-dev</code>, and Secrets that <code>bootstrap-ai.sh</code> creates in
+  <code>services-dev</code> (most MCP servers). Previews suit stateless services, such as
+  <code>hello-service</code> and what the golden-path templates scaffold.</li>
+<li><strong><code>pr-*</code> images are not deleted</strong> on teardown, because the CI role has no
+  <code>ecr:BatchDeleteImage</code>. Add an ECR lifecycle rule for the <code>pr-</code> prefix if they
+  accumulate.</li>
+</ul>
+<h2 id="clean-up-by-hand">Clean up by hand<a class="headerlink" href="#clean-up-by-hand" title="Permanent link">&para;</a></h2>
+<p>If a teardown ran while the cluster was unreachable:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>delete<span class="w"> </span>applications<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>-l<span class="w"> </span>idp.io/preview-pr<span class="o">=</span>&lt;number&gt;
+kubectl<span class="w"> </span>delete<span class="w"> </span>namespace<span class="w"> </span>services-preview-&lt;number&gt;
 </code></pre></div></td></tr></table></div>
-<hr />
-<h2 id="preventing-ip-drift">Preventing IP Drift<a class="headerlink" href="#preventing-ip-drift" title="Permanent link">&para;</a></h2>
-<p>Docker Desktop does not guarantee stable container IPs across restarts. There is no permanent fix, but you can reduce the frequency of disruption:</p>
-<ul>
-<li>Use <strong>Rancher Desktop</strong> (k3s) instead of Kind — Rancher Desktop uses a VM with a stable IP. Set <code>KUBERNETES_PROVIDER=rancher-desktop</code> in <code>local/.env</code>.</li>
-<li>Enable <strong>"Use Rosetta for x86/amd64 emulation"</strong> in Docker Desktop settings on Apple Silicon — this reduces the chance of crashes that trigger restarts.</li>
-<li>Prefer <strong>sleep</strong> over <strong>restart</strong> when taking breaks; sleep preserves container IPs.</li>
-</ul>
-<hr />
-<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../local-setup/">Local Setup</a> — initial cluster setup</li>
-<li><a href="../runbooks/kind-node-ip-mismatch/">Runbooks: Kind Node IP Mismatch</a> — deeper diagnosis for persistent IP-mismatch issues</li>
-<li><a href="../TROUBLESHOOTING/">TROUBLESHOOTING</a> — general troubleshooting checklist</li>
-</ul>
 
 
 
@@ -2598,7 +2516,7 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://backstage.idp.local
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../TROUBLESHOOTING/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Troubleshooting">
+          <a href="../sre-reliability/" class="md-footer__link md-footer__link--prev" aria-label="Previous: SRE &amp; Reliability">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -2608,20 +2526,20 @@ curl<span class="w"> </span>-s<span class="w"> </span>http://backstage.idp.local
                 Previous
               </span>
               <div class="md-ellipsis">
-                Troubleshooting
+                SRE & Reliability
               </div>
             </div>
           </a>
         
         
           
-          <a href="../cli-reference/" class="md-footer__link md-footer__link--next" aria-label="Next: CLI Reference">
+          <a href="../runbooks/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                CLI Reference
+                Overview
               </div>
             </div>
             <div class="md-footer__button md-icon">
