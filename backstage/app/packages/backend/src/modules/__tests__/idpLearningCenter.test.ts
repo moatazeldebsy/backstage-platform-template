@@ -19,7 +19,9 @@ beforeEach(async () => {
     t.timestamp('completed_at').defaultTo(db.fn.now());
     t.primary(['user_ref', 'entity_ref']);
   });
-  srv = await serve(createLearningCenterRouter({ db: db as any, httpAuth: fakeHttpAuth() }));
+  srv = await serve(
+    createLearningCenterRouter({ db: db as any, httpAuth: fakeHttpAuth(), rateLimitPerMinute: 20 }),
+  );
 });
 
 afterEach(async () => {
@@ -75,6 +77,19 @@ describe('createLearningCenterRouter', () => {
       });
       expect(res.status).toBe(400);
     }
+  });
+
+  it('rate-limits each caller separately', async () => {
+    // Limit is 20/min in these tests. The key is the bearer token, so one busy
+    // session cannot use up another user's budget even from the same IP.
+    const auth = (token: string) => ({ ...as('user:default/alice'), authorization: `Bearer ${token}` });
+    const statuses: number[] = [];
+    for (let i = 0; i < 21; i++) {
+      statuses.push((await fetch(`${srv.url}/progress`, { headers: auth('session-a') })).status);
+    }
+    expect(statuses.slice(0, 20).every(s => s === 200)).toBe(true);
+    expect(statuses[20]).toBe(429);
+    expect((await fetch(`${srv.url}/progress`, { headers: auth('session-b') })).status).toBe(200);
   });
 
   it('refuses unauthenticated requests instead of hanging', async () => {

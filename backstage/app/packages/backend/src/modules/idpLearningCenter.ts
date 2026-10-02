@@ -5,6 +5,7 @@ import {
   type HttpAuthService,
 } from '@backstage/backend-plugin-api';
 import express, { Router, type Request } from 'express';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 
 type Db = Awaited<ReturnType<DatabaseService['getClient']>>;
 
@@ -13,9 +14,28 @@ type Db = Awaited<ReturnType<DatabaseService['getClient']>>;
  * database without a backend (#321). The user a row belongs to always comes
  * from verified credentials, never from the request body.
  */
-export function createLearningCenterRouter(opts: { db: Db; httpAuth: HttpAuthService }): Router {
+export function createLearningCenterRouter(opts: {
+  db: Db;
+  httpAuth: HttpAuthService;
+  /** Requests per minute per caller. Default 120; the page makes one GET on load and one POST per click. */
+  rateLimitPerMinute?: number;
+}): Router {
   const { db, httpAuth } = opts;
   const router = Router();
+  // Every route here is a database query, so cap how fast one caller can issue
+  // them. Keyed on the bearer token (one per session) rather than the source IP:
+  // behind the NLB / ingress many users can share an address, and an IP key
+  // would throttle them together. Falls back to the IP when there is no token
+  // (those requests are refused by httpAuth anyway).
+  router.use(
+    rateLimit({
+      windowMs: 60_000,
+      limit: opts.rateLimitPerMinute ?? 120,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      keyGenerator: req => req.headers.authorization ?? ipKeyGenerator(req.ip ?? ''),
+    }),
+  );
   router.use(express.json());
 
   const userOf = async (req: Request) =>
