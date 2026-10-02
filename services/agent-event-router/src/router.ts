@@ -302,6 +302,15 @@ export async function routeAlertManager(
 ): Promise<void> {
   const alerts = (payload.alerts as Record<string, unknown>[]) ?? [];
 
+  // Two passes (#319). Incident records first, for every alert in the payload;
+  // agent dispatch second. A dispatch waits for a whole agent turn (~43s for a
+  // multi-tool one, up to AGENT_TIMEOUT_MS), so doing both per alert in one
+  // loop left the third critical alert in a batch with no tracked issue for
+  // minutes — and a dispatch that threw skipped every alert after it,
+  // records included. Dispatch stays sequential on purpose: it is the only
+  // throttle on how many LLM turns one alert storm can start at once.
+  const dispatches: { agent: string; msg: string }[] = [];
+
   for (const alert of alerts) {
     const labels = (alert.labels as Record<string, string>) ?? {};
     const annotations = (alert.annotations as Record<string, string>) ?? {};
@@ -372,8 +381,18 @@ export async function routeAlertManager(
         `${description ? `Details: ${description}. ` : ''}` +
         `Investigate by checking recent deployments, service metrics, and pod status.`;
 
-    await postFn(targetAgent, msg);
-    counter?.inc({ source: 'alertmanager', event_type: 'firing', agent: targetAgent, outcome: 'routed' });
+    dispatches.push({ agent: targetAgent, msg });
+  }
+
+  for (const { agent, msg } of dispatches) {
+    try {
+      await postFn(agent, msg);
+      counter?.inc({ source: 'alertmanager', event_type: 'firing', agent, outcome: 'routed' });
+    } catch (err) {
+      // One unreachable agent must not stop the rest of the batch being triaged.
+      console.error(`[event-router] dispatch to ${agent} failed:`, err);
+      counter?.inc({ source: 'alertmanager', event_type: 'firing', agent, outcome: 'error' });
+    }
   }
 }
 
