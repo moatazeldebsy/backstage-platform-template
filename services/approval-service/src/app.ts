@@ -120,6 +120,17 @@ export function createApp(): Express {
       res.status(400).json({ error: 'decided_by is required' });
       return;
     }
+    // No self-approval. requested_by_user is the verified identity the agent
+    // acted for (idpAiIdentityProxy.ts); decided_by is the verified decider when
+    // the call comes through Backstage's /api/idp-approvals route
+    // (idpApprovalDecision.ts). Approving your own agent's request would make
+    // the human-in-the-loop gate a rubber stamp.
+    const existing = await getApproval(req.params.id);
+    if (existing?.requested_by_user && existing.requested_by_user === decided_by && decision === 'approved') {
+      auditLog({ event: 'approval_self_approval_refused', approval_id: existing.id, decided_by });
+      res.status(403).json({ error: 'an approval cannot be approved by the user it was requested for' });
+      return;
+    }
     const updated = await decideApproval(req.params.id, decision, decided_by);
     if (!updated) {
       res.status(409).json({ error: 'approval not found, or already decided' });

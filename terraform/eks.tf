@@ -209,6 +209,17 @@ resource "aws_eks_access_policy_association" "github_actions_cluster_admin" {
   depends_on = [aws_eks_access_entry.github_actions]
 }
 
+# PR-run role (iam.tf github_actions_pr): no access policy, only a Kubernetes
+# group whose namespaced Roles live in kubernetes/rbac/github-actions.yaml.
+resource "aws_eks_access_entry" "github_actions_pr" {
+  cluster_name      = module.eks.cluster_name
+  principal_arn     = aws_iam_role.github_actions_pr.arn
+  type              = "STANDARD"
+  kubernetes_groups = ["idp:ci-pr-reader"]
+
+  depends_on = [module.eks]
+}
+
 # AWS Load Balancer Controller
 module "aws_load_balancer_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"

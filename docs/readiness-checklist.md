@@ -54,7 +54,7 @@ Use this checklist before promoting the IDP to a production environment.
 ### Infrastructure (Crossplane)
 - [ ] Crossplane IRSA role is least-privilege ✅ — `terraform/iam-crossplane.tf` uses scoped inline policies (S3, RDS, Kafka, DynamoDB, SQS, tagging) restricted to `idp-*` resources, no AWS-managed policies
 - [ ] All Crossplane-provisioned resources carry `idp:provisioner=crossplane`, `idp:owner`, `idp:cost-center` tags ✅ (enforced by Compositions)
-- [ ] No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)
+- [x] No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names) — Crossplane's IRSA role carries an explicit Deny on `${cluster_name}-*` S3/RDS/DynamoDB/SQS (`terraform/iam-crossplane.tf`, `crossplane_deny_platform_owned`)
 - [ ] `kubectl get providers.pkg.crossplane.io` shows all five providers `HEALTHY=True`
 - [ ] Backstage `*-crossplane` scaffolder templates produce PRs that sync within ~60s of merge
 

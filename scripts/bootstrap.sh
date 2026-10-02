@@ -243,6 +243,7 @@ BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
 
 log "Terraform apply complete."
 sync_actions_role_secret "$(tf_output github_actions_role_arn)"
+sync_actions_role_secret "$(tf_output github_actions_pr_role_arn)" AWS_PR_ROLE_ARN
 
 timer_end "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 
@@ -393,15 +394,17 @@ kubectl wait --for=condition=ready pod \
   -n external-secrets \
   --timeout=300s || log "  WARNING: ESO pods not ready — proceeding anyway"
 
-# Annotate the ESO ServiceAccount with the Backstage IRSA role so it can
-# authenticate to Secrets Manager via pod identity (no static credentials).
-# The IAM trust policy references external-secrets-sa (not the default external-secrets SA).
-# Create it if missing so the ClusterSecretStore IRSA authentication succeeds.
+# Annotate the ESO ServiceAccount with its own read-only IRSA role (no static
+# credentials). Not the Backstage role: the ClusterSecretStore serves every
+# namespace, and that role can read idp-mvp/backstage (terraform/iam.tf
+# external_secrets_irsa). The IAM trust policy references external-secrets-sa
+# (not the default external-secrets SA); create it if missing.
+ESO_ROLE_ARN=$(tf_output_required external_secrets_role_arn)
 kubectl create serviceaccount external-secrets-sa -n external-secrets \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl annotate serviceaccount external-secrets-sa \
   -n external-secrets \
-  "eks.amazonaws.com/role-arn=${BACKSTAGE_ROLE_ARN}" \
+  "eks.amazonaws.com/role-arn=${ESO_ROLE_ARN}" \
   --overwrite
 
 # Substitute the AWS region placeholder and apply

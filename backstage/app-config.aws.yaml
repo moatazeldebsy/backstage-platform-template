@@ -221,6 +221,11 @@ proxy:
     # once bootstrap-ai.sh --adp has deployed approval-service.
     /approval-service:
       target: http://approval-service.services-dev.svc.cluster.local:3009
+      # GET only: the Approvals page lists through here, but decisions go
+      # through /api/idp-approvals (idpApprovalDecision.ts), which records the
+      # verified decider. A POST here could decide under any name and call
+      # /consent/grant for any user_ref.
+      allowedMethods: ['GET']
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/approval-service': ''
@@ -391,8 +396,17 @@ catalog:
   import:
     entityFilename: catalog-info.yaml
     pullRequestBranchName: backstage-integration
+  # No User or Group in the global rules. Sign-in resolves a GitHub login to a
+  # User entity (usernameMatchingUserEntityName), and platform admin is decided
+  # by Group membership (idpPermissionPolicy.ts isPlatformAdmin). If any
+  # registered location could emit those kinds, anyone could register a public
+  # catalog-info.yaml declaring `kind: User` with their login and
+  # `memberOf: [platform-team]`, then sign in as a platform admin without being
+  # an org member. Identity comes only from the githubOrg provider (not subject
+  # to location rules) and from this repo's reviewed all-entities.yaml below,
+  # which keeps its own allow list.
   rules:
-    - allow: [Component, System, API, Resource, Location, Template, User, Group, Domain]
+    - allow: [Component, System, API, Resource, Location, Template, Domain]
   locations:
     # ── Templates (all tiers) ──────────────────────────────────────────────────
     # Single entry — all templates indexed in backstage/catalog/all-templates.yaml.
