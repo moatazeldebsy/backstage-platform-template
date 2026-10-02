@@ -3,6 +3,10 @@ kind: Namespace
 metadata:
   name: services
   labels:
+    # AWS Load Balancer Controller: a pod is Ready only once its ALB target
+    # is healthy, so a rolling update never removes the last registered
+    # target before the new one serves. Ignored on Kind (no controller).
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -31,6 +35,10 @@ kind: Namespace
 metadata:
   name: services-dev
   labels:
+    # AWS Load Balancer Controller: a pod is Ready only once its ALB target
+    # is healthy, so a rolling update never removes the last registered
+    # target before the new one serves. Ignored on Kind (no controller).
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -43,6 +51,10 @@ kind: Namespace
 metadata:
   name: services-staging
   labels:
+    # AWS Load Balancer Controller: a pod is Ready only once its ALB target
+    # is healthy, so a rolling update never removes the last registered
+    # target before the new one serves. Ignored on Kind (no controller).
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -55,6 +67,10 @@ kind: Namespace
 metadata:
   name: services-prod
   labels:
+    # AWS Load Balancer Controller: a pod is Ready only once its ALB target
+    # is healthy, so a rolling update never removes the last registered
+    # target before the new one serves. Ignored on Kind (no controller).
+    elbv2.k8s.aws/pod-readiness-gate-inject: enabled
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted

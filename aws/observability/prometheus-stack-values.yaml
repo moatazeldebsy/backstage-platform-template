@@ -41,6 +41,10 @@ prometheus:
     hosts: []   # empty = match any ALB hostname; set to real domain when DNS is configured
     servicePort: 9090
   prometheusSpec:
+    # Tempo's metrics-generator remote-writes span and service-graph metrics to
+    # /api/v1/write (aws/observability/tempo-values.yaml). Without the receiver
+    # every write 404s and those series never exist.
+    enableRemoteWriteReceiver: true
     retention: 3d
     # retentionSize is the load-bearing setting, not retention. With only a time
     # limit, Prometheus happily fills the volume and then stops ingesting
@@ -111,10 +115,12 @@ alertmanager:
     resources:
       requests:
         cpu: 10m
-        memory: 32Mi
+        memory: 64Mi
       limits:
         cpu: 100m
-        memory: 64Mi
+        # 64Mi left no headroom for an alert storm's notification queue; an
+        # OOM-killed Alertmanager drops exactly the alerts that matter.
+        memory: 256Mi
 
 grafana:
   # Password set via --set grafana.adminPassword at install time (from Secrets Manager / env var)

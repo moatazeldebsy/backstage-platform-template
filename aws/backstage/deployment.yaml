@@ -46,6 +46,14 @@ spec:
             - name: metrics
               containerPort: 9464
           command: ["node", "--require", "./instrumentation.js", "packages/backend", "--config", "/config/app-config.yaml", "--config", "/config/app-config.aws.yaml"]
+          # Keep serving while the NLB deregisters this target and kube-proxy
+          # drops the endpoint; without it a rollout or node drain (HPA scale-in,
+          # Karpenter consolidation) cut in-flight requests with 502s. Native
+          # sleep action, so it does not depend on a shell in the image.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 15
           # LANGFUSE_BASIC_AUTH for the /langfuse proxy. Synced by
           # langfuse-external-secret.yaml, which bootstrap-ai.sh applies once
           # Langfuse exists. Optional so Backstage starts without the AI stack;

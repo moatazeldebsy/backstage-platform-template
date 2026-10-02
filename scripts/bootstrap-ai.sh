@@ -558,6 +558,7 @@ if $DESTROY; then
   # above: it's opt-in on local but must not be left behind after --destroy.
   kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-external-secret.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-serviceaccount.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-pdb.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/local/ml-platform/litellm-ingress.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml" 2>/dev/null || true
   # Its dedicated Postgres (local only — AWS's RDS instance goes with
@@ -1550,7 +1551,18 @@ if [[ "$LITELLM" == "true" ]]; then
       || warn "litellm-postgres did not become ready — check: kubectl logs -n ml-platform deploy/litellm-postgres"
   fi
   info "Deploying LiteLLM to ml-platform..."
-  kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml"
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    # Two replicas on EKS: every model call from every agent (and Backstage's
+    # LITELLM_BASE_URL) goes through LiteLLM, and it is stateless there (state
+    # is in RDS), so one pod was a single point of failure for the whole AI
+    # layer. Set before apply, not patched after, so a re-run never scales it
+    # down to 1 in between. Local keeps 1 (~768Mi each, docs/local-setup.md).
+    sed 's/^  replicas: 1$/  replicas: 2/' "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml" \
+      | kubectl apply -f -
+    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-pdb.yaml"
+  else
+    kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml"
+  fi
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-serviceaccount.yaml"
     # Applied here, before the rollout wait below, not later alongside the
@@ -1576,8 +1588,12 @@ if [[ "$LITELLM" == "true" ]]; then
     # no OIDC provider to federate against); patch it to the IRSA-annotated SA
     # here rather than forking the Deployment into two files. Strategic merge,
     # not JSON patch, so it works whether the field is already set or not.
-    kubectl patch deployment litellm -n ml-platform \
-      -p '{"spec":{"template":{"spec":{"serviceAccountName":"litellm"}}}}'
+    # The zone spread rides on the same patch: AWS-only, since Kind has one node
+    # and no topology.kubernetes.io/zone label.
+    kubectl patch deployment litellm -n ml-platform -p '{"spec":{"template":{"spec":{
+      "serviceAccountName":"litellm",
+      "topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"topology.kubernetes.io/zone",
+        "whenUnsatisfiable":"ScheduleAnyway","labelSelector":{"matchLabels":{"app":"litellm"}}}]}}}}'
   else
     kubectl apply -f "${REPO_ROOT}/local/ml-platform/litellm-ingress.yaml"
   fi

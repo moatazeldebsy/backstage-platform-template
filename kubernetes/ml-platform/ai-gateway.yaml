@@ -378,6 +378,12 @@ metadata:
     backstage.io/kubernetes-id: ai-gateway
 spec:
   replicas: 1
+  # Recreate, not RollingUpdate: the ai-gateway-store PVC is ReadWriteOnce, and
+  # on EKS (EBS) a surge pod scheduled on another node sits in ContainerCreating
+  # on a Multi-Attach error while the old pod keeps the volume — the rollout
+  # never finishes. Same fix as aws/ml-platform/mlflow.yaml.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: ai-gateway
