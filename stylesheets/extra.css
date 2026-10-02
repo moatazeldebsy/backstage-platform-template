@@ -1,0 +1,354 @@
+/*
+ * Docusaurus-style skin over mkdocs-material, modelled on docs.litellm.ai:
+ * white navbar, one collapsible sidebar tree with pill-highlighted items,
+ * bold Inter headings, flat code blocks and left-bordered callouts.
+ * Backstage TechDocs ignores this file, so nothing here may carry meaning.
+ */
+
+/* ---------- Colour tokens ---------- */
+:root,
+[data-md-color-scheme="default"] {
+  --brand: #1f3bd6;
+  --brand-hover: #1730b3;
+  --brand-soft: rgba(31, 59, 214, 0.07);
+
+  --md-primary-fg-color: var(--brand);
+  --md-primary-fg-color--light: #4a62e8;
+  --md-primary-fg-color--dark: var(--brand-hover);
+  --md-accent-fg-color: var(--brand-hover);
+  --md-typeset-a-color: var(--brand);
+
+  --surface: #ffffff;
+  --surface-muted: #f6f7f9;
+  --border: #e5e7eb;
+  --text-strong: #111827;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+
+  --md-default-bg-color: var(--surface);
+  --md-default-fg-color: var(--text);
+  --md-code-bg-color: #fbfbfc;
+  --md-footer-bg-color: #111827;
+  --md-footer-bg-color--dark: #0b1220;
+}
+
+[data-md-color-scheme="slate"] {
+  --brand: #7c93ff;
+  --brand-hover: #a3b3ff;
+  --brand-soft: rgba(124, 147, 255, 0.12);
+
+  --md-primary-fg-color: var(--brand);
+  --md-primary-fg-color--light: #a5b4fc;
+  --md-primary-fg-color--dark: #6366f1;
+  --md-accent-fg-color: var(--brand-hover);
+  --md-typeset-a-color: var(--brand);
+
+  --surface: #1b1b1d;
+  --surface-muted: #242526;
+  --border: #303236;
+  --text-strong: #f3f4f6;
+  --text: #e3e3e3;
+  --text-muted: #9ca3af;
+
+  --md-default-bg-color: var(--surface);
+  --md-default-fg-color: var(--text);
+  --md-code-bg-color: var(--surface-muted);
+  --md-footer-bg-color: #111113;
+  --md-footer-bg-color--dark: #0b0b0c;
+}
+
+/* ---------- Navbar: white, thin border, dark text ---------- */
+.md-header {
+  background-color: var(--surface);
+  color: var(--text-strong);
+  box-shadow: none;
+  border-bottom: 1px solid var(--border);
+}
+.md-header[data-md-state="shadow"],
+.md-header--shadow {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.md-header__title {
+  font-weight: 700;
+}
+.md-header__button,
+.md-header__source,
+.md-source {
+  color: var(--text-strong);
+}
+.md-search__form {
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.md-search__form:hover {
+  background-color: var(--surface-muted);
+}
+.md-search__input,
+.md-search__icon {
+  color: var(--text);
+}
+.md-search__input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ---------- Layout ---------- */
+.md-grid {
+  max-width: 1440px;
+}
+.md-main__inner {
+  margin-top: 0;
+}
+.md-content__inner {
+  padding-top: 1.2rem;
+}
+
+/* ---------- Left sidebar: one tree, pill highlights ---------- */
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary {
+    border-right: 1px solid var(--border);
+  }
+  .md-sidebar--primary .md-nav__title {
+    display: none;
+  }
+}
+.md-nav {
+  font-size: 0.72rem;
+}
+.md-nav__link {
+  margin-top: 0.15em;
+  padding: 0.35em 0.6em;
+  border-radius: 6px;
+  color: var(--text);
+  transition: background-color 0.15s ease;
+}
+.md-nav__link:hover {
+  background-color: var(--surface-muted);
+  color: var(--text-strong);
+}
+.md-nav__link--active,
+.md-nav__item--active > .md-nav__link {
+  color: var(--brand);
+}
+.md-nav__link--active {
+  background-color: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+  font-weight: 600;
+}
+/* Top-level categories read as section labels. */
+.md-nav--primary > .md-nav__list > .md-nav__item > .md-nav__link {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+/* Nested items sit on a faint guide line, like Docusaurus. */
+.md-nav--primary .md-nav__item--nested > .md-nav > .md-nav__list {
+  margin-left: 0.6em;
+  padding-left: 0.4em;
+  border-left: 1px solid var(--border);
+}
+
+/* ---------- Right TOC ---------- */
+.md-sidebar--secondary .md-nav__title {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: none;
+  box-shadow: none;
+}
+.md-sidebar--secondary .md-nav__link {
+  padding: 0.2em 0.6em;
+  color: var(--text-muted);
+}
+.md-sidebar--secondary .md-nav__link--active {
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+  color: var(--brand);
+}
+
+/* ---------- Typography ---------- */
+.md-typeset {
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+.md-typeset h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  margin-bottom: 0.8em;
+}
+.md-typeset h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  margin-top: 2em;
+}
+.md-typeset h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.md-typeset a {
+  font-weight: 500;
+}
+.md-typeset a:hover {
+  text-decoration: underline;
+}
+.md-typeset .headerlink {
+  color: var(--text-muted);
+}
+
+/* ---------- Code ---------- */
+.md-typeset code {
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.md-typeset :not(pre) > code {
+  border: 1px solid var(--border);
+  padding: 0.05em 0.35em;
+}
+.md-typeset pre > code {
+  border-radius: 8px;
+}
+.md-typeset .highlight,
+.md-typeset pre {
+  border-radius: 10px;
+}
+.md-typeset .highlight pre > code {
+  border: 1px solid var(--border);
+}
+.md-typeset .highlight span.filename {
+  border-radius: 8px 8px 0 0;
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+/* ---------- Content tabs: underline style ---------- */
+.md-typeset .tabbed-labels > label {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding-bottom: 0.6em;
+}
+.md-typeset .tabbed-set {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 0.9rem 0.2rem;
+}
+
+/* ---------- Callouts: Docusaurus-style left border ---------- */
+.md-typeset .admonition,
+.md-typeset details {
+  border: 1px solid;
+  border-radius: 10px;
+  box-shadow: none;
+  font-size: 0.78rem;
+}
+.md-typeset .admonition-title,
+.md-typeset summary {
+  background: none !important;
+  font-weight: 700;
+  text-transform: none;
+}
+.md-typeset .admonition.note,
+.md-typeset details.note,
+.md-typeset .admonition.info,
+.md-typeset details.info {
+  border-color: rgba(76, 179, 212, 0.45);
+  background-color: rgba(76, 179, 212, 0.1);
+}
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: rgba(0, 164, 0, 0.35);
+  background-color: rgba(0, 164, 0, 0.08);
+}
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-color: rgba(230, 167, 0, 0.45);
+  background-color: rgba(230, 167, 0, 0.1);
+}
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+  border-color: rgba(225, 50, 56, 0.4);
+  background-color: rgba(225, 50, 56, 0.08);
+}
+.md-typeset details.question,
+.md-typeset .admonition.question {
+  border-color: var(--brand);
+  background-color: var(--brand-soft);
+}
+
+/* ---------- Tables ---------- */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 0.75rem;
+}
+.md-typeset table:not([class]) th {
+  background-color: var(--surface-muted);
+  color: var(--text-strong);
+}
+
+/* ---------- Cards ---------- */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid > .card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid > .card:hover {
+  border-color: var(--brand);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- Screenshots inside steps ---------- */
+.md-typeset img.screenshot {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- Prev/next footer as Docusaurus-style cards ---------- */
+.md-footer__inner {
+  padding: 0.8rem 0;
+}
+.md-footer__link {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  margin: 0 0.4rem;
+}
+
+/* ---------- Breadcrumbs (navigation.path) ---------- */
+.md-path {
+  font-size: 0.68rem;
+  margin-bottom: 0.4rem;
+}
+.md-path__link {
+  color: var(--text-muted);
+}
+
+/* ---------- Header search: rounded input like the LiteLLM sidebar search ---------- */
+@media screen and (min-width: 60em) {
+  .md-search__inner {
+    width: 14rem;
+  }
+  .md-search__form {
+    height: 1.8rem;
+  }
+  .md-search__input {
+    font-size: 0.72rem;
+  }
+}
+
+/* Active content tab in brand colour with an underline, like LiteLLM's tabs. */
+.md-typeset .tabbed-set > input:nth-child(1):checked ~ .tabbed-labels > :nth-child(1),
+.md-typeset .tabbed-set > input:nth-child(2):checked ~ .tabbed-labels > :nth-child(2),
+.md-typeset .tabbed-set > input:nth-child(3):checked ~ .tabbed-labels > :nth-child(3),
+.md-typeset .tabbed-set > input:nth-child(4):checked ~ .tabbed-labels > :nth-child(4) {
+  color: var(--brand);
+  box-shadow: inset 0 -2px 0 var(--brand);
+}

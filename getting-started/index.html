@@ -14,19 +14,25 @@
         <link rel="prev" href="..">
       
       
-        <link rel="next" href="../screenshots/">
+        <link rel="next" href="../local-setup/">
+      
+      
+        
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Getting Started - Internal Developer Platform</title>
+        <title>Quickstart - Internal Developer Platform</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -40,22 +46,30 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
     
     
-    
   </head>
   
   
-    <body dir="ltr">
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -64,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#getting-started" class="md-skip">
+        <a href="#quickstart" class="md-skip">
           Skip to content
         </a>
       
@@ -76,17 +90,19 @@
     
       
 
-<header class="md-header" data-md-component="header">
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -98,22 +114,92 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting Started
+              Quickstart
             
           </span>
         </div>
       </div>
     </div>
     
+      
+        <form class="md-header__option" data-md-component="palette">
+  
     
     
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
     
     
       <div class="md-header__source">
         <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     moatazeldebsy/backstage-platform-template
@@ -130,583 +216,6 @@
       
         
           
-            
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-    
-  
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
-        
-  
-    
-  
-  Getting Started
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../screenshots/" class="md-tabs__link">
-        
-  
-    
-  
-  Screenshots
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../architecture/" class="md-tabs__link">
-        
-  
-    
-  
-  Architecture
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../golden-path/" class="md-tabs__link">
-        
-  
-    
-  
-  Golden Path
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../mobile-platform/" class="md-tabs__link">
-        
-  
-    
-  
-  Mobile Platform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../local-setup/" class="md-tabs__link">
-        
-  
-    
-  
-  Local Setup
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
-          
-  
-  AWS Deployment
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
-        
-  
-    
-  
-  Troubleshooting
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../docker-recovery/" class="md-tabs__link">
-        
-  
-    
-  
-  Docker Recovery
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../cli-reference/" class="md-tabs__link">
-        
-  
-    
-  
-  CLI Reference
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../scripts-reference/" class="md-tabs__link">
-        
-  
-    
-  
-  Scripts Reference
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../ai-assistant/" class="md-tabs__link">
-        
-  
-    
-  
-  AI Assistant
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../agentic-platform/" class="md-tabs__link">
-        
-  
-    
-  
-  Agentic Development Platform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../agent-approvals/" class="md-tabs__link">
-        
-  
-    
-  
-  Agent Approvals
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../dora-finops/" class="md-tabs__link">
-        
-  
-    
-  
-  DORA & FinOps
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../contract-testing/" class="md-tabs__link">
-        
-  
-    
-  
-  Contract Testing
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../crossplane/" class="md-tabs__link">
-        
-  
-    
-  
-  Crossplane
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
-        
-  
-    
-  
-  Crossplane vs Terraform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../engineering-intelligence/product-vision/" class="md-tabs__link">
-          
-  
-  Engineering Intelligence
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../design/adr-0001-batch-orchestration/" class="md-tabs__link">
-          
-  
-  Design Decisions
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../team-management/" class="md-tabs__link">
-        
-  
-    
-  
-  Team Management
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../github-app-setup/" class="md-tabs__link">
-        
-  
-    
-  
-  GitHub App Setup
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../scaling-runbook/" class="md-tabs__link">
-        
-  
-    
-  
-  Scaling Runbook
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../shift-left-leadership/" class="md-tabs__link">
-          
-  
-  Shift-Left Quality
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../security/" class="md-tabs__link">
-        
-  
-    
-  
-  Security
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../security-scanning/" class="md-tabs__link">
-        
-  
-    
-  
-  Security Scanning (SonarCloud + Snyk)
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../demo-runbook/" class="md-tabs__link">
-        
-  
-    
-  
-  Demo Runbook
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../readiness-checklist/" class="md-tabs__link">
-        
-  
-    
-  
-  Readiness Checklist
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../sre-reliability/" class="md-tabs__link">
-        
-  
-    
-  
-  SRE & Reliability
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../preview-environments/" class="md-tabs__link">
-        
-  
-    
-  
-  PR Preview Environments
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../runbooks/" class="md-tabs__link">
-          
-  
-  Runbooks
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../postmortem-template/" class="md-tabs__link">
-        
-  
-    
-  
-  Post-Mortem Template
-
-      </a>
-    </li>
-  
-
-      
-    </ul>
-  </div>
-</nav>
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -720,17 +229,13 @@
                     
 
 
-  
 
-
-  
-
-<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     Internal Developer Platform
@@ -740,7 +245,7 @@
       <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     moatazeldebsy/backstage-platform-template
@@ -754,24 +259,74 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+  
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
   
   <span class="md-ellipsis">
-    Home
-  </span>
+    
   
-
-      </a>
-    </li>
+    Get Started
   
 
     
-      
-      
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
     
@@ -789,9 +344,16 @@
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
+  
   <span class="md-ellipsis">
-    Getting Started
+    
+  
+    Quickstart
+  
+
+    
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -800,9 +362,16 @@
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
+  
   <span class="md-ellipsis">
-    Getting Started
+    
+  
+    Quickstart
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -825,154 +394,108 @@
         <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Prerequisites
+      
+        Prerequisites
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-long-does-it-take" class="md-nav__link">
+  <a href="#1-start-the-platform" class="md-nav__link">
     <span class="md-ellipsis">
-      How long does it take?
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How long does it take?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-kind-rancher-desktop-1520-minutes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Local (Kind / Rancher Desktop) — ~15–20 minutes
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#aws-eks-4070-minutes" class="md-nav__link">
-    <span class="md-ellipsis">
-      AWS (EKS) — ~40–70 minutes
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#quick-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      Quick comparison
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
       
-        <li class="md-nav__item">
-  <a href="#local-setup-no-aws-needed" class="md-nav__link">
-    <span class="md-ellipsis">
-      Local Setup (no AWS needed)
+        1. Start the platform
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#aws-setup" class="md-nav__link">
+  <a href="#2-open-backstage" class="md-nav__link">
     <span class="md-ellipsis">
-      AWS Setup
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="AWS Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-configure-aws" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Configure AWS
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-bootstrap-the-platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Bootstrap the platform
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-validate-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Validate deployment
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-github-actions-secrets" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. GitHub Actions secrets
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-team-namespace-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Team namespace setup
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-verify" class="md-nav__link">
-    <span class="md-ellipsis">
-      6. Verify
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-backstage-on-aws" class="md-nav__link">
-    <span class="md-ellipsis">
-      7. Backstage on AWS
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
       
-        <li class="md-nav__item">
-  <a href="#adding-aws-cd-to-a-scaffolded-service" class="md-nav__link">
-    <span class="md-ellipsis">
-      Adding AWS CD to a Scaffolded Service
+        2. Open Backstage
+      
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#teardown" class="md-nav__link">
+  <a href="#3-check-the-reference-service" class="md-nav__link">
     <span class="md-ellipsis">
-      Teardown
+      
+        3. Check the reference service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-scaffold-your-first-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Scaffold your first service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-deploy-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Deploy it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-optional-add-the-ai-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. (Optional) Add the AI layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-whole-flow-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The whole flow, end to end
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tear-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tear down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next steps
+      
     </span>
   </a>
   
@@ -985,89 +508,10 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../screenshots/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Screenshots
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Architecture
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../golden-path/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Golden Path
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../mobile-platform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Mobile Platform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1076,12 +520,55 @@
       <a href="../local-setup/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Local Setup
+  
+
+    
   </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screenshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1094,35 +581,54 @@
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    AWS Deployment
+    
+  
+    Deploy on AWS
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
-            AWS Deployment
+            
+  
+    Deploy on AWS
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1136,9 +642,16 @@
       <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Pre-Deployment Checklist
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1157,9 +670,16 @@
       <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Deployment Guide
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1178,9 +698,72 @@
       <a href="../aws-install-failure-modes/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Known Failure Modes
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Readiness Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-app-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub App Setup
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -1202,162 +785,151 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+    
+    
+      
         
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
   
   <span class="md-ellipsis">
-    Troubleshooting
+    
+  
+    Platform
+  
+
+    
   </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Golden Path
+  
+
+    
+  </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../docker-recovery/" class="md-nav__link">
+      <a href="../mobile-platform/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Docker Recovery
+    
+  
+    Mobile Platform
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../cli-reference/" class="md-nav__link">
+      <a href="../preview-environments/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    CLI Reference
+    
+  
+    PR Preview Environments
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../scripts-reference/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Scripts Reference
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ai-assistant/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    AI Assistant
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agentic-platform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Development Platform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agent-approvals/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Approvals
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dora-finops/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    DORA & FinOps
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1366,18 +938,26 @@
       <a href="../contract-testing/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Contract Testing
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1386,18 +966,26 @@
       <a href="../crossplane/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Crossplane
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1406,12 +994,83 @@
       <a href="../crossplane-vs-terraform/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Crossplane vs Terraform
+  
+
+    
   </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../team-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Team Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora-finops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DORA & FinOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1424,35 +1083,204 @@
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Engineering Intelligence
+    
+  
+    AI & Agents
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_20">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
-            Engineering Intelligence
+            
+  
+    AI & Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-platform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentic Development Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Approvals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Engineering Intelligence
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1466,9 +1294,16 @@
       <a href="../engineering-intelligence/product-vision/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Product Vision
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1487,9 +1322,16 @@
       <a href="../engineering-intelligence/architecture/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Architecture
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1508,9 +1350,16 @@
       <a href="../engineering-intelligence/maturity-model/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Maturity Model
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1529,9 +1378,16 @@
       <a href="../engineering-intelligence/scoring/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Scoring
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1550,9 +1406,16 @@
       <a href="../engineering-intelligence/integrations/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Integrations
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1571,9 +1434,16 @@
       <a href="../engineering-intelligence/ai-advisor/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     AI Advisor
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1592,9 +1462,16 @@
       <a href="../engineering-intelligence/roadmap/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Roadmap
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1618,35 +1495,54 @@
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Design Decisions
+    
+  
+    Quality & Security
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_21">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
-            Design Decisions
+            
+  
+    Quality & Security
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1656,316 +1552,56 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0001: Batch orchestration
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0002: Delivery model
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0003-incident-management/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0003: Incident management
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0004: Identity and access
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0005: LLM serving and agent frameworks
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0006-engineering-intelligence/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0006: Engineering Intelligence
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0007: AI Gateway
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0008: LiteLLM multi-provider gateway
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0009-single-region-multi-az/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0009: Single-region, multi-AZ
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../team-management/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Team Management
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../github-app-setup/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    GitHub App Setup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../scaling-runbook/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Scaling Runbook
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
     
     
       
+        
       
         
       
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" >
         
           
-          <label class="md-nav__link" for="__nav_25" id="__nav_25_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
+    
+  
     Shift-Left Quality
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_1">
             <span class="md-nav__icon md-icon"></span>
-            Shift-Left Quality
+            
+  
+    Shift-Left Quality
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../shift-left-leadership/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    For Leadership
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1977,9 +1613,44 @@
       <a href="../shift-left/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Programme Overview
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    For Leadership
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -1998,9 +1669,16 @@
       <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Pilot Kickoff
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2019,12 +1697,27 @@
       <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Demo Cheatsheet
+  
+
+    
   </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2040,9 +1733,16 @@
       <a href="../flaky-test-quarantine/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Flaky-Test Quarantine
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2061,9 +1761,72 @@
       <a href="../test-impact-analysis/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Test-Impact Analysis
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Scanning (SonarCloud + Snyk)
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -2085,157 +1848,60 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../security-scanning/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security Scanning (SonarCloud + Snyk)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../demo-runbook/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Demo Runbook
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../readiness-checklist/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Readiness Checklist
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../sre-reliability/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    SRE & Reliability
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../preview-environments/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    PR Preview Environments
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_32" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_32" id="__nav_32_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Runbooks
+    
+  
+    Operate
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_32_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_32">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
-            Runbooks
+            
+  
+    Operate
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -2246,18 +1912,193 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
+      <a href="../sre-reliability/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Overview
+    
+  
+    SRE & Reliability
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scaling-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scaling Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../runbooks/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbooks
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
               
             
               
@@ -2270,9 +2111,16 @@
       <a href="../runbooks/incident-severity/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Incident Severity
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2291,9 +2139,16 @@
       <a href="../runbooks/deployment-rollback/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Deployment Rollback
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2312,9 +2167,16 @@
       <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Pod Crash Loop
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2333,9 +2195,16 @@
       <a href="../runbooks/high-memory/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     High Memory
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2354,9 +2223,16 @@
       <a href="../runbooks/high-cpu/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     High CPU
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2375,9 +2251,16 @@
       <a href="../runbooks/db-recovery/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Database Recovery
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2396,9 +2279,16 @@
       <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ImagePullBackOff
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2417,9 +2307,16 @@
       <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Kind Node IP Mismatch
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2438,9 +2335,16 @@
       <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Cost Budget Exceeded
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2459,9 +2363,16 @@
       <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     KAgent Guardrails
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2480,9 +2391,80 @@
       <a href="../runbooks/regional-rebuild/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Regional Rebuild
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../postmortem-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-Mortem Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Runbook
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -2504,16 +2486,471 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../postmortem-template/" class="md-nav__link">
+    
+    
+      
         
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
   
   <span class="md-ellipsis">
-    Post-Mortem Template
+    
+  
+    Reference
+  
+
+    
   </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scripts-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_8_4" id="__nav_8_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Batch orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0002: Delivery model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0003-incident-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003: Incident management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0004: Identity and access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005: LLM serving and agent frameworks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0006-engineering-intelligence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0006: Engineering Intelligence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0007: AI Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008: LiteLLM multi-provider gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0009-single-region-multi-az/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009: Single-region, multi-AZ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2525,23 +2962,177 @@
               </div>
             
             
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-start-the-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Start the platform
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-open-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Open Backstage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-check-the-reference-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Check the reference service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-scaffold-your-first-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Scaffold your first service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-deploy-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Deploy it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-optional-add-the-ai-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. (Optional) Add the AI layer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-whole-flow-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The whole flow, end to end
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tear-down" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tear down
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
           
           
             <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
               <article class="md-content__inner md-typeset">
                 
                   
 
+
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/getting-started.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/main/docs/getting-started.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
   
   
 
 
-<h1 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h1>
+<h1 id="quickstart">Quickstart<a class="headerlink" href="#quickstart" title="Permanent link">&para;</a></h1>
+<p>Bring the platform up, open the developer portal, and ship your first service
+from a golden-path template.</p>
+<p>By the end you'll have:</p>
+<ul>
+<li>a Kubernetes cluster running Backstage, ArgoCD, Prometheus/Grafana and the policy engine</li>
+<li><code>hello-service</code>, the reference service, deployed by GitOps</li>
+<li>a new service repository of your own, scaffolded from a template, CI included</li>
+</ul>
+<p>Locally this takes <strong>about 15–20 minutes</strong> and needs no cloud account. On AWS it takes
+<strong>40–70 minutes</strong> and costs <strong>about $19/day</strong> while the cluster runs.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2553,14 +3144,9 @@
 </thead>
 <tbody>
 <tr>
-<td>AWS CLI</td>
-<td>≥ 2.15</td>
-<td><code>brew install awscli</code></td>
-</tr>
-<tr>
-<td>Terraform</td>
-<td>≥ 1.5</td>
-<td><code>brew install terraform</code></td>
+<td>Docker</td>
+<td>≥ 24</td>
+<td>docker.com</td>
 </tr>
 <tr>
 <td>kubectl</td>
@@ -2573,20 +3159,60 @@
 <td><code>brew install helm</code></td>
 </tr>
 <tr>
-<td>Docker</td>
-<td>≥ 24</td>
-<td>docker.com</td>
-</tr>
-<tr>
 <td>Node.js</td>
 <td>≥ 22</td>
-<td><code>brew install node</code> (for Backstage build)</td>
+<td><code>brew install node</code> (for the Backstage build)</td>
+</tr>
+<tr>
+<td>Kind</td>
+<td>≥ 0.27</td>
+<td><code>brew install kind</code> (local only)</td>
+</tr>
+<tr>
+<td>AWS CLI</td>
+<td>≥ 2.15</td>
+<td><code>brew install awscli</code> (AWS only)</td>
+</tr>
+<tr>
+<td>Terraform</td>
+<td>≥ 1.5</td>
+<td><code>brew install terraform</code> (AWS only)</td>
 </tr>
 </tbody>
 </table>
-<h2 id="how-long-does-it-take">How long does it take?<a class="headerlink" href="#how-long-does-it-take" title="Permanent link">&para;</a></h2>
-<h3 id="local-kind-rancher-desktop-1520-minutes">Local (Kind / Rancher Desktop) — ~15–20 minutes<a class="headerlink" href="#local-kind-rancher-desktop-1520-minutes" title="Permanent link">&para;</a></h3>
-<p><code>./scripts/bootstrap-local.sh</code> runs end-to-end without AWS credentials.</p>
+<div class="admonition warning">
+<p class="admonition-title">The full local stack is heavy</p>
+<p>A 16 GB machine runs the core platform plus at most <strong>one</strong> AI component.
+The full stack needs 24 GB. Read <a href="../local-setup/#machine-requirements-and-what-to-do-if-you-dont-have-them">Machine requirements</a>
+before adding the AI layer.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Set <code>GITHUB_TOKEN</code> first</p>
+<p>Every other integration is optional and fails soft. A GitHub PAT
+(<code>repo</code>, <code>read:org</code>, <code>workflow</code>, <code>delete_repo</code>) is the one worth setting,
+because scaffolding creates real repositories. See
+<a href="../local-setup/#optional-third-party-integrations">Optional third-party integrations</a>.</p>
+</div>
+<h2 id="1-start-the-platform">1. Start the platform<a class="headerlink" href="#1-start-the-platform" title="Permanent link">&para;</a></h2>
+<p>Clone the repository and run the setup wizard. It personalises the placeholders
+(your GitHub org replaces <code>moatazeldebsy</code> across the repo), then bootstraps the
+environment you choose.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Local (Kind)</label><label for="__tabbed_1_2">AWS (EKS)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/moatazeldebsy/backstage-platform-template
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>backstage-platform-template
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>./scripts/setup.sh<span class="w">        </span><span class="c1"># choose "local" when prompted</span>
+</code></pre></div>
+<p><code>setup.sh</code> calls <code>bootstrap-local.sh</code> for you and then offers to start Backstage.</p>
+<div class="admonition note">
+<p class="admonition-title">Run <code>setup.sh</code>, not both</p>
+<p>Don't run <code>bootstrap-local.sh</code> yourself afterwards. That repeats the whole
+15–20 minute install. Keep it for day-2 work: <code>--destroy</code>, <code>--start-backstage</code>,
+<code>--print-urls</code>, or recreating the cluster.</p>
+</div>
+<details class="info">
+<summary>What gets installed, and how long each part takes</summary>
 <table>
 <thead>
 <tr>
@@ -2633,38 +3259,27 @@
 </tr>
 </tbody>
 </table>
-<p><code>--skip-obs</code> (skip Prometheus/Grafana) saves ~4 minutes.</p>
-<p>Adding the AI/ML stack (<code>./scripts/bootstrap-ai.sh</code>) takes an additional <strong>10–15 minutes</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Time</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>KAgent controller + idp-assistant agent</td>
-<td>~4 min</td>
-</tr>
-<tr>
-<td>MLflow tracking server</td>
-<td>~3 min</td>
-</tr>
-<tr>
-<td>IDP + QA + Contract MCP servers (3×)</td>
-<td>~4 min</td>
-</tr>
-<tr>
-<td><code>/etc/hosts</code> entries + port-forward</td>
-<td>&lt;1 min</td>
-</tr>
-</tbody>
-</table>
-<p><code>--skip-mlflow</code>, <code>--skip-mcp</code>, <code>--skip-kagent</code> each save ~3–4 minutes from the AI stack.</p>
-<hr />
-<h3 id="aws-eks-4070-minutes">AWS (EKS) — ~40–70 minutes<a class="headerlink" href="#aws-eks-4070-minutes" title="Permanent link">&para;</a></h3>
-<p><code>./scripts/bootstrap.sh</code> provisions from scratch. Most of the time is AWS control-plane and ALB provisioning, which cannot be parallelised.</p>
+<p><code>--skip-obs</code> (skip Prometheus/Grafana) saves ~4 minutes. The step-by-step
+list is in <a href="../local-setup/#bootstrap-1015-min">Local Setup → Bootstrap</a>.</p>
+</details>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>aws<span class="w"> </span>configure<span class="w">                  </span><span class="c1"># or: aws sso login</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span class="w">    </span><span class="c1"># confirm the account</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/moatazeldebsy/backstage-platform-template
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nb">cd</span><span class="w"> </span>backstage-platform-template
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>./scripts/verify-secrets.sh<span class="w">    </span><span class="c1"># check every API key before spending 40 minutes</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>./scripts/setup.sh<span class="w">             </span><span class="c1"># choose "aws" when prompted</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Read the checklist first</p>
+<p>Go through the <a href="../PRE_DEPLOYMENT_CHECKLIST/">Pre-Deployment Checklist</a> before
+your first deploy. The <a href="../DEPLOYMENT_GUIDE/">Deployment Guide</a> has the full
+walkthrough, post-deploy steps and known issues.</p>
+</div>
+<details class="info">
+<summary>What gets installed, and how long each part takes</summary>
 <table>
 <thead>
 <tr>
@@ -2721,47 +3336,146 @@
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>EKS control plane creation (~10 min) and ALB provisioning (~3–5 min per ingress) are the longest waits and are entirely AWS-side — no script change can speed them up.</p>
-</blockquote>
-<p>Adding the AI/ML stack on AWS takes an additional <strong>15–20 minutes</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Time</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>KAgent controller + idp-assistant + ALB ingresses</td>
-<td>~5 min</td>
-</tr>
-<tr>
-<td>MLflow (S3 backend) + ALB</td>
-<td>~5 min</td>
-</tr>
-<tr>
-<td>IDP + QA + Contract MCP servers + ALBs</td>
-<td>~5 min</td>
-</tr>
-<tr>
-<td>Backstage proxy config patch + restart</td>
-<td>~2 min</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Re-bootstrap (cluster already exists):</strong> If you're re-running <code>bootstrap.sh</code> against an existing EKS cluster, Terraform applies only the diff (usually &lt;2 min) and the rest of the phases take ~15–20 minutes total — ALB re-provisioning is skipped if the ingresses already exist.</p>
-<hr />
-<h3 id="quick-comparison">Quick comparison<a class="headerlink" href="#quick-comparison" title="Permanent link">&para;</a></h3>
+<p>EKS control plane creation (~10 min) and ALB provisioning (~3–5 min per
+ingress) are the longest waits and are entirely AWS-side. Re-running against
+an existing cluster takes ~15–20 minutes: Terraform applies only the diff.</p>
+</details>
+<p>When it finishes, check every component in one go:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./scripts/validate-deployment.sh
+</code></pre></div>
+<p>It runs ~40 checks across 10 categories, and exit code 0 means healthy.</p>
+</div>
+</div>
+</div>
+<h2 id="2-open-backstage">2. Open Backstage<a class="headerlink" href="#2-open-backstage" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Local (Kind)</label><label for="__tabbed_2_2">AWS (EKS)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>If you declined the offer at the end of <code>setup.sh</code>, start it now:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div>
+<p>Then open <strong><a href="http://backstage.idp.local">http://backstage.idp.local</a></strong> (fallback: <a href="http://localhost:3000">http://localhost:3000</a>).
+Local Backstage runs in guest mode, so there's no login.</p>
+</div>
+<div class="tabbed-block">
+<p><code>bootstrap.sh</code> builds and deploys Backstage itself, then prints the ALB URL.
+Update your GitHub OAuth app's callback URL to
+<code>http://&lt;BACKSTAGE_ALB_HOSTNAME&gt;/api/auth/github/handler/frame</code>
+(<a href="../DEPLOYMENT_GUIDE/#step-3-update-github-oauth-callback-url">Deployment Guide, step 3</a>),
+then sign in with GitHub.</p>
+</div>
+</div>
+</div>
+<p><img alt="Backstage platform dashboard" class="screenshot" src="../assets/screenshots/platform-dashboard.jpg" /></p>
+<h2 id="3-check-the-reference-service">3. Check the reference service<a class="headerlink" href="#3-check-the-reference-service" title="Permanent link">&para;</a></h2>
+<p>ArgoCD's <code>idp-services</code> ApplicationSet deploys every service under <code>services/</code>,
+starting with <code>hello-service</code>. Call it:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Local (Kind)</label><label for="__tabbed_3_2">AWS (EKS)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>curl<span class="w"> </span>http://hello-service.idp.local
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span>services<span class="w">     </span><span class="c1"># copy the ALB address</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>curl<span class="w"> </span>http://&lt;alb-address&gt;
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="highlight"><span class="filename">Expected response</span><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span><span class="nt">"service"</span><span class="p">:</span><span class="s2">"hello-service"</span><span class="p">,</span><span class="nt">"version"</span><span class="p">:</span><span class="s2">"&lt;sha&gt;"</span><span class="p">,</span><span class="nt">"message"</span><span class="p">:</span><span class="s2">"Hello from the IDP!"</span><span class="p">}</span>
+</code></pre></div>
+<p>In Backstage, open <strong>Catalog → hello-service</strong> to see its DORA metrics,
+scorecard, TechDocs and Kubernetes status in one place.</p>
+<details class="question">
+<summary>ArgoCD shows no apps?</summary>
+<p><code>local/argocd/app-of-apps-local.yaml</code> still names <code>moatazeldebsy</code> instead of your
+GitHub org, so personalisation didn't run. Re-run <code>./scripts/setup.sh</code>. Other
+first-run failures are in <a href="../TROUBLESHOOTING/">Troubleshooting</a>.</p>
+</details>
+<h2 id="4-scaffold-your-first-service">4. Scaffold your first service<a class="headerlink" href="#4-scaffold-your-first-service" title="Permanent link">&para;</a></h2>
+<p>Pick a golden-path template. You get a new GitHub repository with the code skeleton,
+CI, Dockerfile, Helm values, catalog entry and TechDocs, all wired up.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Backstage UI</label><label for="__tabbed_4_2">idp CLI</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Click <strong>Create</strong>, pick a service template (Node.js, Python FastAPI, Go, Ruby,
+JVM or LLM App), fill in name, owner and repository, then click <strong>Create</strong>.</p>
+<p><img alt="Scaffolder templates" class="screenshot" src="../assets/screenshots/scaffolder-templates.jpg" /></p>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>cli-build<span class="w">                                       </span><span class="c1"># builds ./bin/idp</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./bin/idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>order-svc<span class="w"> </span>--type<span class="w"> </span>nodejs
+</code></pre></div>
+<p>Add <code>--dry-run</code> to see what it would create first. Every flag is listed in the
+<a href="../cli-reference/#idp-scaffold-service">CLI Reference</a>.</p>
+</div>
+</div>
+</div>
+<p>The service is registered in the catalog right away, and its first push runs CI:
+install → test → docker build → <code>/healthz</code> check.</p>
+<h2 id="5-deploy-it">5. Deploy it<a class="headerlink" href="#5-deploy-it" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Local (Kind)</label><label for="__tabbed_5_2">AWS (EKS)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Push the image to the local registry:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/order-svc:latest<span class="w"> </span>.
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/order-svc:latest
+</code></pre></div>
+<p>Then in Backstage go to <strong>Create → Deploy Service to local Kind cluster</strong>, pick
+the service and click <strong>Create</strong>. It's live at <code>http://order-svc.idp.local</code>.</p>
+</div>
+<div class="tabbed-block">
+<p>With <strong>Deployment Target: AWS</strong>, scaffolding already opened a GitOps pull request
+against the platform repo adding <code>services/&lt;name&gt;/helm-values-aws.yaml</code>. Merge it
+and ArgoCD deploys the service to <code>services-dev</code>. Every <code>main</code> build then pushes to
+the service's own ECR repository. See
+<a href="../DEPLOYMENT_GUIDE/#adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a scaffolded service</a>.</p>
+</div>
+</div>
+</div>
+<p>Watch the rollout in ArgoCD (<a href="http://argocd.idp.local">http://argocd.idp.local</a> locally, user <code>admin</code>).</p>
+<h2 id="6-optional-add-the-ai-layer">6. (Optional) Add the AI layer<a class="headerlink" href="#6-optional-add-the-ai-layer" title="Permanent link">&para;</a></h2>
+<p>KAgent agents, MCP servers, MLflow, Langfuse and the AI Gateway are an opt-in layer
+on top of the core.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Local (Kind)</label><label for="__tabbed_6_2">AWS (EKS)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span>sk-ant-...<span class="w">   </span><span class="c1"># or set it in local/.env</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>./scripts/bootstrap-ai.sh<span class="w">             </span><span class="c1"># adds ~10–15 minutes</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>./scripts/bootstrap.sh<span class="w"> </span>--with-ai<span class="w">   </span><span class="c1"># adds ~15–20 minutes</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Short on memory?</p>
+<p><code>--skip-mlflow</code>, <code>--skip-mcp</code> and <code>--skip-kagent</code> each save ~3–4 minutes, and
+Langfuse is by far the largest component. See
+<a href="../local-setup/#running-on-less">Running on less</a>.</p>
+</div>
+<p>The assistant then appears in Backstage under <strong>AI Assistant</strong>. See
+<a href="../ai-assistant/">AI Assistant</a> for what it can do.</p>
+<h2 id="the-whole-flow-end-to-end">The whole flow, end to end<a class="headerlink" href="#the-whole-flow-end-to-end" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/moatazeldebsy/backstage-platform-template
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nb">cd</span><span class="w"> </span>backstage-platform-template
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>./scripts/setup.sh<span class="w">                                   </span><span class="c1"># 1. personalise + bootstrap ("local")</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>open<span class="w"> </span>http://backstage.idp.local<span class="w">                      </span><span class="c1"># 2. developer portal</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>curl<span class="w"> </span>http://hello-service.idp.local<span class="w">                  </span><span class="c1"># 3. reference service</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>./bin/idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>order-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w">   </span><span class="c1"># 4. your service</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>./scripts/bootstrap-ai.sh<span class="w">                            </span><span class="c1"># 6. optional AI layer</span>
+</code></pre></div>
 <table>
 <thead>
 <tr>
 <th></th>
-<th>Local (full)</th>
-<th>Local + AI/ML</th>
-<th>AWS (full)</th>
-<th>AWS + AI/ML</th>
+<th>Local</th>
+<th>Local + AI</th>
+<th>AWS</th>
+<th>AWS + AI</th>
 </tr>
 </thead>
 <tbody>
@@ -2780,7 +3494,7 @@
 <td>~20–25 min</td>
 </tr>
 <tr>
-<td>Prerequisites</td>
+<td>Needs</td>
 <td>Docker, Kind</td>
 <td>+ <code>ANTHROPIC_API_KEY</code></td>
 <td>AWS account, Terraform</td>
@@ -2795,177 +3509,51 @@
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="local-setup-no-aws-needed">Local Setup (no AWS needed)<a class="headerlink" href="#local-setup-no-aws-needed" title="Permanent link">&para;</a></h2>
-<p>See <a href="../local-setup/">docs/local-setup.md</a> for the full local walkthrough including Backstage, the <code>idp:deploy-local</code> action, and Kind deployment.</p>
-<blockquote>
-<p><strong>Run <code>setup.sh</code> — not both.</strong> On a fresh clone you run <code>./scripts/setup.sh</code> and nothing else. When you answer <strong>local</strong>, it calls <code>bootstrap-local.sh</code> for you and then offers to start Backstage. Running <code>bootstrap-local.sh</code> yourself afterwards just repeats a 15–20 minute install for no benefit.</p>
-<p><code>bootstrap-local.sh</code> is what you run <strong>standalone later</strong>, for day-2 work: recreating the cluster, <code>--destroy</code>, <code>--start-backstage</code>, <code>--print-urls</code>. You do not re-run <code>setup.sh</code> for those.</p>
-</blockquote>
-<p>Personalisation has to happen before bootstrapping: <code>setup.sh</code> replaces <code>moatazeldebsy</code> and the other placeholders across the repo, and without it the ArgoCD ApplicationSet points at an unresolved placeholder and generates no apps.</p>
-<blockquote>
-<p><strong>If ArgoCD shows no apps:</strong> check that <code>local/argocd/app-of-apps-local.yaml</code> contains your GitHub org rather than <code>moatazeldebsy</code>, then re-run <code>setup.sh</code>.</p>
-</blockquote>
-<h2 id="aws-setup">AWS Setup<a class="headerlink" href="#aws-setup" title="Permanent link">&para;</a></h2>
-<blockquote>
-<p><strong>🔐 CRITICAL - First:</strong> Read <a href="../PRE_DEPLOYMENT_CHECKLIST/">docs/PRE_DEPLOYMENT_CHECKLIST.md</a> and verify all API keys are set correctly. Run <code>./scripts/verify-secrets.sh</code> to validate before deployment.</p>
-<p><strong>⚠️ NEW:</strong> Then read <a href="../DEPLOYMENT_GUIDE/">docs/DEPLOYMENT_GUIDE.md</a> for a complete step-by-step guide, pre-flight checklist, known issues with solutions, and troubleshooting. Estimated deployment time: <strong>40–70 minutes</strong>.</p>
-</blockquote>
-<h3 id="1-configure-aws">1. Configure AWS<a class="headerlink" href="#1-configure-aws" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>configure<span class="w">  </span><span class="c1"># or use aws sso login</span>
-aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span class="w">  </span><span class="c1"># verify</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="2-bootstrap-the-platform">2. Bootstrap the platform<a class="headerlink" href="#2-bootstrap-the-platform" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/moatazeldebsy/backstage-platform-template
-<span class="nb">cd</span><span class="w"> </span>backstage-platform-template
-
-<span class="c1"># Run the interactive setup wizard (personalises placeholders, then bootstraps AWS)</span>
-./scripts/setup.sh
-<span class="c1"># → Choose &quot;aws&quot; when prompted for environment</span>
-</code></pre></div></td></tr></table></div>
-<p>Or, if you have already run <code>setup.sh</code> for personalisation and want to re-run the AWS bootstrap directly:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>cp<span class="w"> </span>terraform/terraform.tfvars.example<span class="w"> </span>terraform/terraform.tfvars
-<span class="c1"># Edit terraform/terraform.tfvars — update cluster_name, region if needed</span>
-./scripts/bootstrap.sh<span class="w">  </span><span class="c1"># ~40–70 min</span>
-</code></pre></div></td></tr></table></div>
-<h3 id="3-validate-deployment">3. Validate deployment<a class="headerlink" href="#3-validate-deployment" title="Permanent link">&para;</a></h3>
-<p>After <code>bootstrap.sh</code> completes, run the validation script to verify all components:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/validate-deployment.sh
-</code></pre></div></td></tr></table></div>
-<p>This runs ~40 automated checks across 10 categories (AWS infrastructure, Kubernetes, Backstage, observability, GitOps, AI/ML, security, networking, storage, and cost). Exit code 0 = success; 1 = failure with debug suggestions.</p>
-<hr />
-<p><strong>What gets provisioned:</strong>
-- EKS cluster (4× t3.medium nodes, 1.35)
-- RDS PostgreSQL (for Backstage)
-- ECR repository + S3 bucket (for artifacts)
-- IAM roles + OIDC (for GitHub Actions and Crossplane)
-- All platform components (Prometheus, Grafana, ArgoCD, OPA/Gatekeeper, External Secrets Operator)
-- Crossplane with AWS providers (for per-service resources like S3, RDS, DynamoDB)
-- <code>hello-service</code> reference deployment</p>
-<p><strong>Cost:</strong> ~$565/month for the core platform, ~$760/month with the AI/ML layer — measured
-against a running cluster, not estimated. Full per-component breakdown and the ways to
-spend less: <a href="https://github.com/moatazeldebsy/backstage-platform-template#what-it-costs-on-aws">README → What it costs on AWS</a>.</p>
-<h3 id="4-github-actions-secrets">4. GitHub Actions secrets<a class="headerlink" href="#4-github-actions-secrets" title="Permanent link">&para;</a></h3>
-<p>Service repos scaffolded with <strong>Deployment Target: AWS</strong> get their <code>AWS_ROLE_ARN</code>
-secret automatically — a push-only role for that repository's own ECR repository
-(see <a href="#adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service</a>).
-Do not give a service repository the platform's <code>github_actions_role_arn</code>: it
-only trusts the platform repo, and carries near-admin permissions.</p>
-<p>Add these to the <strong>platform repo</strong> to enable the auto-merge workflow (recommended over a PAT):</p>
-<table>
-<thead>
-<tr>
-<th>Secret</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>APP_ID</code></td>
-<td>Numeric GitHub App ID (see <a href="../github-app-setup/">docs/github-app-setup.md</a>)</td>
-</tr>
-<tr>
-<td><code>APP_PRIVATE_KEY</code></td>
-<td>PEM contents of the App's private key</td>
-</tr>
-</tbody>
-</table>
-<p>Add this to the <strong>platform repo</strong> to enable Datadog deployment markers in <code>build-and-deploy.yml</code>
-(optional — the pipeline runs fine without it, just skips the marker step):</p>
-<table>
-<thead>
-<tr>
-<th>Secret</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>DD_API_KEY</code></td>
-<td>Datadog API key — <a href="https://app.datadoghq.eu/organization-settings/api-keys">https://app.datadoghq.eu/organization-settings/api-keys</a></td>
-</tr>
-</tbody>
-</table>
-<h3 id="5-team-namespace-setup">5. Team namespace setup<a class="headerlink" href="#5-team-namespace-setup" title="Permanent link">&para;</a></h3>
-<p>After the platform is bootstrapped, onboard teams using the <strong>Provision Team Namespace</strong> scaffold template (tagged <code>blessed</code>). Each team gets:
-- An isolated <code>team-&lt;name&gt;</code> namespace with quota, LimitRange, NetworkPolicy
-- A per-team ArgoCD AppProject + ApplicationSet scanning <code>teams/&lt;name&gt;/services/*</code>
-- A scoped SecretStore (access only to <code>/&lt;name&gt;/*</code> in Secrets Manager)
-- A Grafana folder</p>
-<p>For the full walkthrough, see <a href="../team-management/">docs/team-management.md</a>.</p>
-<blockquote>
-<p><strong>Path convention</strong>: Team service values files go under <code>teams/&lt;teamName&gt;/services/&lt;serviceName&gt;/</code>,
-<strong>not</strong> <code>services/&lt;teamName&gt;/</code>. The <code>services/</code> path is reserved for legacy platform-owned services.</p>
-</blockquote>
-<h3 id="6-verify">6. Verify<a class="headerlink" href="#6-verify" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services<span class="w">              </span><span class="c1"># hello-service running</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w">            </span><span class="c1"># prometheus, grafana, alertmanager, pushgateway</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>external-secrets<span class="w">      </span><span class="c1"># external-secrets operator</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w">            </span><span class="c1"># aws-secretsmanager → Ready</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>crossplane-system<span class="w">     </span><span class="c1"># crossplane + 5 provider-aws-* pods</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io<span class="w">   </span><span class="c1"># all five INSTALLED=True HEALTHY=True</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span>services<span class="w">           </span><span class="c1"># ALB address</span>
-</code></pre></div></td></tr></table></div>
-<p>Visit the ALB hostname:
-<div class="language-json highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="p">{</span><span class="nt">&quot;service&quot;</span><span class="p">:</span><span class="s2">&quot;hello-service&quot;</span><span class="p">,</span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="s2">&quot;&lt;sha&gt;&quot;</span><span class="p">,</span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="s2">&quot;Hello from the IDP!&quot;</span><span class="p">}</span>
-</code></pre></div></td></tr></table></div></p>
-<blockquote>
-<p><strong>Observability note:</strong> <code>bootstrap.sh</code> installs the full <code>kube-prometheus-stack</code> (Prometheus + Grafana + AlertManager + Pushgateway) on AWS at parity with the local Kind setup. Grafana is pre-configured with the CloudWatch datasource using IRSA — no static AWS credentials needed.</p>
-<p>OPA/Gatekeeper enforces all five golden-path policies (<code>require-health-probes</code>, <code>require-resource-limits</code>, <code>require-labels</code>, <code>deny-latest-tag</code>, <code>require-cost-tags</code>). The bootstrap waits for CRDs to be established before applying constraints rather than sleeping.</p>
-</blockquote>
-<h3 id="7-backstage-on-aws">7. Backstage on AWS<a class="headerlink" href="#7-backstage-on-aws" title="Permanent link">&para;</a></h3>
-<p>Nothing to do — <code>bootstrap.sh</code> already did it. Phase 5.6 builds the image, pushes it
-to ECR under a content-hash tag, applies <code>aws/backstage/deployment.yaml</code> with that
-tag substituted, waits for the ExternalSecret to sync and for the ALB hostname, then
-patches the config with the real URLs.</p>
-<p>This section used to describe a manual <code>docker build</code> ending in
-<code># Deploy (Kubernetes manifests TBD)</code>. The manifests have existed for some time and
-the whole flow is automated; following the old steps would have pushed an image that
-nothing deployed.</p>
-<p>To rebuild and roll out after changing Backstage, re-run the bootstrap — the image
-fingerprint changes, so it rebuilds and redeploys, and skips everything else that is
-unchanged:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap.sh<span class="w"> </span>--region<span class="w"> </span>&lt;region&gt;<span class="w"> </span>--cluster-name<span class="w"> </span>&lt;name&gt;
-</code></pre></div></td></tr></table></div>
-<h2 id="adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service<a class="headerlink" href="#adding-aws-cd-to-a-scaffolded-service" title="Permanent link">&para;</a></h2>
-<p>Nothing to add. Scaffold the service with <strong>Deployment Target: AWS</strong> and the
-template sets it up:</p>
-<ol>
-<li><code>idp:provision-ecr</code> creates the ECR repository <code>&lt;cluster&gt;/&lt;service&gt;</code> and an IAM
-   role, <code>&lt;cluster&gt;-svc-push-&lt;service&gt;</code>, that only the new repository's <code>main</code>
-   branch can assume and that can only push to that ECR repository (Terraform's
-   <code>&lt;cluster&gt;-service-image-push-boundary</code> caps what such roles may ever do).</li>
-<li>The role's ARN is written to the new repository as the <code>AWS_ROLE_ARN</code> secret.</li>
-<li>The GitOps pull request adds <code>services/&lt;service&gt;/helm-values-aws.yaml</code> to the
-   platform repo, pointing at that ECR repository.</li>
-</ol>
-<p>From then on the service's <code>ci.yml</code> pushes every <code>main</code> build to GHCR and to ECR
-(SHA and <code>latest</code> tags); with a <code>GH_PAT</code> secret it also bumps the tag in the
-platform repo. ArgoCD deploys it — no Helm or kubectl from the service's CI.</p>
-<p>The platform's own <code>github-actions</code> role is deliberately not used here: it trusts
-only the platform repository and carries near-admin permissions.</p>
-<h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp
-</code></pre></div></td></tr></table></div>
-<p>Use <code>cleanup.sh</code> rather than a bare <code>terraform destroy</code>. It deletes orphaned load
-balancers first — AWS Load Balancer Controller creates ALBs that Terraform does not
-own, and they hold the subnets and security groups <code>destroy</code> is trying to remove, so
-it fails partway and leaves the account in a half-torn-down state. The script also
-verifies the teardown afterwards.</p>
+<h2 id="tear-down">Tear down<a class="headerlink" href="#tear-down" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Local (Kind)</label><label for="__tabbed_7_2">AWS (EKS)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>./scripts/cleanup.sh<span class="w"> </span>--cluster-name<span class="w"> </span>idp-mvp
+</code></pre></div>
+<p>Use <code>cleanup.sh</code> rather than a bare <code>terraform destroy</code>. It deletes the ALBs the
+AWS Load Balancer Controller created first: Terraform doesn't own them, and they
+hold the subnets and security groups <code>destroy</code> is trying to remove.</p>
+</div>
+</div>
+</div>
+<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
+<ul>
+<li><strong>Golden Path</strong><hr />
+<p>The conventions every service follows, from scaffold to production, and
+  progressive delivery.</p>
+<p><a href="../golden-path/">→ Golden Path</a></p>
+</li>
+</ul>
+<ul>
+<li><strong>Deploy on AWS</strong><hr />
+<p>The full EKS walkthrough: secrets, team namespaces, cost and production
+  hardening.</p>
+<p><a href="../DEPLOYMENT_GUIDE/">→ Deployment Guide</a></p>
+</li>
+</ul>
+<ul>
+<li><strong>Onboard a team</strong><hr />
+<p>An isolated namespace, SecretStore, ArgoCD project and Grafana folder per team.</p>
+<p><a href="../team-management/">→ Team Management</a></p>
+</li>
+</ul>
+<ul>
+<li><strong>Something broken?</strong><hr />
+<p>Symptom-indexed fixes for the failures people actually hit.</p>
+<p><a href="../TROUBLESHOOTING/">→ Troubleshooting</a></p>
+</li>
+</ul>
+</div>
 
 
 
@@ -2983,8 +3571,16 @@ verifies the teardown afterwards.</p>
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
         
       </main>
       
@@ -2995,35 +3591,35 @@ verifies the teardown afterwards.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
             <div class="md-footer__button md-icon">
               
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Previous
               </span>
               <div class="md-ellipsis">
-                Home
+                Overview
               </div>
             </div>
           </a>
         
         
           
-          <a href="../screenshots/" class="md-footer__link md-footer__link--next" aria-label="Next: Screenshots">
+          <a href="../local-setup/" class="md-footer__link md-footer__link--next" aria-label="Next: Local Setup">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Screenshots
+                Local Setup
               </div>
             </div>
             <div class="md-footer__button md-icon">
               
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
             </div>
           </a>
         
@@ -3052,12 +3648,13 @@ verifies the teardown afterwards.</p>
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
-    
-      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
-        <script src="../search/main.js"></script>
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

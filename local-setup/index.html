@@ -11,14 +11,17 @@
       
       
       
-        <link rel="prev" href="../mobile-platform/">
+        <link rel="prev" href="../getting-started/">
       
       
-        <link rel="next" href="../PRE_DEPLOYMENT_CHECKLIST/">
+        <link rel="next" href="../screenshots/">
+      
+      
+        
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -26,7 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -40,22 +46,30 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
     
     
-    
   </head>
   
   
-    <body dir="ltr">
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -76,17 +90,19 @@
     
       
 
-<header class="md-header" data-md-component="header">
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -105,15 +121,85 @@
       </div>
     </div>
     
+      
+        <form class="md-header__option" data-md-component="palette">
+  
     
     
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
     
     
       <div class="md-header__source">
         <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     moatazeldebsy/backstage-platform-template
@@ -130,583 +216,6 @@
       
         
           
-            
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../getting-started/" class="md-tabs__link">
-        
-  
-    
-  
-  Getting Started
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../screenshots/" class="md-tabs__link">
-        
-  
-    
-  
-  Screenshots
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../architecture/" class="md-tabs__link">
-        
-  
-    
-  
-  Architecture
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../golden-path/" class="md-tabs__link">
-        
-  
-    
-  
-  Golden Path
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../mobile-platform/" class="md-tabs__link">
-        
-  
-    
-  
-  Mobile Platform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-    
-  
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
-        
-  
-    
-  
-  Local Setup
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
-          
-  
-  AWS Deployment
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
-        
-  
-    
-  
-  Troubleshooting
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../docker-recovery/" class="md-tabs__link">
-        
-  
-    
-  
-  Docker Recovery
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../cli-reference/" class="md-tabs__link">
-        
-  
-    
-  
-  CLI Reference
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../scripts-reference/" class="md-tabs__link">
-        
-  
-    
-  
-  Scripts Reference
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../ai-assistant/" class="md-tabs__link">
-        
-  
-    
-  
-  AI Assistant
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../agentic-platform/" class="md-tabs__link">
-        
-  
-    
-  
-  Agentic Development Platform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../agent-approvals/" class="md-tabs__link">
-        
-  
-    
-  
-  Agent Approvals
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../dora-finops/" class="md-tabs__link">
-        
-  
-    
-  
-  DORA & FinOps
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../contract-testing/" class="md-tabs__link">
-        
-  
-    
-  
-  Contract Testing
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../crossplane/" class="md-tabs__link">
-        
-  
-    
-  
-  Crossplane
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
-        
-  
-    
-  
-  Crossplane vs Terraform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../engineering-intelligence/product-vision/" class="md-tabs__link">
-          
-  
-  Engineering Intelligence
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../design/adr-0001-batch-orchestration/" class="md-tabs__link">
-          
-  
-  Design Decisions
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../team-management/" class="md-tabs__link">
-        
-  
-    
-  
-  Team Management
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../github-app-setup/" class="md-tabs__link">
-        
-  
-    
-  
-  GitHub App Setup
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../scaling-runbook/" class="md-tabs__link">
-        
-  
-    
-  
-  Scaling Runbook
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../shift-left-leadership/" class="md-tabs__link">
-          
-  
-  Shift-Left Quality
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../security/" class="md-tabs__link">
-        
-  
-    
-  
-  Security
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../security-scanning/" class="md-tabs__link">
-        
-  
-    
-  
-  Security Scanning (SonarCloud + Snyk)
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../demo-runbook/" class="md-tabs__link">
-        
-  
-    
-  
-  Demo Runbook
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../readiness-checklist/" class="md-tabs__link">
-        
-  
-    
-  
-  Readiness Checklist
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../sre-reliability/" class="md-tabs__link">
-        
-  
-    
-  
-  SRE & Reliability
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../preview-environments/" class="md-tabs__link">
-        
-  
-    
-  
-  PR Preview Environments
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../runbooks/" class="md-tabs__link">
-          
-  
-  Runbooks
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../postmortem-template/" class="md-tabs__link">
-        
-  
-    
-  
-  Post-Mortem Template
-
-      </a>
-    </li>
-  
-
-      
-    </ul>
-  </div>
-</nav>
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -720,17 +229,13 @@
                     
 
 
-  
 
-
-  
-
-<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     Internal Developer Platform
@@ -740,7 +245,7 @@
       <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     moatazeldebsy/backstage-platform-template
@@ -754,24 +259,74 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+  
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
   
   <span class="md-ellipsis">
-    Home
-  </span>
+    
   
-
-      </a>
-    </li>
+    Get Started
   
 
     
-      
-      
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
   
@@ -780,98 +335,26 @@
       <a href="../getting-started/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Getting Started
+    
+  
+    Quickstart
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../screenshots/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Screenshots
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Architecture
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../golden-path/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Golden Path
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../mobile-platform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Mobile Platform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
     
@@ -889,9 +372,16 @@
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
+  
   <span class="md-ellipsis">
+    
+  
     Local Setup
+  
+
+    
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -900,9 +390,16 @@
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Local Setup
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -925,7 +422,9 @@
         <li class="md-nav__item">
   <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
-      Prerequisites
+      
+        Prerequisites
+      
     </span>
   </a>
   
@@ -934,17 +433,21 @@
         <li class="md-nav__item">
   <a href="#machine-requirements-and-what-to-do-if-you-dont-have-them" class="md-nav__link">
     <span class="md-ellipsis">
-      Machine requirements — and what to do if you don't have them
+      
+        Machine requirements — and what to do if you don't have them
+      
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Machine requirements — and what to do if you don't have them">
+    <nav class="md-nav" aria-label="Machine requirements — and what to do if you don&#39;t have them">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#adding-it-up" class="md-nav__link">
     <span class="md-ellipsis">
-      Adding it up
+      
+        Adding it up
+      
     </span>
   </a>
   
@@ -953,7 +456,9 @@
           <li class="md-nav__item">
   <a href="#the-thresholds-that-actually-matter" class="md-nav__link">
     <span class="md-ellipsis">
-      The thresholds that actually matter
+      
+        The thresholds that actually matter
+      
     </span>
   </a>
   
@@ -962,7 +467,9 @@
           <li class="md-nav__item">
   <a href="#vm-sizing" class="md-nav__link">
     <span class="md-ellipsis">
-      VM sizing
+      
+        VM sizing
+      
     </span>
   </a>
   
@@ -971,7 +478,9 @@
           <li class="md-nav__item">
   <a href="#symptoms-of-an-under-resourced-cluster" class="md-nav__link">
     <span class="md-ellipsis">
-      Symptoms of an under-resourced cluster
+      
+        Symptoms of an under-resourced cluster
+      
     </span>
   </a>
   
@@ -980,7 +489,9 @@
           <li class="md-nav__item">
   <a href="#running-on-less" class="md-nav__link">
     <span class="md-ellipsis">
-      Running on less
+      
+        Running on less
+      
     </span>
   </a>
   
@@ -989,7 +500,9 @@
           <li class="md-nav__item">
   <a href="#choosing-which-kagent-agents-run" class="md-nav__link">
     <span class="md-ellipsis">
-      Choosing which KAgent agents run
+      
+        Choosing which KAgent agents run
+      
     </span>
   </a>
   
@@ -998,7 +511,9 @@
           <li class="md-nav__item">
   <a href="#loki-and-tempo-ship-disabled" class="md-nav__link">
     <span class="md-ellipsis">
-      Loki and Tempo ship disabled
+      
+        Loki and Tempo ship disabled
+      
     </span>
   </a>
   
@@ -1012,7 +527,9 @@
         <li class="md-nav__item">
   <a href="#bootstrap-1015-min" class="md-nav__link">
     <span class="md-ellipsis">
-      Bootstrap (~10–15 min)
+      
+        Bootstrap (~10–15 min)
+      
     </span>
   </a>
   
@@ -1022,7 +539,9 @@
           <li class="md-nav__item">
   <a href="#bootstrap-flags" class="md-nav__link">
     <span class="md-ellipsis">
-      Bootstrap flags
+      
+        Bootstrap flags
+      
     </span>
   </a>
   
@@ -1036,7 +555,9 @@
         <li class="md-nav__item">
   <a href="#access-services" class="md-nav__link">
     <span class="md-ellipsis">
-      Access services
+      
+        Access services
+      
     </span>
   </a>
   
@@ -1045,7 +566,9 @@
         <li class="md-nav__item">
   <a href="#optional-third-party-integrations" class="md-nav__link">
     <span class="md-ellipsis">
-      Optional third-party integrations
+      
+        Optional third-party integrations
+      
     </span>
   </a>
   
@@ -1054,7 +577,9 @@
         <li class="md-nav__item">
   <a href="#start-backstage" class="md-nav__link">
     <span class="md-ellipsis">
-      Start Backstage
+      
+        Start Backstage
+      
     </span>
   </a>
   
@@ -1064,7 +589,9 @@
           <li class="md-nav__item">
   <a href="#known-platform-patches" class="md-nav__link">
     <span class="md-ellipsis">
-      Known platform patches
+      
+        Known platform patches
+      
     </span>
   </a>
   
@@ -1073,7 +600,9 @@
           <li class="md-nav__item">
   <a href="#environment-files-first-time-only" class="md-nav__link">
     <span class="md-ellipsis">
-      Environment files (first time only)
+      
+        Environment files (first time only)
+      
     </span>
   </a>
   
@@ -1082,7 +611,9 @@
           <li class="md-nav__item">
   <a href="#troubleshooting-observability-after-bootstrap" class="md-nav__link">
     <span class="md-ellipsis">
-      Troubleshooting observability after bootstrap
+      
+        Troubleshooting observability after bootstrap
+      
     </span>
   </a>
   
@@ -1091,7 +622,9 @@
           <li class="md-nav__item">
   <a href="#day-2-backstage-restart" class="md-nav__link">
     <span class="md-ellipsis">
-      Day-2 Backstage restart
+      
+        Day-2 Backstage restart
+      
     </span>
   </a>
   
@@ -1100,7 +633,9 @@
           <li class="md-nav__item">
   <a href="#manual-backend-bundle-rebuild" class="md-nav__link">
     <span class="md-ellipsis">
-      Manual backend bundle rebuild
+      
+        Manual backend bundle rebuild
+      
     </span>
   </a>
   
@@ -1114,7 +649,9 @@
         <li class="md-nav__item">
   <a href="#deploy-a-service-via-backstage" class="md-nav__link">
     <span class="md-ellipsis">
-      Deploy a service via Backstage
+      
+        Deploy a service via Backstage
+      
     </span>
   </a>
   
@@ -1124,7 +661,9 @@
           <li class="md-nav__item">
   <a href="#scaffold-a-new-service" class="md-nav__link">
     <span class="md-ellipsis">
-      Scaffold a new service
+      
+        Scaffold a new service
+      
     </span>
   </a>
   
@@ -1133,7 +672,9 @@
           <li class="md-nav__item">
   <a href="#deploy-to-local-kind" class="md-nav__link">
     <span class="md-ellipsis">
-      Deploy to local Kind
+      
+        Deploy to local Kind
+      
     </span>
   </a>
   
@@ -1147,7 +688,9 @@
         <li class="md-nav__item">
   <a href="#scaffold-and-test-a-new-service-locally-cli-path" class="md-nav__link">
     <span class="md-ellipsis">
-      Scaffold and test a new service locally (CLI path)
+      
+        Scaffold and test a new service locally (CLI path)
+      
     </span>
   </a>
   
@@ -1156,7 +699,9 @@
         <li class="md-nav__item">
   <a href="#local-vs-aws-whats-different" class="md-nav__link">
     <span class="md-ellipsis">
-      Local vs AWS — what's different
+      
+        Local vs AWS — what's different
+      
     </span>
   </a>
   
@@ -1165,7 +710,9 @@
         <li class="md-nav__item">
   <a href="#aiml-stack-optional" class="md-nav__link">
     <span class="md-ellipsis">
-      AI/ML Stack (Optional)
+      
+        AI/ML Stack (Optional)
+      
     </span>
   </a>
   
@@ -1175,7 +722,9 @@
           <li class="md-nav__item">
   <a href="#ai-native-platform-features-phase-7a-complete" class="md-nav__link">
     <span class="md-ellipsis">
-      AI-Native Platform Features (Phase 7a Complete)
+      
+        AI-Native Platform Features (Phase 7a Complete)
+      
     </span>
   </a>
   
@@ -1185,7 +734,9 @@
           <li class="md-nav__item">
   <a href="#priority-1-ai-platform-foundations" class="md-nav__link">
     <span class="md-ellipsis">
-      Priority 1: AI Platform Foundations ✅
+      
+        Priority 1: AI Platform Foundations ✅
+      
     </span>
   </a>
   
@@ -1194,7 +745,9 @@
           <li class="md-nav__item">
   <a href="#priority-2-ai-service-lifecycle" class="md-nav__link">
     <span class="md-ellipsis">
-      Priority 2: AI Service Lifecycle ✅
+      
+        Priority 2: AI Service Lifecycle ✅
+      
     </span>
   </a>
   
@@ -1203,7 +756,9 @@
           <li class="md-nav__item">
   <a href="#priority-3-ml-workflows-cost-attribution" class="md-nav__link">
     <span class="md-ellipsis">
-      Priority 3: ML Workflows &amp; Cost Attribution ✅
+      
+        Priority 3: ML Workflows &amp; Cost Attribution ✅
+      
     </span>
   </a>
   
@@ -1217,7 +772,9 @@
           <li class="md-nav__item">
   <a href="#scaffold-ai-services" class="md-nav__link">
     <span class="md-ellipsis">
-      Scaffold AI services
+      
+        Scaffold AI services
+      
     </span>
   </a>
   
@@ -1226,7 +783,9 @@
           <li class="md-nav__item">
   <a href="#monitor-ai-platform" class="md-nav__link">
     <span class="md-ellipsis">
-      Monitor AI Platform
+      
+        Monitor AI Platform
+      
     </span>
   </a>
   
@@ -1235,7 +794,9 @@
           <li class="md-nav__item">
   <a href="#using-the-ai-assistant-in-backstage" class="md-nav__link">
     <span class="md-ellipsis">
-      Using the AI Assistant in Backstage
+      
+        Using the AI Assistant in Backstage
+      
     </span>
   </a>
   
@@ -1244,7 +805,9 @@
           <li class="md-nav__item">
   <a href="#enabling-ai-search-semantic-rag" class="md-nav__link">
     <span class="md-ellipsis">
-      Enabling AI Search (semantic / RAG)
+      
+        Enabling AI Search (semantic / RAG)
+      
     </span>
   </a>
   
@@ -1258,7 +821,9 @@
         <li class="md-nav__item">
   <a href="#known-limitations-local" class="md-nav__link">
     <span class="md-ellipsis">
-      Known limitations (local)
+      
+        Known limitations (local)
+      
     </span>
   </a>
   
@@ -1267,7 +832,9 @@
         <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
-      Troubleshooting
+      
+        Troubleshooting
+      
     </span>
   </a>
   
@@ -1276,7 +843,9 @@
         <li class="md-nav__item">
   <a href="#teardown" class="md-nav__link">
     <span class="md-ellipsis">
-      Teardown
+      
+        Teardown
+      
     </span>
   </a>
   
@@ -1285,6 +854,42 @@
     </ul>
   
 </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../screenshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Screenshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1298,35 +903,54 @@
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    AWS Deployment
+    
+  
+    Deploy on AWS
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
-            AWS Deployment
+            
+  
+    Deploy on AWS
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1340,9 +964,16 @@
       <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Pre-Deployment Checklist
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1361,9 +992,16 @@
       <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Deployment Guide
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1382,9 +1020,72 @@
       <a href="../aws-install-failure-modes/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Known Failure Modes
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Readiness Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-app-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub App Setup
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -1406,162 +1107,151 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+    
+    
+      
         
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
   
   <span class="md-ellipsis">
-    Troubleshooting
+    
+  
+    Platform
+  
+
+    
   </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Golden Path
+  
+
+    
+  </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../docker-recovery/" class="md-nav__link">
+      <a href="../mobile-platform/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Docker Recovery
+    
+  
+    Mobile Platform
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../cli-reference/" class="md-nav__link">
+      <a href="../preview-environments/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    CLI Reference
+    
+  
+    PR Preview Environments
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../scripts-reference/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Scripts Reference
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ai-assistant/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    AI Assistant
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agentic-platform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Development Platform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agent-approvals/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Approvals
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dora-finops/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    DORA & FinOps
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1570,18 +1260,26 @@
       <a href="../contract-testing/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Contract Testing
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1590,18 +1288,26 @@
       <a href="../crossplane/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Crossplane
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1610,12 +1316,83 @@
       <a href="../crossplane-vs-terraform/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Crossplane vs Terraform
+  
+
+    
   </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../team-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Team Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora-finops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DORA & FinOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1628,35 +1405,204 @@
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Engineering Intelligence
+    
+  
+    AI & Agents
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_20">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
-            Engineering Intelligence
+            
+  
+    AI & Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-platform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentic Development Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Approvals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Engineering Intelligence
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1670,9 +1616,16 @@
       <a href="../engineering-intelligence/product-vision/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Product Vision
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1691,9 +1644,16 @@
       <a href="../engineering-intelligence/architecture/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Architecture
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1712,9 +1672,16 @@
       <a href="../engineering-intelligence/maturity-model/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Maturity Model
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1733,9 +1700,16 @@
       <a href="../engineering-intelligence/scoring/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Scoring
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1754,9 +1728,16 @@
       <a href="../engineering-intelligence/integrations/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Integrations
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1775,9 +1756,16 @@
       <a href="../engineering-intelligence/ai-advisor/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     AI Advisor
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1796,9 +1784,16 @@
       <a href="../engineering-intelligence/roadmap/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Roadmap
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1822,35 +1817,54 @@
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Design Decisions
+    
+  
+    Quality & Security
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_21">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
-            Design Decisions
+            
+  
+    Quality & Security
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1860,316 +1874,56 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0001: Batch orchestration
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0002: Delivery model
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0003-incident-management/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0003: Incident management
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0004: Identity and access
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0005: LLM serving and agent frameworks
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0006-engineering-intelligence/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0006: Engineering Intelligence
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0007: AI Gateway
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0008: LiteLLM multi-provider gateway
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../design/adr-0009-single-region-multi-az/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ADR-0009: Single-region, multi-AZ
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../team-management/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Team Management
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../github-app-setup/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    GitHub App Setup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../scaling-runbook/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Scaling Runbook
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
     
     
       
+        
       
         
       
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_25" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" >
         
           
-          <label class="md-nav__link" for="__nav_25" id="__nav_25_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
+    
+  
     Shift-Left Quality
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_25">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_1">
             <span class="md-nav__icon md-icon"></span>
-            Shift-Left Quality
+            
+  
+    Shift-Left Quality
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../shift-left-leadership/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    For Leadership
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -2181,9 +1935,44 @@
       <a href="../shift-left/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Programme Overview
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    For Leadership
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -2202,9 +1991,16 @@
       <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Pilot Kickoff
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2223,12 +2019,27 @@
       <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Demo Cheatsheet
+  
+
+    
   </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2244,9 +2055,16 @@
       <a href="../flaky-test-quarantine/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Flaky-Test Quarantine
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2265,9 +2083,72 @@
       <a href="../test-impact-analysis/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Test-Impact Analysis
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Scanning (SonarCloud + Snyk)
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -2289,157 +2170,60 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../security-scanning/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security Scanning (SonarCloud + Snyk)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../demo-runbook/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Demo Runbook
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../readiness-checklist/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Readiness Checklist
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../sre-reliability/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    SRE & Reliability
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../preview-environments/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    PR Preview Environments
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_32" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_32" id="__nav_32_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
+  
   <span class="md-ellipsis">
-    Runbooks
+    
+  
+    Operate
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_32_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_32">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
-            Runbooks
+            
+  
+    Operate
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -2450,18 +2234,193 @@
   
   
     <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
+      <a href="../sre-reliability/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Overview
+    
+  
+    SRE & Reliability
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scaling-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scaling Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../runbooks/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbooks
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
               
             
               
@@ -2474,9 +2433,16 @@
       <a href="../runbooks/incident-severity/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Incident Severity
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2495,9 +2461,16 @@
       <a href="../runbooks/deployment-rollback/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Deployment Rollback
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2516,9 +2489,16 @@
       <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Pod Crash Loop
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2537,9 +2517,16 @@
       <a href="../runbooks/high-memory/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     High Memory
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2558,9 +2545,16 @@
       <a href="../runbooks/high-cpu/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     High CPU
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2579,9 +2573,16 @@
       <a href="../runbooks/db-recovery/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Database Recovery
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2600,9 +2601,16 @@
       <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ImagePullBackOff
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2621,9 +2629,16 @@
       <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Kind Node IP Mismatch
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2642,9 +2657,16 @@
       <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Cost Budget Exceeded
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2663,9 +2685,16 @@
       <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     KAgent Guardrails
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2684,9 +2713,80 @@
       <a href="../runbooks/regional-rebuild/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Regional Rebuild
+  
+
+    
   </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../postmortem-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-Mortem Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Runbook
+  
+
+    
+  </span>
+  
   
 
       </a>
@@ -2708,16 +2808,471 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../postmortem-template/" class="md-nav__link">
+    
+    
+      
         
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
   
   <span class="md-ellipsis">
-    Post-Mortem Template
+    
+  
+    Reference
+  
+
+    
   </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scripts-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scripts Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_8_4" id="__nav_8_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0001: Batch orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0002: Delivery model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0003-incident-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0003: Incident management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0004: Identity and access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0005: LLM serving and agent frameworks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0006-engineering-intelligence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0006: Engineering Intelligence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0007: AI Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0008: LiteLLM multi-provider gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/adr-0009-single-region-multi-az/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR-0009: Single-region, multi-AZ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2729,17 +3284,483 @@
               </div>
             
             
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#machine-requirements-and-what-to-do-if-you-dont-have-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Machine requirements — and what to do if you don't have them
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Machine requirements — and what to do if you don&#39;t have them">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-it-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding it up
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-thresholds-that-actually-matter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The thresholds that actually matter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vm-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VM sizing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#symptoms-of-an-under-resourced-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Symptoms of an under-resourced cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-on-less" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running on less
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-which-kagent-agents-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing which KAgent agents run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loki-and-tempo-ship-disabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Loki and Tempo ship disabled
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bootstrap-1015-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bootstrap (~10–15 min)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bootstrap (~10–15 min)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bootstrap flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#access-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Access services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-third-party-integrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional third-party integrations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#start-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start Backstage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Start Backstage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#known-platform-patches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known platform patches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-files-first-time-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment files (first time only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting-observability-after-bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting observability after bootstrap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#day-2-backstage-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Day-2 Backstage restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-backend-bundle-rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual backend bundle rebuild
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-a-service-via-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy a service via Backstage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploy a service via Backstage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scaffold-a-new-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaffold a new service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-to-local-kind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy to local Kind
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaffold-and-test-a-new-service-locally-cli-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaffold and test a new service locally (CLI path)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-vs-aws-whats-different" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local vs AWS — what's different
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aiml-stack-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI/ML Stack (Optional)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI/ML Stack (Optional)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-native-platform-features-phase-7a-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI-Native Platform Features (Phase 7a Complete)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI-Native Platform Features (Phase 7a Complete)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#priority-1-ai-platform-foundations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority 1: AI Platform Foundations ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-2-ai-service-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority 2: AI Service Lifecycle ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority-3-ml-workflows-cost-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Priority 3: ML Workflows &amp; Cost Attribution ✅
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaffold-ai-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaffold AI services
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitor-ai-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitor AI Platform
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-the-ai-assistant-in-backstage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the AI Assistant in Backstage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enabling-ai-search-semantic-rag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enabling AI Search (semantic / RAG)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations (local)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#teardown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Teardown
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
           
           
             <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
               <article class="md-content__inner md-typeset">
                 
                   
 
+
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/local-setup.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/main/docs/local-setup.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
   
   
@@ -2748,22 +3769,15 @@
 <h1 id="local-setup-kind">Local Setup (Kind)<a class="headerlink" href="#local-setup-kind" title="Permanent link">&para;</a></h1>
 <p>Run the full IDP platform on your laptop — no AWS account required.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span>
-<span class="normal">7</span>
-<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># macOS</span>
-brew<span class="w"> </span>install<span class="w"> </span>kind<span class="w"> </span>kubectl<span class="w"> </span>helm<span class="w"> </span>docker
-
-<span class="c1"># Verify</span>
-kind<span class="w"> </span>version<span class="w">    </span><span class="c1"># &gt;= 0.27</span>
-kubectl<span class="w"> </span>version<span class="w"> </span>--client
-helm<span class="w"> </span>version<span class="w">    </span><span class="c1"># &gt;= 3.14</span>
-docker<span class="w"> </span>info<span class="w">     </span><span class="c1"># Docker running</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># macOS</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>brew<span class="w"> </span>install<span class="w"> </span>kind<span class="w"> </span>kubectl<span class="w"> </span>helm<span class="w"> </span>docker
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Verify</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>kind<span class="w"> </span>version<span class="w">    </span><span class="c1"># &gt;= 0.27</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>kubectl<span class="w"> </span>version<span class="w"> </span>--client
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>helm<span class="w"> </span>version<span class="w">    </span><span class="c1"># &gt;= 3.14</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>docker<span class="w"> </span>info<span class="w">     </span><span class="c1"># Docker running</span>
+</code></pre></div>
 <blockquote>
 <p><strong>macOS ARM64 note</strong>: The cluster is pinned to K8s <strong>1.33.1</strong> (<code>kindest/node:v1.33.1</code>) — tested stable on macOS ARM64 with Docker Desktop.</p>
 <p><strong>Python note (only if you run the observability tests)</strong>: the exporters use
@@ -2782,82 +3796,82 @@ with <code>kubectl top</code> on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-
 <tr>
 <th>Layer</th>
 <th>Installed by</th>
-<th align="right">CPU</th>
-<th align="right">Memory</th>
+<th style="text-align: right;">CPU</th>
+<th style="text-align: right;">Memory</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Kubernetes itself (<code>kube-system</code>, ingress, storage)</td>
 <td>always</td>
-<td align="right">~630m</td>
-<td align="right">~1.5 GB</td>
+<td style="text-align: right;">~630m</td>
+<td style="text-align: right;">~1.5 GB</td>
 </tr>
 <tr>
 <td>Observability (Prometheus, Grafana, OpenCost)</td>
 <td><code>bootstrap-local.sh</code></td>
-<td align="right">~280m</td>
-<td align="right">~1.2 GB</td>
+<td style="text-align: right;">~280m</td>
+<td style="text-align: right;">~1.2 GB</td>
 </tr>
 <tr>
 <td>↳ Loki + Promtail + Tempo</td>
 <td>installed but <strong>scaled to 0</strong> — see <a href="#loki-and-tempo-ship-disabled">below</a></td>
-<td align="right">0</td>
-<td align="right">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
 </tr>
 <tr>
 <td>GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts)</td>
 <td><code>bootstrap-local.sh</code></td>
-<td align="right">~170m</td>
-<td align="right">~1.1 GB</td>
+<td style="text-align: right;">~170m</td>
+<td style="text-align: right;">~1.1 GB</td>
 </tr>
 <tr>
 <td>Your services + the 8 MCP servers (<code>services-dev</code>)</td>
 <td><code>bootstrap-local.sh</code></td>
-<td align="right">~105m</td>
-<td align="right">~0.35 GB</td>
+<td style="text-align: right;">~105m</td>
+<td style="text-align: right;">~0.35 GB</td>
 </tr>
 <tr>
 <td>VM overhead (kubelet, containerd, guest OS)</td>
 <td>—</td>
-<td align="right">—</td>
-<td align="right">~2.3 GB</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">~2.3 GB</td>
 </tr>
 <tr>
 <td><strong>Langfuse (6 pods)</strong></td>
 <td><code>bootstrap-ai.sh</code> (on by default)</td>
-<td align="right">~400m</td>
-<td align="right"><strong>~2.2 GB</strong></td>
+<td style="text-align: right;">~400m</td>
+<td style="text-align: right;"><strong>~2.2 GB</strong></td>
 </tr>
 <tr>
 <td><strong>KAgent runtime + 1 agent</strong></td>
 <td><code>bootstrap-ai.sh</code></td>
-<td align="right">~40m</td>
-<td align="right">~0.5 GB</td>
+<td style="text-align: right;">~40m</td>
+<td style="text-align: right;">~0.5 GB</td>
 </tr>
 <tr>
 <td>↳ each additional agent</td>
 <td><code>--agents</code></td>
-<td align="right">~5m</td>
-<td align="right"><strong>~200 MB</strong></td>
+<td style="text-align: right;">~5m</td>
+<td style="text-align: right;"><strong>~200 MB</strong></td>
 </tr>
 <tr>
 <td>MLflow</td>
 <td><code>bootstrap-ai.sh</code></td>
-<td align="right">~50m</td>
-<td align="right">~0.4 GB</td>
+<td style="text-align: right;">~50m</td>
+<td style="text-align: right;">~0.4 GB</td>
 </tr>
 <tr>
 <td>LiteLLM (model backend)</td>
 <td><code>bootstrap-ai.sh</code> (on by default; <code>--skip-litellm</code> opts out)</td>
-<td align="right">150m requested</td>
-<td align="right">768 Mi requested</td>
+<td style="text-align: right;">150m requested</td>
+<td style="text-align: right;">768 Mi requested</td>
 </tr>
 <tr>
 <td>Argo Workflows</td>
 <td><code>bootstrap-ai.sh</code></td>
-<td align="right">~30m</td>
-<td align="right">~0.15 GB</td>
+<td style="text-align: right;">~30m</td>
+<td style="text-align: right;">~0.15 GB</td>
 </tr>
 </tbody>
 </table>
@@ -2882,29 +3896,29 @@ VM, not a per-node slice, so "the worker has 13 GB" is not a second 13 GB.</p>
 <thead>
 <tr>
 <th>Selection</th>
-<th align="right">Memory</th>
+<th style="text-align: right;">Memory</th>
 <th>Fits in a 13 GB VM?</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Core only (<code>bootstrap-local.sh</code>)</td>
-<td align="right">~6.9 GB</td>
+<td style="text-align: right;">~6.9 GB</td>
 <td>yes, comfortably</td>
 </tr>
 <tr>
 <td>+ Langfuse</td>
-<td align="right">~9.1 GB</td>
+<td style="text-align: right;">~9.1 GB</td>
 <td>yes</td>
 </tr>
 <tr>
 <td>+ Langfuse + KAgent with 1 agent</td>
-<td align="right"><strong>~9.6 GB</strong></td>
+<td style="text-align: right;"><strong>~9.6 GB</strong></td>
 <td>yes, ~3.3 GB spare</td>
 </tr>
 <tr>
 <td>Everything: + 8 more agents, MLflow, Argo Workflows</td>
-<td align="right"><strong>~11.8 GB</strong></td>
+<td style="text-align: right;"><strong>~11.8 GB</strong></td>
 <td><strong>no — ~1.2 GB spare, below the level where it degrades</strong></td>
 </tr>
 </tbody>
@@ -2934,12 +3948,10 @@ VM, not a per-node slice, so "the worker has 13 GB" is not a second 13 GB.</p>
 </tbody>
 </table>
 <p>Stop adding components when available memory drops below ~1.5 GB.</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-worker<span class="w"> </span>free<span class="w"> </span>-m<span class="w">        </span><span class="c1"># read &quot;available&quot;, NOT &quot;free&quot;</span>
-docker<span class="w"> </span>stats<span class="w"> </span>--no-stream<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>idp-mvp<span class="w">   </span><span class="c1"># sustained &gt;600% (of 800%) is the danger band</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>Terminating<span class="w">    </span><span class="c1"># the first visible symptom</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>idp-mvp-worker<span class="w"> </span>free<span class="w"> </span>-m<span class="w">        </span><span class="c1"># read "available", NOT "free"</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>docker<span class="w"> </span>stats<span class="w"> </span>--no-stream<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>idp-mvp<span class="w">   </span><span class="c1"># sustained &gt;600% (of 800%) is the danger band</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>Terminating<span class="w">    </span><span class="c1"># the first visible symptom</span>
+</code></pre></div>
 <p><code>free</code> will look alarming (a few hundred MB) while several GB are still
 reclaimable cache. <strong><code>available</code> is the number to watch.</strong></p>
 <p>Note the asymmetry: <strong>CPU binds during installation</strong> — image pulls and several
@@ -2954,46 +3966,46 @@ your machine actually needs:</p>
 <thead>
 <tr>
 <th>Setup</th>
-<th align="right">VM CPU</th>
-<th align="right">VM memory</th>
-<th align="right">Physical RAM</th>
+<th style="text-align: right;">VM CPU</th>
+<th style="text-align: right;">VM memory</th>
+<th style="text-align: right;">Physical RAM</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Everything</strong></td>
-<td align="right">8</td>
-<td align="right">16 GB</td>
-<td align="right"><strong>24 GB</strong></td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">16 GB</td>
+<td style="text-align: right;"><strong>24 GB</strong></td>
 <td>All agents, Langfuse, MLflow, Argo Workflows. ~11.8 GB of workload plus room to build images.</td>
 </tr>
 <tr>
 <td><strong>Full stack, no Langfuse</strong></td>
-<td align="right">8</td>
-<td align="right">13 GB</td>
-<td align="right">16 GB</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">13 GB</td>
+<td style="text-align: right;">16 GB</td>
 <td><code>bootstrap-ai.sh --skip-langfuse</code>. Drops the single most expensive layer.</td>
 </tr>
 <tr>
 <td><strong>Core + one AI component</strong></td>
-<td align="right">8</td>
-<td align="right">13 GB</td>
-<td align="right">16 GB</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">13 GB</td>
+<td style="text-align: right;">16 GB</td>
 <td>The realistic ceiling on a 16 GB machine: core plus <strong>one</strong> of Langfuse, KAgent + 2 agents, or MLflow.</td>
 </tr>
 <tr>
 <td><strong>Without AI/ML</strong></td>
-<td align="right">4</td>
-<td align="right">8 GB</td>
-<td align="right">12 GB</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">8 GB</td>
+<td style="text-align: right;">12 GB</td>
 <td><code>bootstrap-local.sh</code> only; don't run <code>bootstrap-ai.sh</code>.</td>
 </tr>
 <tr>
 <td><strong>Core only</strong></td>
-<td align="right">2</td>
-<td align="right">6 GB</td>
-<td align="right">8 GB</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">6 GB</td>
+<td style="text-align: right;">8 GB</td>
 <td>Add <code>--skip-obs --skip-policies</code> (see below).</td>
 </tr>
 </tbody>
@@ -3001,10 +4013,9 @@ your machine actually needs:</p>
 <p><strong>A 16 GB Mac cannot run the full platform.</strong> It yields a ~13 GB VM against
 ~11.8 GB of workload, and the ~1.2 GB left is under the degradation threshold
 above. That is not a tuning problem — install a subset:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse<span class="w"> </span>--skip-kagent<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-argo-workflows
-./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-argo-workflows
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse<span class="w"> </span>--skip-kagent<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-argo-workflows
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-argo-workflows
+</code></pre></div>
 <p><code>--agents</code> <strong>prunes</strong>: re-running with a shorter list removes the agents you left
 out, so always pass the full set you want. <code>--agents list</code> prints what is
 available.</p>
@@ -3029,70 +4040,41 @@ pods miss their liveness probes, so kubelet restarts them in a loop:</p>
 <p>Confirm before you tune anything — if <code>nr_throttled</code> is a large fraction of
 <code>nr_periods</code>, the container is CPU-throttled and needs a higher limit or a
 bigger VM, not a more lenient probe:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>top<span class="w"> </span>node
-kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span>cat<span class="w"> </span>/sys/fs/cgroup/cpu.stat
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>top<span class="w"> </span>node
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>deploy/prometheus-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span>cat<span class="w"> </span>/sys/fs/cgroup/cpu.stat
+</code></pre></div>
 <h3 id="running-on-less">Running on less<a class="headerlink" href="#running-on-less" title="Permanent link">&para;</a></h3>
 <p>Trim from the bottom of the value/cost list. Each flag is independent:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Don&#39;t run bootstrap-ai.sh at all         → saves ~3.2 GB (the single biggest win)</span>
-./scripts/bootstrap-local.sh
-
-<span class="c1"># Or install AI/ML piecemeal. Langfuse is the expensive part, not KAgent:</span>
-<span class="c1">#   Langfuse ~2.2 GB   ·   KAgent runtime + 1 agent ~0.5 GB   ·   MLflow ~0.4 GB</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-langfuse<span class="w">  </span><span class="c1"># keeps KAgent + MLflow + MCP servers</span>
-
-<span class="c1"># Finer-grained: keep KAgent but choose which agents run. Each agent is ONE pod</span>
-<span class="c1"># running a Python runtime, ~200 MB at idle. Memory is linear in the agent count,</span>
-<span class="c1"># but the real risk is the startup burst: on an 8-CPU machine the full set can</span>
-<span class="c1"># saturate the node so thoroughly that the agents never finish booting and the</span>
-<span class="c1"># control plane starts losing lease renewals.</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">    </span><span class="c1"># show what&#39;s available</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w">     </span><span class="c1"># just the IDP assistant (1 pod)</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,qa<span class="w">  </span><span class="c1"># a useful pair</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>none<span class="w">    </span><span class="c1"># KAgent runtime + UI, no agent pods</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>all<span class="w">     </span><span class="c1"># all nine, including the three that</span>
-<span class="w">                                           </span><span class="c1"># are not installed by default</span>
-
-<span class="c1"># Drop the metrics stack                   → saves ~1.6 GB</span>
-<span class="c1">#   (Backstage&#39;s Grafana/DORA/FinOps tabs go blank)</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs
-
-<span class="c1"># Drop admission control                   → saves ~0.6 GB</span>
-<span class="c1">#   (Kyverno + Gatekeeper; policy-violation demos stop working)</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies
-
-<span class="c1"># Leanest useful cluster: Backstage + ArgoCD + hello-service</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w"> </span>--skip-policies<span class="w"> </span>--skip-dora
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Don't run bootstrap-ai.sh at all         → saves ~3.2 GB (the single biggest win)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./scripts/bootstrap-local.sh
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Or install AI/ML piecemeal. Langfuse is the expensive part, not KAgent:</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="c1">#   Langfuse ~2.2 GB   ·   KAgent runtime + 1 agent ~0.5 GB   ·   MLflow ~0.4 GB</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-langfuse<span class="w">  </span><span class="c1"># keeps KAgent + MLflow + MCP servers</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1"># Finer-grained: keep KAgent but choose which agents run. Each agent is ONE pod</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1"># running a Python runtime, ~200 MB at idle. Memory is linear in the agent count,</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># but the real risk is the startup burst: on an 8-CPU machine the full set can</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="c1"># saturate the node so thoroughly that the agents never finish booting and the</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="c1"># control plane starts losing lease renewals.</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">    </span><span class="c1"># show what's available</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp<span class="w">     </span><span class="c1"># just the IDP assistant (1 pod)</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,qa<span class="w">  </span><span class="c1"># a useful pair</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>none<span class="w">    </span><span class="c1"># KAgent runtime + UI, no agent pods</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>all<span class="w">     </span><span class="c1"># all nine, including the three that</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">                                           </span><span class="c1"># are not installed by default</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="c1"># Drop the metrics stack                   → saves ~1.6 GB</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="c1">#   (Backstage's Grafana/DORA/FinOps tabs go blank)</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="c1"># Drop admission control                   → saves ~0.6 GB</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="c1">#   (Kyverno + Gatekeeper; policy-violation demos stop working)</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="c1"># Leanest useful cluster: Backstage + ArgoCD + hello-service</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w"> </span>--skip-policies<span class="w"> </span>--skip-dora
+</code></pre></div>
 <p>If you're below the "core only" tier, don't run the platform locally — use a
 cloud dev box, or deploy to AWS with <code>./scripts/bootstrap.sh</code>.</p>
 <h3 id="choosing-which-kagent-agents-run">Choosing which KAgent agents run<a class="headerlink" href="#choosing-which-kagent-agents-run" title="Permanent link">&para;</a></h3>
@@ -3194,16 +4176,16 @@ you re-enable them.</p>
 <h2 id="bootstrap-1015-min">Bootstrap (~10–15 min)<a class="headerlink" href="#bootstrap-1015-min" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>First time? Run <code>setup.sh</code> and nothing else.</strong> From the repo root:
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh<span class="w">     </span><span class="c1"># choose &quot;local&quot; when prompted</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>./scripts/setup.sh<span class="w">     </span><span class="c1"># choose "local" when prompted</span>
+</code></pre></div>
 It personalises the placeholders, then calls <code>bootstrap-local.sh</code> for you and
 offers to start Backstage. <strong>Don't also run <code>bootstrap-local.sh</code> yourself</strong> —
 that just repeats the whole 15–20 minute install.</p>
 </blockquote>
 <p>Run the command below <strong>only</strong> for day-2 work on an existing setup — recreating
 the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>./scripts/bootstrap-local.sh
+</code></pre></div>
 <p>What it does (in order):</p>
 <table>
 <thead>
@@ -3284,23 +4266,18 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 </tbody>
 </table>
 <h3 id="bootstrap-flags">Bootstrap flags<a class="headerlink" href="#bootstrap-flags" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w">             </span><span class="c1"># skip Prometheus + Grafana</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-gitops<span class="w">          </span><span class="c1"># skip ArgoCD</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies<span class="w">        </span><span class="c1"># skip OPA/Gatekeeper</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--skip-dora<span class="w">            </span><span class="c1"># skip DORA exporter</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows<span class="w"> </span><span class="c1"># (optional) install Argo Workflows for ML pipeline orchestration</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">      </span><span class="c1"># start Backstage (requires cluster already running)</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-obs<span class="w">             </span><span class="c1"># skip Prometheus + Grafana</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-gitops<span class="w">          </span><span class="c1"># skip ArgoCD</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-policies<span class="w">        </span><span class="c1"># skip OPA/Gatekeeper</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--skip-dora<span class="w">            </span><span class="c1"># skip DORA exporter</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows<span class="w"> </span><span class="c1"># (optional) install Argo Workflows for ML pipeline orchestration</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">      </span><span class="c1"># start Backstage (requires cluster already running)</span>
+</code></pre></div>
 <p>Flags can be combined: <code>--skip-obs --skip-gitops</code> cuts bootstrap time roughly in half. For which flags to reach for on a resource-constrained machine, and how much each one saves, see <a href="#running-on-less">Running on less</a>.</p>
 <h2 id="access-services">Access services<a class="headerlink" href="#access-services" title="Permanent link">&para;</a></h2>
 <p><code>/etc/hosts</code> entries are written automatically by <code>bootstrap-local.sh</code>. If you need to add them manually:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;cat local/hosts-append.txt &gt;&gt; /etc/hosts&quot;</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>sudo<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s2">"cat local/hosts-append.txt &gt;&gt; /etc/hosts"</span>
+</code></pre></div>
 <table>
 <thead>
 <tr>
@@ -3428,13 +4405,12 @@ the cluster after <code>--destroy</code>, or re-running a step that failed:</p>
 </tbody>
 </table>
 <p>ArgoCD initial admin password:
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s2">&quot;{.data.password}&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
-</code></pre></div></td></tr></table></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s2">"{.data.password}"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
+</code></pre></div></p>
 <p>Alternatively, use <code>kubectl port-forward</code> for any service:
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/hello-service<span class="w"> </span><span class="m">8080</span>:80<span class="w"> </span>-n<span class="w"> </span>services
-</code></pre></div></td></tr></table></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/hello-service<span class="w"> </span><span class="m">8080</span>:80<span class="w"> </span>-n<span class="w"> </span>services
+</code></pre></div></p>
 <h2 id="optional-third-party-integrations">Optional third-party integrations<a class="headerlink" href="#optional-third-party-integrations" title="Permanent link">&para;</a></h2>
 <p><strong>You do not need any third-party account to run this platform.</strong> Every
 integration below is optional and fails soft: the portal boots, the cluster comes
@@ -3512,8 +4488,8 @@ Manager → External Secrets on EKS.</p>
 </table>
 <h2 id="start-backstage">Start Backstage<a class="headerlink" href="#start-backstage" title="Permanent link">&para;</a></h2>
 <p><code>bootstrap-local.sh</code> sets up the cluster and platform but does not start Backstage. Run this after the cluster is up:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div>
 <p>This single command:
 1. Builds the Backstage Docker image
 2. Starts the Docker Compose stack
@@ -3551,18 +4527,13 @@ Manager → External Secrets on EKS.</p>
 </table>
 <p>Both patches are tracked in git and re-applied automatically by <code>yarn install</code> and by the multi-stage <code>backstage/Dockerfile</code>. If you ever see catalog tables fail to render or scaffolder actions crash on startup, re-run <code>yarn install</code> inside <code>backstage/app/</code> and rebuild the image.</p>
 <h3 id="environment-files-first-time-only">Environment files (first time only)<a class="headerlink" href="#environment-files-first-time-only" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span>
-<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code>cp<span class="w"> </span>local/.env.example<span class="w"> </span>local/.env
-cp<span class="w"> </span>local/backstage/.env.example<span class="w"> </span>local/backstage/.env
-<span class="c1"># Edit both and fill in:</span>
-<span class="c1">#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION, ANTHROPIC_API_KEY (optional for AI), OPENAI_API_KEY (optional for OpenAI models)</span>
-<span class="c1">#   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,</span>
-<span class="c1">#                          BACKSTAGE_AUTH_SECRET (any string locally)</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>cp<span class="w"> </span>local/.env.example<span class="w"> </span>local/.env
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>cp<span class="w"> </span>local/backstage/.env.example<span class="w"> </span>local/backstage/.env
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1"># Edit both and fill in:</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION, ANTHROPIC_API_KEY (optional for AI), OPENAI_API_KEY (optional for OpenAI models)</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1">#   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1">#                          BACKSTAGE_AUTH_SECRET (any string locally)</span>
+</code></pre></div>
 <p><strong>AI/ML Platform (Optional):</strong>
 - <code>ANTHROPIC_API_KEY</code> — Required to enable Claude API for KAgent agents (used by <code>bootstrap-ai.sh</code>)
 - <code>OPENAI_API_KEY</code> — Required to enable OpenAI GPT-4o support via the <code>modelconfig-openai</code> CRD (used by <code>bootstrap-ai.sh</code>)</p>
@@ -3573,42 +4544,36 @@ cp<span class="w"> </span>local/backstage/.env.example<span class="w"> </span>lo
 <h3 id="troubleshooting-observability-after-bootstrap">Troubleshooting observability after bootstrap<a class="headerlink" href="#troubleshooting-observability-after-bootstrap" title="Permanent link">&para;</a></h3>
 <p><strong>DORA metrics not appearing in Grafana / Pushgateway empty</strong></p>
 <p>The <code>dora-exporter</code> CronJob runs every 15 minutes. If metrics are absent immediately after bootstrap, trigger a manual run:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>dora-now<span class="w"> </span>--from<span class="o">=</span>cronjob/dora-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
-kubectl<span class="w"> </span>logs<span class="w"> </span>job/dora-now<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--follow
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>dora-now<span class="w"> </span>--from<span class="o">=</span>cronjob/dora-exporter<span class="w"> </span>-n<span class="w"> </span>monitoring
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>job/dora-now<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--follow
+</code></pre></div>
 <p>If the job fails with <code>python: can't open file '/scripts/dora-exporter.py'</code>, the ConfigMap was not populated. Re-run the bootstrap step:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>configmap<span class="w"> </span>dora-exporter-script<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--from-file<span class="o">=</span>dora-exporter.py<span class="o">=</span>local/observability/dora/dora-exporter.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>create<span class="w"> </span>configmap<span class="w"> </span>dora-exporter-script<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>--from-file<span class="o">=</span>dora-exporter.py<span class="o">=</span>local/observability/dora/dora-exporter.py<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>-n<span class="w"> </span>monitoring<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-
+</code></pre></div>
 <p><strong>Kubernetes tab shows "unknown" for CPU / Memory</strong></p>
 <p>Ensure <code>skipMetricsLookup: false</code> is set in <code>backstage/app-config.yaml</code> and that the metrics-server is running:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>metrics-server
-kubectl<span class="w"> </span>top<span class="w"> </span>nodes
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>metrics-server
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>kubectl<span class="w"> </span>top<span class="w"> </span>nodes
+</code></pre></div>
 <p><strong>catalog-exporter CrashLoopBackOff</strong></p>
 <p>The CronJob targets <code>backstage.default.svc.cluster.local:3000</code>. It will fail whenever Backstage is not running. Start Backstage first:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div>
 <h3 id="day-2-backstage-restart">Day-2 Backstage restart<a class="headerlink" href="#day-2-backstage-restart" title="Permanent link">&para;</a></h3>
 <p>If you restart Docker Compose manually, re-run <code>--start-backstage</code> to rewire the nginx endpoint:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div>
 <p>Or, if you only need to refresh the IP without reseeding metrics:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--update-backstage-ip
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--update-backstage-ip
+</code></pre></div>
 <h3 id="manual-backend-bundle-rebuild">Manual backend bundle rebuild<a class="headerlink" href="#manual-backend-bundle-rebuild" title="Permanent link">&para;</a></h3>
 <p>Only needed if you changed code under <code>backstage/app/packages/backend/src/</code>:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backstage/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>install<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>build:backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../..
-<span class="c1"># Then re-run --start-backstage to pick up the new image</span>
-./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nb">cd</span><span class="w"> </span>backstage/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>install<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>yarn<span class="w"> </span>build:backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../..
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="c1"># Then re-run --start-backstage to pick up the new image</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+</code></pre></div>
 <h2 id="deploy-a-service-via-backstage">Deploy a service via Backstage<a class="headerlink" href="#deploy-a-service-via-backstage" title="Permanent link">&para;</a></h2>
 <h3 id="scaffold-a-new-service">Scaffold a new service<a class="headerlink" href="#scaffold-a-new-service" title="Permanent link">&para;</a></h3>
 <ol>
@@ -3623,12 +4588,10 @@ kubectl<span class="w"> </span>top<span class="w"> </span>nodes
 - Kind cluster and Backstage running (<code>./scripts/bootstrap-local.sh</code> then <code>./scripts/bootstrap-local.sh --start-backstage</code>)
 - Image pushed to local registry (see below)</p>
 <p><strong>Push the image:</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>services/&lt;name&gt;
-docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/&lt;name&gt;:latest<span class="w"> </span>.
-docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;name&gt;:latest
-</code></pre></div></td></tr></table></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nb">cd</span><span class="w"> </span>services/&lt;name&gt;
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/&lt;name&gt;:latest<span class="w"> </span>.
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;name&gt;:latest
+</code></pre></div></p>
 <p><strong>Deploy via Backstage:</strong>
 1. Open <a href="http://backstage.idp.local">http://backstage.idp.local</a> → <strong>Create</strong>
 2. Choose <strong>Deploy Service to local Kind cluster</strong>
@@ -3636,57 +4599,34 @@ docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/&lt;nam
 4. Click <strong>Create</strong></p>
 <p>The action runs <code>helm upgrade --install</code> and logs pod status. It connects to Kind via a rewritten kubeconfig (<code>127.0.0.1</code> → <code>host.docker.internal</code>) mounted into the Backstage container.</p>
 <p><strong>Deploy via CLI (alternative):</strong>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>&lt;name&gt;<span class="w"> </span>./helm/service-template<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/&lt;name&gt;<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--values<span class="w"> </span>services/&lt;name&gt;/helm-values-local.yaml
-</code></pre></div></td></tr></table></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>&lt;name&gt;<span class="w"> </span>./helm/service-template<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/&lt;name&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">  </span>--values<span class="w"> </span>services/&lt;name&gt;/helm-values-local.yaml
+</code></pre></div></p>
 <h2 id="scaffold-and-test-a-new-service-locally-cli-path">Scaffold and test a new service locally (CLI path)<a class="headerlink" href="#scaffold-and-test-a-new-service-locally-cli-path" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. Scaffold — uses Backstage Scaffolder API when running, local generation otherwise</span>
-idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs
-
-<span class="c1"># Force local generation (offline / pre-Backstage)</span>
-idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w"> </span>--local
-
-<span class="c1"># 2. Build and push the image</span>
-<span class="nb">cd</span><span class="w"> </span>services/my-svc
-docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/my-svc:latest<span class="w"> </span>.
-docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/my-svc:latest
-
-<span class="c1"># 3. Deploy</span>
-helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-svc<span class="w"> </span>./helm/service-template<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/my-svc<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--values<span class="w"> </span>services/my-svc/helm-values-local.yaml
-
-<span class="c1"># 4. Access</span>
-<span class="c1"># http://my-svc.idp.local  (after /etc/hosts entry)</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># 1. Scaffold — uses Backstage Scaffolder API when running, local generation otherwise</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="c1"># Force local generation (offline / pre-Backstage)</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w"> </span>--local
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="c1"># 2. Build and push the image</span>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="nb">cd</span><span class="w"> </span>services/my-svc
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/my-svc:latest<span class="w"> </span>.
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/my-svc:latest
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a><span class="c1"># 3. Deploy</span>
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-svc<span class="w"> </span>./helm/service-template<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a><span class="w">  </span>--namespace<span class="w"> </span>services<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a><span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/my-svc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a><span class="w">  </span>--set<span class="w"> </span>image.tag<span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a><span class="w">  </span>--values<span class="w"> </span>services/my-svc/helm-values-local.yaml
+<a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>
+<a id="__codelineno-22-19" name="__codelineno-22-19" href="#__codelineno-22-19"></a><span class="c1"># 4. Access</span>
+<a id="__codelineno-22-20" name="__codelineno-22-20" href="#__codelineno-22-20"></a><span class="c1"># http://my-svc.idp.local  (after /etc/hosts entry)</span>
+</code></pre></div>
 <h2 id="local-vs-aws-whats-different">Local vs AWS — what's different<a class="headerlink" href="#local-vs-aws-whats-different" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3737,10 +4677,9 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 <p>The Helm chart (<code>helm/service-template</code>) is <strong>identical</strong> for both. Only the values file differs.</p>
 <h2 id="aiml-stack-optional">AI/ML Stack (Optional)<a class="headerlink" href="#aiml-stack-optional" title="Permanent link">&para;</a></h2>
 <p>After <code>bootstrap-local.sh</code> (and optionally <code>--start-backstage</code>) completes, boot the AI/ML platform:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Requires ANTHROPIC_API_KEY in local/.env (and optionally OPENAI_API_KEY for multi-model support)</span>
-./scripts/bootstrap-ai.sh
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Requires ANTHROPIC_API_KEY in local/.env (and optionally OPENAI_API_KEY for multi-model support)</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>./scripts/bootstrap-ai.sh
+</code></pre></div>
 <p>What it installs:
 - <strong>KAgent platform</strong> — Kubernetes-native AI agents with <code>idp-assistant</code>, <code>qa-assistant</code>, <code>contract-assistant</code> agents
 - <strong>MCP servers</strong> — Model Context Protocol servers: <code>idp-mcp-server</code> (6 IDP tools), <code>qa-mcp-server</code> (QA tools), <code>contract-mcp-server</code> (contract testing tools)
@@ -3769,59 +4708,35 @@ helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class=
 </ul>
 <h3 id="scaffold-ai-services">Scaffold AI services<a class="headerlink" href="#scaffold-ai-services" title="Permanent link">&para;</a></h3>
 <p>After <code>bootstrap-ai.sh</code> completes, use the templates from Backstage:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># 1. AI Agent (KAgent-based)</span>
-<span class="c1"># Backstage → Create → AI Agent (KAgent)</span>
-<span class="c1"># Fill: name, owner, KAgent to deploy, tools to expose</span>
-
-<span class="c1"># 2. Model Serving API</span>
-<span class="c1"># Backstage → Create → Model Serving API</span>
-<span class="c1"># Fill: name, model name (llama3.2, mistral, etc.), target (local/aws)</span>
-
-<span class="c1"># 3. MCP Server (Model Context Protocol)</span>
-<span class="c1"># Backstage → Create → MCP Server</span>
-<span class="c1"># Fill: name, tools to expose, KAgent to link</span>
-
-<span class="c1"># 4. Contract Testing (with contract-mcp-server)</span>
-<span class="c1"># Backstage → Create → Enable Contract Testing</span>
-<span class="c1"># Select target service; scaffolds contract testing and deploys contract-mcp-server</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c1"># 1. AI Agent (KAgent-based)</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="c1"># Backstage → Create → AI Agent (KAgent)</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="c1"># Fill: name, owner, KAgent to deploy, tools to expose</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="c1"># 2. Model Serving API</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="c1"># Backstage → Create → Model Serving API</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="c1"># Fill: name, model name (llama3.2, mistral, etc.), target (local/aws)</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="c1"># 3. MCP Server (Model Context Protocol)</span>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="c1"># Backstage → Create → MCP Server</span>
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="c1"># Fill: name, tools to expose, KAgent to link</span>
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a><span class="c1"># 4. Contract Testing (with contract-mcp-server)</span>
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a><span class="c1"># Backstage → Create → Enable Contract Testing</span>
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a><span class="c1"># Select target service; scaffolds contract testing and deploys contract-mcp-server</span>
+</code></pre></div>
 <h3 id="monitor-ai-platform">Monitor AI Platform<a class="headerlink" href="#monitor-ai-platform" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># View agent status</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent
-
-<span class="c1"># Monitor MCP server metrics</span>
-kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>metric
-
-<span class="c1"># Check Grafana AI dashboard</span>
-<span class="c1"># http://grafana.idp.local → search &quot;AI Platform&quot;</span>
-
-<span class="c1"># View cost attribution (if using labels)</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-L<span class="w"> </span>team
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1"># View agent status</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="c1"># Monitor MCP server metrics</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>metric
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="c1"># Check Grafana AI dashboard</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="c1"># http://grafana.idp.local → search "AI Platform"</span>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="c1"># View cost attribution (if using labels)</span>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>-L<span class="w"> </span>team
+</code></pre></div>
 <p>This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.</p>
 <p>The AI Assistant at <code>/ai-assistant</code> is a <strong>native React chat UI</strong> (not an iframe) that talks directly to the KAgent A2A API via the Backstage proxy.</p>
 <table>
@@ -3866,23 +4781,17 @@ kubectl<span class="w"> </span>get<span class="w"> </span>agents<span class="w">
 </tbody>
 </table>
 <p><strong>Skip flags</strong> (combine freely):
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mlflow<span class="w">   </span><span class="c1"># skip MLflow</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-kagent<span class="w">   </span><span class="c1"># skip KAgent install</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mcp<span class="w">      </span><span class="c1"># skip IDP MCP Server build</span>
-</code></pre></div></td></tr></table></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mlflow<span class="w">   </span><span class="c1"># skip MLflow</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-kagent<span class="w">   </span><span class="c1"># skip KAgent install</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mcp<span class="w">      </span><span class="c1"># skip IDP MCP Server build</span>
+</code></pre></div></p>
 <p><strong>Tear down AI/ML only</strong> (core platform stays up):
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span>
-<span class="normal">4</span>
-<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># Local Kind/Rancher Desktop — removes only local/ ingresses and manifests</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
-
-<span class="c1"># AWS/EKS — removes aws/ ingresses and MLflow AWS overlay</span>
-./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--destroy
-</code></pre></div></td></tr></table></div></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="c1"># Local Kind/Rancher Desktop — removes only local/ ingresses and manifests</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--destroy
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="c1"># AWS/EKS — removes aws/ ingresses and MLflow AWS overlay</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w"> </span>--destroy
+</code></pre></div></p>
 <blockquote>
 <p><strong>Warning:</strong> <code>bootstrap-ai.sh --destroy</code> scopes deletions to the active
 environment (<code>--aws</code> flag). Running without <code>--aws</code> while <code>KUBECONFIG</code> points
@@ -3913,8 +4822,8 @@ agent will call the scaffolder immediately without asking for confirmation.</p>
 <p>The <code>/ai-search</code> page provides semantic search over the catalog using Voyage AI
 embeddings stored in pgvector. To enable it, add your Voyage AI key to
 <code>local/backstage/.env</code> before starting Backstage:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nv">VOYAGE_API_KEY</span><span class="o">=</span>your-key-here<span class="w">   </span><span class="c1"># free tier: 200M tokens/month — voyageai.com</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="nv">VOYAGE_API_KEY</span><span class="o">=</span>your-key-here<span class="w">   </span><span class="c1"># free tier: 200M tokens/month — voyageai.com</span>
+</code></pre></div>
 <p>The Postgres image used by Docker Compose (<code>pgvector/pgvector:pg17</code>) and
 <code>local/backstage/init-pgvector.sql</code> handle the vector extension and table
 automatically on first Postgres startup — no manual SQL step needed.</p>
@@ -3957,8 +4866,8 @@ troubleshooting guide.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <p>For a full catalogue of setup and day-2 issues with diagnosis commands and fixes, see <a href="../TROUBLESHOOTING/">docs/TROUBLESHOOTING.md</a>.</p>
 <h2 id="teardown">Teardown<a class="headerlink" href="#teardown" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--destroy
+</code></pre></div>
 <p>The destroy sequence runs in this order:</p>
 <ol>
 <li><strong>AI/ML teardown</strong> — if <code>kagent</code>, <code>ml-platform</code>, or <code>services-dev</code> namespaces exist, calls <code>bootstrap-ai.sh --destroy</code> (local scope only; <code>aws/</code> manifests are never touched).</li>
@@ -3989,8 +4898,16 @@ troubleshooting guide.</p>
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
         
       </main>
       
@@ -4001,35 +4918,35 @@ troubleshooting guide.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../mobile-platform/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Mobile Platform">
+          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
             <div class="md-footer__button md-icon">
               
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Previous
               </span>
               <div class="md-ellipsis">
-                Mobile Platform
+                Quickstart
               </div>
             </div>
           </a>
         
         
           
-          <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-footer__link md-footer__link--next" aria-label="Next: Pre-Deployment Checklist">
+          <a href="../screenshots/" class="md-footer__link md-footer__link--next" aria-label="Next: Screenshots">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Pre-Deployment Checklist
+                Screenshots
               </div>
             </div>
             <div class="md-footer__button md-icon">
               
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
             </div>
           </a>
         
@@ -4058,12 +4975,13 @@ troubleshooting guide.</p>
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
-    
-      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
-        <script src="../search/main.js"></script>
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

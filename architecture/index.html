@@ -11,14 +11,17 @@
       
       
       
-        <link rel="prev" href="../screenshots/">
+        <link rel="prev" href="../demo-runbook/">
       
       
-        <link rel="next" href="../golden-path/">
+        <link rel="next" href="../cli-reference/">
+      
+      
+        
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.27">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -26,7 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.6543a935.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -40,22 +46,30 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
     
     
-    
   </head>
   
   
-    <body dir="ltr">
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -76,17 +90,19 @@
     
       
 
-<header class="md-header" data-md-component="header">
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Internal Developer Platform" class="md-header__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -105,15 +121,85 @@
       </div>
     </div>
     
+      
+        <form class="md-header__option" data-md-component="palette">
+  
     
     
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
     
     
       <div class="md-header__source">
         <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     moatazeldebsy/backstage-platform-template
@@ -130,583 +216,6 @@
       
         
           
-            
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../getting-started/" class="md-tabs__link">
-        
-  
-    
-  
-  Getting Started
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../screenshots/" class="md-tabs__link">
-        
-  
-    
-  
-  Screenshots
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-    
-  
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
-        
-  
-    
-  
-  Architecture
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../golden-path/" class="md-tabs__link">
-        
-  
-    
-  
-  Golden Path
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../mobile-platform/" class="md-tabs__link">
-        
-  
-    
-  
-  Mobile Platform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../local-setup/" class="md-tabs__link">
-        
-  
-    
-  
-  Local Setup
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-tabs__link">
-          
-  
-  AWS Deployment
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../TROUBLESHOOTING/" class="md-tabs__link">
-        
-  
-    
-  
-  Troubleshooting
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../docker-recovery/" class="md-tabs__link">
-        
-  
-    
-  
-  Docker Recovery
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../cli-reference/" class="md-tabs__link">
-        
-  
-    
-  
-  CLI Reference
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../scripts-reference/" class="md-tabs__link">
-        
-  
-    
-  
-  Scripts Reference
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../ai-assistant/" class="md-tabs__link">
-        
-  
-    
-  
-  AI Assistant
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../agentic-platform/" class="md-tabs__link">
-        
-  
-    
-  
-  Agentic Development Platform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../agent-approvals/" class="md-tabs__link">
-        
-  
-    
-  
-  Agent Approvals
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../dora-finops/" class="md-tabs__link">
-        
-  
-    
-  
-  DORA & FinOps
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../contract-testing/" class="md-tabs__link">
-        
-  
-    
-  
-  Contract Testing
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../crossplane/" class="md-tabs__link">
-        
-  
-    
-  
-  Crossplane
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../crossplane-vs-terraform/" class="md-tabs__link">
-        
-  
-    
-  
-  Crossplane vs Terraform
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../engineering-intelligence/product-vision/" class="md-tabs__link">
-          
-  
-  Engineering Intelligence
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../design/adr-0001-batch-orchestration/" class="md-tabs__link">
-          
-  
-  Design Decisions
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../team-management/" class="md-tabs__link">
-        
-  
-    
-  
-  Team Management
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../github-app-setup/" class="md-tabs__link">
-        
-  
-    
-  
-  GitHub App Setup
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../scaling-runbook/" class="md-tabs__link">
-        
-  
-    
-  
-  Scaling Runbook
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../shift-left-leadership/" class="md-tabs__link">
-          
-  
-  Shift-Left Quality
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../security/" class="md-tabs__link">
-        
-  
-    
-  
-  Security
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../security-scanning/" class="md-tabs__link">
-        
-  
-    
-  
-  Security Scanning (SonarCloud + Snyk)
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../demo-runbook/" class="md-tabs__link">
-        
-  
-    
-  
-  Demo Runbook
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../readiness-checklist/" class="md-tabs__link">
-        
-  
-    
-  
-  Readiness Checklist
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../sre-reliability/" class="md-tabs__link">
-        
-  
-    
-  
-  SRE & Reliability
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../preview-environments/" class="md-tabs__link">
-        
-  
-    
-  
-  PR Preview Environments
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../runbooks/" class="md-tabs__link">
-          
-  
-  Runbooks
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../postmortem-template/" class="md-tabs__link">
-        
-  
-    
-  
-  Post-Mortem Template
-
-      </a>
-    </li>
-  
-
-      
-    </ul>
-  </div>
-</nav>
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -720,17 +229,13 @@
                     
 
 
-  
 
-
-  
-
-<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Internal Developer Platform" class="md-nav__button md-logo" aria-label="Internal Developer Platform" data-md-component="logo">
       
   
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
     Internal Developer Platform
@@ -740,7 +245,7 @@
       <a href="https://github.com/moatazeldebsy/backstage-platform-template" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
   </div>
   <div class="md-source__repository">
     moatazeldebsy/backstage-platform-template
@@ -756,22 +261,70 @@
   
   
   
-    <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
   
   <span class="md-ellipsis">
-    Home
-  </span>
+    
   
-
-      </a>
-    </li>
+    Get Started
   
 
     
-      
-      
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
   
@@ -780,18 +333,54 @@
       <a href="../getting-started/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
-    Getting Started
+    
+  
+    Quickstart
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
     
-      
-      
+  
+    Local Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
   
   
   
@@ -800,18 +389,1999 @@
       <a href="../screenshots/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Screenshots
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy on AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deploy on AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pre-Deployment Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-install-failure-modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Known Failure Modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../readiness-checklist/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Readiness Checklist
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-app-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub App Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../golden-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Golden Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mobile-platform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../preview-environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PR Preview Environments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contract-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contract Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Crossplane
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../crossplane-vs-terraform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Crossplane vs Terraform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../team-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Team Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dora-finops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DORA & FinOps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI & Agents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI & Agents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-platform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agentic Development Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-approvals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Approvals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Engineering Intelligence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Engineering Intelligence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/product-vision/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Product Vision
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/maturity-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maturity Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/scoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/ai-advisor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Advisor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality & Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quality & Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shift-Left Quality
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shift-Left Quality
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Programme Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-leadership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    For Leadership
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pilot Kickoff
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Cheatsheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flaky-test-quarantine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Flaky-Test Quarantine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-impact-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test-Impact Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-scanning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Scanning (SonarCloud + Snyk)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sre-reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRE & Reliability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../scaling-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scaling Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TROUBLESHOOTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../docker-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../runbooks/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runbooks
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Runbooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/incident-severity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Incident Severity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Rollback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pod Crash Loop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    High Memory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/high-cpu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    High CPU
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/db-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Database Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ImagePullBackOff
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kind Node IP Mismatch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cost Budget Exceeded
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KAgent Guardrails
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runbooks/regional-rebuild/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regional Rebuild
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../postmortem-template/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-Mortem Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Runbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
     
@@ -829,9 +2399,16 @@
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
+  
   <span class="md-ellipsis">
+    
+  
     Architecture
+  
+
+    
   </span>
+  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -840,9 +2417,16 @@
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Architecture
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -865,7 +2449,9 @@
         <li class="md-nav__item">
   <a href="#design-decisions" class="md-nav__link">
     <span class="md-ellipsis">
-      Design decisions
+      
+        Design decisions
+      
     </span>
   </a>
   
@@ -874,7 +2460,9 @@
         <li class="md-nav__item">
   <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
-      Overview
+      
+        Overview
+      
     </span>
   </a>
   
@@ -883,7 +2471,9 @@
         <li class="md-nav__item">
   <a href="#platform-planes" class="md-nav__link">
     <span class="md-ellipsis">
-      Platform Planes
+      
+        Platform Planes
+      
     </span>
   </a>
   
@@ -892,7 +2482,9 @@
         <li class="md-nav__item">
   <a href="#local-vs-aws-at-a-glance" class="md-nav__link">
     <span class="md-ellipsis">
-      Local vs AWS at a glance
+      
+        Local vs AWS at a glance
+      
     </span>
   </a>
   
@@ -901,7 +2493,9 @@
         <li class="md-nav__item">
   <a href="#interaction-model" class="md-nav__link">
     <span class="md-ellipsis">
-      Interaction Model
+      
+        Interaction Model
+      
     </span>
   </a>
   
@@ -910,7 +2504,9 @@
         <li class="md-nav__item">
   <a href="#key-design-decisions" class="md-nav__link">
     <span class="md-ellipsis">
-      Key Design Decisions
+      
+        Key Design Decisions
+      
     </span>
   </a>
   
@@ -920,7 +2516,9 @@
           <li class="md-nav__item">
   <a href="#convention-over-configuration" class="md-nav__link">
     <span class="md-ellipsis">
-      Convention over configuration
+      
+        Convention over configuration
+      
     </span>
   </a>
   
@@ -929,7 +2527,9 @@
           <li class="md-nav__item">
   <a href="#helm-as-the-single-deployment-abstraction" class="md-nav__link">
     <span class="md-ellipsis">
-      Helm as the single deployment abstraction
+      
+        Helm as the single deployment abstraction
+      
     </span>
   </a>
   
@@ -938,7 +2538,9 @@
           <li class="md-nav__item">
   <a href="#ci-only-in-github-actions-for-now" class="md-nav__link">
     <span class="md-ellipsis">
-      CI only in GitHub Actions (for now)
+      
+        CI only in GitHub Actions (for now)
+      
     </span>
   </a>
   
@@ -947,7 +2549,9 @@
           <li class="md-nav__item">
   <a href="#custom-backstage-action-for-local-deploy" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom Backstage action for local deploy
+      
+        Custom Backstage action for local deploy
+      
     </span>
   </a>
   
@@ -956,7 +2560,9 @@
           <li class="md-nav__item">
   <a href="#oidc-for-keyless-cicd-auth-aws" class="md-nav__link">
     <span class="md-ellipsis">
-      OIDC for keyless CI/CD auth (AWS)
+      
+        OIDC for keyless CI/CD auth (AWS)
+      
     </span>
   </a>
   
@@ -965,7 +2571,9 @@
           <li class="md-nav__item">
   <a href="#irsa-for-pod-level-aws-access" class="md-nav__link">
     <span class="md-ellipsis">
-      IRSA for pod-level AWS access
+      
+        IRSA for pod-level AWS access
+      
     </span>
   </a>
   
@@ -974,7 +2582,9 @@
           <li class="md-nav__item">
   <a href="#external-secrets-operator-aws" class="md-nav__link">
     <span class="md-ellipsis">
-      External Secrets Operator (AWS)
+      
+        External Secrets Operator (AWS)
+      
     </span>
   </a>
   
@@ -983,7 +2593,9 @@
           <li class="md-nav__item">
   <a href="#observability-parity-local-aws" class="md-nav__link">
     <span class="md-ellipsis">
-      Observability parity (local = AWS)
+      
+        Observability parity (local = AWS)
+      
     </span>
   </a>
   
@@ -992,7 +2604,9 @@
           <li class="md-nav__item">
   <a href="#aws-load-balancer-controller-aws" class="md-nav__link">
     <span class="md-ellipsis">
-      AWS Load Balancer Controller (AWS)
+      
+        AWS Load Balancer Controller (AWS)
+      
     </span>
   </a>
   
@@ -1001,7 +2615,9 @@
           <li class="md-nav__item">
   <a href="#iac-split-terraform-foundation-crossplane-per-service" class="md-nav__link">
     <span class="md-ellipsis">
-      IaC split: Terraform (foundation) + Crossplane (per-service)
+      
+        IaC split: Terraform (foundation) + Crossplane (per-service)
+      
     </span>
   </a>
   
@@ -1015,7 +2631,9 @@
         <li class="md-nav__item">
   <a href="#repository-layout" class="md-nav__link">
     <span class="md-ellipsis">
-      Repository Layout
+      
+        Repository Layout
+      
     </span>
   </a>
   
@@ -1024,7 +2642,9 @@
         <li class="md-nav__item">
   <a href="#aiml-platform" class="md-nav__link">
     <span class="md-ellipsis">
-      AI/ML Platform
+      
+        AI/ML Platform
+      
     </span>
   </a>
   
@@ -1034,7 +2654,9 @@
           <li class="md-nav__item">
   <a href="#how-the-ai-assistant-works-end-to-end" class="md-nav__link">
     <span class="md-ellipsis">
-      How the AI Assistant works end-to-end
+      
+        How the AI Assistant works end-to-end
+      
     </span>
   </a>
   
@@ -1043,7 +2665,9 @@
           <li class="md-nav__item">
   <a href="#scaffolding-flow-single-agent-turn" class="md-nav__link">
     <span class="md-ellipsis">
-      Scaffolding flow (single agent turn)
+      
+        Scaffolding flow (single agent turn)
+      
     </span>
   </a>
   
@@ -1052,7 +2676,9 @@
           <li class="md-nav__item">
   <a href="#key-files" class="md-nav__link">
     <span class="md-ellipsis">
-      Key files
+      
+        Key files
+      
     </span>
   </a>
   
@@ -1066,7 +2692,9 @@
         <li class="md-nav__item">
   <a href="#component-inventory" class="md-nav__link">
     <span class="md-ellipsis">
-      Component Inventory
+      
+        Component Inventory
+      
     </span>
   </a>
   
@@ -1075,7 +2703,9 @@
         <li class="md-nav__item">
   <a href="#backstage-custom-action-idpdeploy-local" class="md-nav__link">
     <span class="md-ellipsis">
-      Backstage Custom Action: idp:deploy-local
+      
+        Backstage Custom Action: idp:deploy-local
+      
     </span>
   </a>
   
@@ -1084,7 +2714,9 @@
         <li class="md-nav__item">
   <a href="#aws-architecture" class="md-nav__link">
     <span class="md-ellipsis">
-      AWS Architecture
+      
+        AWS Architecture
+      
     </span>
   </a>
   
@@ -1094,7 +2726,9 @@
           <li class="md-nav__item">
   <a href="#availability-model" class="md-nav__link">
     <span class="md-ellipsis">
-      Availability model
+      
+        Availability model
+      
     </span>
   </a>
   
@@ -1103,7 +2737,9 @@
           <li class="md-nav__item">
   <a href="#network-topology" class="md-nav__link">
     <span class="md-ellipsis">
-      Network Topology
+      
+        Network Topology
+      
     </span>
   </a>
   
@@ -1112,7 +2748,9 @@
           <li class="md-nav__item">
   <a href="#aws-services-used" class="md-nav__link">
     <span class="md-ellipsis">
-      AWS Services Used
+      
+        AWS Services Used
+      
     </span>
   </a>
   
@@ -1121,7 +2759,9 @@
           <li class="md-nav__item">
   <a href="#eks-namespace-map" class="md-nav__link">
     <span class="md-ellipsis">
-      EKS Namespace Map
+      
+        EKS Namespace Map
+      
     </span>
   </a>
   
@@ -1130,7 +2770,9 @@
           <li class="md-nav__item">
   <a href="#secrets-flow-aws-secrets-manager-pods" class="md-nav__link">
     <span class="md-ellipsis">
-      Secrets Flow (AWS Secrets Manager → Pods)
+      
+        Secrets Flow (AWS Secrets Manager → Pods)
+      
     </span>
   </a>
   
@@ -1139,7 +2781,9 @@
           <li class="md-nav__item">
   <a href="#irsa-roles-iam-roles-for-service-accounts" class="md-nav__link">
     <span class="md-ellipsis">
-      IRSA Roles (IAM Roles for Service Accounts)
+      
+        IRSA Roles (IAM Roles for Service Accounts)
+      
     </span>
   </a>
   
@@ -1148,7 +2792,9 @@
           <li class="md-nav__item">
   <a href="#bootstrap-sequence" class="md-nav__link">
     <span class="md-ellipsis">
-      Bootstrap Sequence
+      
+        Bootstrap Sequence
+      
     </span>
   </a>
   
@@ -1157,7 +2803,9 @@
           <li class="md-nav__item">
   <a href="#alb-ingress-map" class="md-nav__link">
     <span class="md-ellipsis">
-      ALB Ingress Map
+      
+        ALB Ingress Map
+      
     </span>
   </a>
   
@@ -1171,7 +2819,9 @@
         <li class="md-nav__item">
   <a href="#known-limitations" class="md-nav__link">
     <span class="md-ellipsis">
-      Known limitations
+      
+        Known limitations
+      
     </span>
   </a>
   
@@ -1184,219 +2834,10 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../golden-path/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Golden Path
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../mobile-platform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Mobile Platform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../local-setup/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Local Setup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
-        
-          
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    AWS Deployment
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
-            <span class="md-nav__icon md-icon"></span>
-            AWS Deployment
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../PRE_DEPLOYMENT_CHECKLIST/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Pre-Deployment Checklist
-  </span>
-  
-
-      </a>
-    </li>
-  
-
               
             
               
                 
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../DEPLOYMENT_GUIDE/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Deployment Guide
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../aws-install-failure-modes/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Known Failure Modes
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../TROUBLESHOOTING/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Troubleshooting
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../docker-recovery/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Docker Recovery
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
   
   
   
@@ -1405,18 +2846,26 @@
       <a href="../cli-reference/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     CLI Reference
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1425,387 +2874,88 @@
       <a href="../scripts-reference/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     Scripts Reference
+  
+
+    
   </span>
+  
   
 
       </a>
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ai-assistant/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    AI Assistant
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agentic-platform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agentic Development Platform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agent-approvals/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Agent Approvals
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dora-finops/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    DORA & FinOps
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../contract-testing/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Contract Testing
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../crossplane/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Crossplane
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../crossplane-vs-terraform/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Crossplane vs Terraform
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     
     
-    
-      
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
     
     
     <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_20" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_4" >
         
           
-          <label class="md-nav__link" for="__nav_20" id="__nav_20_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8_4" id="__nav_8_4_label" tabindex="0">
             
+  
   
   <span class="md-ellipsis">
-    Engineering Intelligence
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_20_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_20">
-            <span class="md-nav__icon md-icon"></span>
-            Engineering Intelligence
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/product-vision/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Product Vision
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/architecture/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Architecture
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/maturity-model/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Maturity Model
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/scoring/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Scoring
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/integrations/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Integrations
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/ai-advisor/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    AI Advisor
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../engineering-intelligence/roadmap/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Roadmap
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
     
-      
-      
   
-  
-  
-  
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_21" >
-        
-          
-          <label class="md-nav__link" for="__nav_21" id="__nav_21_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
     Design Decisions
+  
+
+    
   </span>
+  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_21_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_21">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_4">
             <span class="md-nav__icon md-icon"></span>
-            Design Decisions
+            
+  
+    Design Decisions
+  
+
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1819,9 +2969,16 @@
       <a href="../design/adr-0001-batch-orchestration/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0001: Batch orchestration
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1840,9 +2997,16 @@
       <a href="../design/adr-0002-delivery-model/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0002: Delivery model
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1861,9 +3025,16 @@
       <a href="../design/adr-0003-incident-management/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0003: Incident management
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1882,9 +3053,16 @@
       <a href="../design/adr-0004-identity-and-access/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0004: Identity and access
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1903,9 +3081,16 @@
       <a href="../design/adr-0005-llm-serving-and-agent-frameworks/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0005: LLM serving and agent frameworks
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1924,9 +3109,16 @@
       <a href="../design/adr-0006-engineering-intelligence/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0006: Engineering Intelligence
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1945,9 +3137,16 @@
       <a href="../design/adr-0007-ai-gateway/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0007: AI Gateway
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1966,9 +3165,16 @@
       <a href="../design/adr-0008-litellm-multiprovider-gateway/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0008: LiteLLM multi-provider gateway
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -1987,9 +3193,16 @@
       <a href="../design/adr-0009-single-region-multi-az/" class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
+    
+  
     ADR-0009: Single-region, multi-AZ
+  
+
+    
   </span>
+  
   
 
       </a>
@@ -2004,675 +3217,11 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../team-management/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Team Management
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../github-app-setup/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    GitHub App Setup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../scaling-runbook/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Scaling Runbook
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_25" >
-        
-          
-          <label class="md-nav__link" for="__nav_25" id="__nav_25_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    Shift-Left Quality
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_25_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_25">
-            <span class="md-nav__icon md-icon"></span>
-            Shift-Left Quality
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../shift-left-leadership/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    For Leadership
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../shift-left/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Programme Overview
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../shift-left-pilot-kickoff/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Pilot Kickoff
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../shift-left-demo-cheatsheet/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Demo Cheatsheet
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../flaky-test-quarantine/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Flaky-Test Quarantine
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../test-impact-analysis/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Test-Impact Analysis
-  </span>
-  
-
-      </a>
-    </li>
-  
-
               
             
           </ul>
         </nav>
       
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../security-scanning/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Security Scanning (SonarCloud + Snyk)
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../demo-runbook/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Demo Runbook
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../readiness-checklist/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Readiness Checklist
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../sre-reliability/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    SRE & Reliability
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../preview-environments/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    PR Preview Environments
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_32" >
-        
-          
-          <label class="md-nav__link" for="__nav_32" id="__nav_32_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    Runbooks
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_32_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_32">
-            <span class="md-nav__icon md-icon"></span>
-            Runbooks
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Overview
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/incident-severity/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Incident Severity
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/deployment-rollback/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Deployment Rollback
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/pod-crash-loop/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Pod Crash Loop
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/high-memory/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    High Memory
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/high-cpu/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    High CPU
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/db-recovery/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Database Recovery
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/image-pull-backoff/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    ImagePullBackOff
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/kind-node-ip-mismatch/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Kind Node IP Mismatch
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/cost-budget-exceeded/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Cost Budget Exceeded
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/kagent-guardrails/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    KAgent Guardrails
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../runbooks/regional-rebuild/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Regional Rebuild
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../postmortem-template/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Post-Mortem Template
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -2684,17 +3233,432 @@
               </div>
             
             
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-planes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform Planes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-vs-aws-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local vs AWS at a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interaction-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Design Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Design Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#convention-over-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convention over configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-as-the-single-deployment-abstraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helm as the single deployment abstraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ci-only-in-github-actions-for-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI only in GitHub Actions (for now)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-backstage-action-for-local-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Backstage action for local deploy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oidc-for-keyless-cicd-auth-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OIDC for keyless CI/CD auth (AWS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#irsa-for-pod-level-aws-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IRSA for pod-level AWS access
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-secrets-operator-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External Secrets Operator (AWS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observability-parity-local-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability parity (local = AWS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-load-balancer-controller-aws" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AWS Load Balancer Controller (AWS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iac-split-terraform-foundation-crossplane-per-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IaC split: Terraform (foundation) + Crossplane (per-service)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repository-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repository Layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aiml-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI/ML Platform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AI/ML Platform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-ai-assistant-works-end-to-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the AI Assistant works end-to-end
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaffolding-flow-single-agent-turn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaffolding flow (single agent turn)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Inventory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backstage-custom-action-idpdeploy-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backstage Custom Action: idp:deploy-local
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aws-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AWS Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AWS Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#availability-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Availability model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-services-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AWS Services Used
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eks-namespace-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EKS Namespace Map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secrets-flow-aws-secrets-manager-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secrets Flow (AWS Secrets Manager → Pods)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#irsa-roles-iam-roles-for-service-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IRSA Roles (IAM Roles for Service Accounts)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bootstrap Sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alb-ingress-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ALB Ingress Map
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
           
           
             <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
               <article class="md-content__inner md-typeset">
                 
                   
 
+
   
-    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/master/docs/architecture.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/moatazeldebsy/backstage-platform-template/edit/main/docs/architecture.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4v-2m10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1 2.1 2.1Z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
   
   
@@ -2866,104 +3830,56 @@ grant.</p>
 </table>
 <p>All three channels converge on the <strong>Platform Control Plane</strong>: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.35 in production.</p>
 <hr />
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code>┌─────────────────────────────────────────────────────────────────────┐
-│                       Developer Experience                           │
-│  ┌────────────────── ┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │  Backstage        │  │  GitHub      │  │  create-service.sh     │ │
-│  │  Portal           │  │  (source)    │  │  (CLI scaffold)        │ │
-│  │  + AI Assistant   │  └──────┬───────┘  └────────────────────────┘ │
-│  │  + custom actions │         │ push                                │
-│  └──────┬───────┬────┘         │                                     │
-└─────────┼───────┼──────────────┼─────────────────────────────────────┘
-          │       │              │
-  scaffold│  deploy              │ push
-          │  (idp:deploy-local)  ▼
-          │       │   ┌──────────────────────────────────────────┐
-          │       │   │           CI/CD Layer                    │
-          │       │   │  GitHub Actions (ubuntu-latest)          │
-          │       │   │  install → test → docker build → /healthz│
-          │       │   └────────────────┬─────────────────────────┘
-          │       │                    │ (AWS CD — planned)
-          ▼       ▼                    ▼
-┌───────────────────────────────────────────────────────────────────── ┐
-│               Local: Kind cluster  /  AWS: EKS                       │
-│                                                                      │
-│  namespace: services              namespace: monitoring              │
-│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
-│  │ Services             │         │ (Prometheus + Grafana +        │ │
-│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
-│  └──────────────────────┘         └────────────────────────────────┘ │
-│                                                                      │
-│  namespace: kagent                namespace: ml-platform             │
-│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-│  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
-│  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
-│  │ contract-assistant   │         │                                │ │
-│  │ IDP MCP Server       │         └────────────────────────────────┘ │
-│  │ QA MCP Server        │                                            │
-│  │ Contract MCP Server  │         namespace: services-dev            │
-│  └──────────────────────┘         ┌────────────────────────────────┐ │
-│                                   │ contract-mcp-server (port 3003)│ │
-│                                   │ idp-mcp-server (port 3001)     │ │
-│                                   │ qa-mcp-server  (port 3002)     │ │
-│                                   └────────────────────────────────┘ │
-└───────────────────────────────────────────────────────────────────── ┘
-                    │ (AWS only)
-                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                 AWS Infrastructure (Terraform)                      │
-│   VPC → Private/Public Subnets → EKS → ECR → IAM (OIDC/IRSA)        │
-└─────────────────────────────────────────────────────────────────────┘
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│                       Developer Experience                           │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│  ┌────────────────── ┐  ┌──────────────┐  ┌────────────────────────┐ │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  │  Backstage        │  │  GitHub      │  │  create-service.sh     │ │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│  │  Portal           │  │  (source)    │  │  (CLI scaffold)        │ │
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  │  + AI Assistant   │  └──────┬───────┘  └────────────────────────┘ │
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│  │  + custom actions │         │ push                                │
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│  └──────┬───────┬────┘         │                                     │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>└─────────┼───────┼──────────────┼─────────────────────────────────────┘
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>          │       │              │
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  scaffold│  deploy              │ push
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>          │  (idp:deploy-local)  ▼
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>          │       │   ┌──────────────────────────────────────────┐
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>          │       │   │           CI/CD Layer                    │
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>          │       │   │  GitHub Actions (ubuntu-latest)          │
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>          │       │   │  install → test → docker build → /healthz│
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>          │       │   └────────────────┬─────────────────────────┘
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>          │       │                    │ (AWS CD — planned)
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>          ▼       ▼                    ▼
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>┌───────────────────────────────────────────────────────────────────── ┐
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│               Local: Kind cluster  /  AWS: EKS                       │
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│                                                                      │
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│  namespace: services              namespace: monitoring              │
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│  │ Services             │         │ (Prometheus + Grafana +        │ │
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│  └──────────────────────┘         └────────────────────────────────┘ │
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│                                                                      │
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>│  namespace: kagent                namespace: ml-platform             │
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>│  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>│  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│  │ contract-assistant   │         │                                │ │
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│  │ IDP MCP Server       │         └────────────────────────────────┘ │
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│  │ QA MCP Server        │                                            │
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>│  │ Contract MCP Server  │         namespace: services-dev            │
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│  └──────────────────────┘         ┌────────────────────────────────┐ │
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│                                   │ contract-mcp-server (port 3003)│ │
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│                                   │ idp-mcp-server (port 3001)     │ │
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│                                   │ qa-mcp-server  (port 3002)     │ │
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>│                                   └────────────────────────────────┘ │
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>└───────────────────────────────────────────────────────────────────── ┘
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>                    │ (AWS only)
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>                    ▼
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>┌─────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│                 AWS Infrastructure (Terraform)                      │
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│   VPC → Private/Public Subnets → EKS → ECR → IAM (OIDC/IRSA)        │
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>└─────────────────────────────────────────────────────────────────────┘
+</code></pre></div>
 <h2 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h2>
 <h3 id="convention-over-configuration">Convention over configuration<a class="headerlink" href="#convention-over-configuration" title="Permanent link">&para;</a></h3>
 <p>Every service gets the same: container registry, CI workflow, Helm chart structure, health check paths, namespace, and monitoring. Developers don't configure these — they inherit them from the golden path.</p>
@@ -2988,12 +3904,10 @@ grant.</p>
 <p>Both tools coexist by <strong>lifecycle</strong>, not by resource type. Terraform owns one-shot foundation (VPC, EKS, IAM, ECR, Secrets Manager scaffolding, <strong>and</strong> the IRSA role Crossplane providers assume). Crossplane owns day-2 per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) requested via Backstage scaffolder templates and reconciled in-cluster by ArgoCD — no manual <code>terraform apply</code> step. See <a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> for the decision matrix and <a href="../crossplane/">crossplane.md</a> for the end-to-end flow.</p>
 <h2 id="repository-layout">Repository Layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
 <p>The repository is split into three top-level directories based on deployment target:</p>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span>
-<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code>local/          → 100% local-only (Kind / Rancher Desktop)
-aws/            → 100% AWS-only  (EKS / Terraform / Secrets Manager)
-kubernetes/     → 100% shared    (applied by both bootstrap scripts)
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>local/          → 100% local-only (Kind / Rancher Desktop)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>aws/            → 100% AWS-only  (EKS / Terraform / Secrets Manager)
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubernetes/     → 100% shared    (applied by both bootstrap scripts)
+</code></pre></div>
 <table>
 <thead>
 <tr>
@@ -3085,47 +3999,30 @@ kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 - <code>bootstrap.sh</code> reads from <code>aws/</code> + <code>kubernetes/</code> only — never touches <code>local/</code></p>
 <h2 id="aiml-platform">AI/ML Platform<a class="headerlink" href="#aiml-platform" title="Permanent link">&para;</a></h2>
 <h3 id="how-the-ai-assistant-works-end-to-end">How the AI Assistant works end-to-end<a class="headerlink" href="#how-the-ai-assistant-works-end-to-end" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span></pre></div></td><td class="code"><div><pre><span></span><code>Backstage UI (extensions.tsx)
-  AiAssistantPage — React chat component at /ai-assistant
-    │
-    │  POST /api/proxy/kagent/a2a/kagent/idp-assistant  (A2A JSON-RPC)
-    │  GET  /api/proxy/kagent/api/sessions/&lt;id&gt;          (poll for response)
-    ▼
-Backstage proxy  →  KAgent UI (kagent-ui.kagent.svc.cluster.local:8080)
-                     A2A server routes to the idp-assistant Agent CRD
-                                │
-                                │  MCP over Streamable HTTP
-                                ▼
-                     IDP MCP Server  (idp-mcp-server:3001/mcp)
-                       catalog_search    → Backstage catalog API
-                       get_service_metrics → Prometheus
-                       list_templates    → Backstage catalog (Templates)
-                       get_template_params → Backstage catalog entity
-                       scaffold_service  → Backstage scaffolder v2
-                       list_deployments  → Kubernetes apps/v1 API
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Backstage UI (extensions.tsx)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  AiAssistantPage — React chat component at /ai-assistant
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    │
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    │  POST /api/proxy/kagent/a2a/kagent/idp-assistant  (A2A JSON-RPC)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    │  GET  /api/proxy/kagent/api/sessions/&lt;id&gt;          (poll for response)
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    ▼
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Backstage proxy  →  KAgent UI (kagent-ui.kagent.svc.cluster.local:8080)
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                     A2A server routes to the idp-assistant Agent CRD
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                                │
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                                │  MCP over Streamable HTTP
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                                ▼
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                     IDP MCP Server  (idp-mcp-server:3001/mcp)
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                       catalog_search    → Backstage catalog API
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                       get_service_metrics → Prometheus
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                       list_templates    → Backstage catalog (Templates)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                       get_template_params → Backstage catalog entity
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                       scaffold_service  → Backstage scaffolder v2
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                       list_deployments  → Kubernetes apps/v1 API
+</code></pre></div>
 <h3 id="scaffolding-flow-single-agent-turn">Scaffolding flow (single agent turn)<a class="headerlink" href="#scaffolding-flow-single-agent-turn" title="Permanent link">&para;</a></h3>
 <p>When the user provides <code>name</code>, <code>description</code>, and <code>owner</code> in one message, the agent
 completes the entire scaffold in one response turn without asking for confirmation:</p>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>list_templates → get_template_params → scaffold_service (immediate)
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>list_templates → get_template_params → scaffold_service (immediate)
+</code></pre></div>
 <p>The agent manifest (<code>kubernetes/kagent/idp-agent.yaml</code>) enforces this via the
 system message: Rule 4 requires <code>scaffold_service</code> to be called immediately once
 all required fields are known, and Rule 5 defines those fields as <code>name</code>,
@@ -3352,53 +4249,32 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </tbody>
 </table>
 <h2 id="backstage-custom-action-idpdeploy-local">Backstage Custom Action: <code>idp:deploy-local</code><a class="headerlink" href="#backstage-custom-action-idpdeploy-local" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span></pre></div></td><td class="code"><div><pre><span></span><code>Backstage UI
-  → &quot;Deploy Service to local Kind cluster&quot; template
-    → idp:deploy-local action
-      → kubectl cluster-info  (verify Kind reachable)
-      → helm upgrade --install &lt;name&gt; /helm/service-template \
-            --set image.repository=localhost:5003/&lt;name&gt; \
-            --set image.tag=&lt;tag&gt; \
-            --set ingress.className=nginx \
-            --set ingress.hosts[0].host=&lt;name&gt;.idp.local \
-            ...
-      → kubectl get pods  (log status)
-      → output: serviceUrl = http://&lt;name&gt;.idp.local
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Backstage UI
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  → "Deploy Service to local Kind cluster" template
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    → idp:deploy-local action
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>      → kubectl cluster-info  (verify Kind reachable)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>      → helm upgrade --install &lt;name&gt; /helm/service-template \
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>            --set image.repository=localhost:5003/&lt;name&gt; \
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>            --set image.tag=&lt;tag&gt; \
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            --set ingress.className=nginx \
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>            --set ingress.hosts[0].host=&lt;name&gt;.idp.local \
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>            ...
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>      → kubectl get pods  (log status)
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>      → output: serviceUrl = http://&lt;name&gt;.idp.local
+</code></pre></div>
 <p><strong>Kubeconfig bridge (macOS + Docker Desktop):</strong></p>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span></pre></div></td><td class="code"><div><pre><span></span><code>Host ~/.kube/config         docker-compose mounts as read-only
-  (server: 127.0.0.1:PORT)  ───────────────────────────────────&gt;  /home/node/.kube/config
-                                                                          │
-                                                          startup sed rewrites:
-                                                          127.0.0.1 → host.docker.internal
-                                                          strips certificate-authority-data
-                                                          adds insecure-skip-tls-verify: true
-                                                                          │
-                                                                          ▼
-                                                                   /tmp/kubeconfig
-                                                          KUBECONFIG=/tmp/kubeconfig (env)
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Host ~/.kube/config         docker-compose mounts as read-only
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  (server: 127.0.0.1:PORT)  ───────────────────────────────────&gt;  /home/node/.kube/config
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>                                                                          │
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>                                                          startup sed rewrites:
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>                                                          127.0.0.1 → host.docker.internal
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>                                                          strips certificate-authority-data
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>                                                          adds insecure-skip-tls-verify: true
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>                                                                          │
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>                                                                          ▼
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>                                                                   /tmp/kubeconfig
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>                                                          KUBECONFIG=/tmp/kubeconfig (env)
+</code></pre></div>
 <hr />
 <h2 id="aws-architecture">AWS Architecture<a class="headerlink" href="#aws-architecture" title="Permanent link">&para;</a></h2>
 <p><img alt="AWS Architecture" src="../assets/aws-architecture.png" /></p>
@@ -3409,60 +4285,34 @@ RDS Multi-AZ on the <code>medium</code>/<code>large</code> profiles. A full regi
 rebuilding from IaC and restoring backups. See
 <a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a> for the reasoning.</p>
 <h3 id="network-topology">Network Topology<a class="headerlink" href="#network-topology" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code>AWS Region: us-east-1
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  VPC  10.0.0.0/16                                                           │
-│                                                                             │
-│  ┌──────────────────────┐  ┌──────────────────────┐  ┌───────────────────┐ │
-│  │  Public Subnet       │  │  Public Subnet       │  │  Public Subnet    │ │
-│  │  10.0.64.0/20 (AZ-a) │  │  10.0.80.0/20 (AZ-b) │  │  10.0.96.0/20(AZ-c)│ │
-│  │  NAT Gateway         │  │  NAT Gateway         │  │  NAT Gateway      │ │
-│  │  ALB targets         │  │  ALB targets         │  │  ALB targets      │ │
-│  └──────────┬───────────┘  └──────────┬───────────┘  └────────┬──────────┘ │
-│             │ private route            │                       │            │
-│  ┌──────────▼───────────┐  ┌──────────▼───────────┐  ┌────────▼──────────┐ │
-│  │  Private Subnet      │  │  Private Subnet      │  │  Private Subnet   │ │
-│  │  10.0.0.0/20  (AZ-a) │  │  10.0.16.0/20 (AZ-b) │  │  10.0.32.0/20(AZ-c)│ │
-│  │  EKS nodes           │  │  EKS nodes           │  │  EKS nodes        │ │
-│  │  RDS (primary)       │  │  RDS (standby)       │  │                   │ │
-│  └──────────────────────┘  └──────────────────────┘  └───────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │
-          │  Internet-facing ALBs (one per service with ingressClassName: alb)
-          ▼
-┌─────────────────────────────────┐
-│  Internet / Developer Browser   │
-│  Backstage  · Grafana · ArgoCD  │
-│  Prometheus · Pushgateway       │
-│  OpenCost   · hello-service     │
-└─────────────────────────────────┘
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>AWS Region: us-east-1
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>┌─────────────────────────────────────────────────────────────────────────────┐
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>│  VPC  10.0.0.0/16                                                           │
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>│                                                                             │
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>│  ┌──────────────────────┐  ┌──────────────────────┐  ┌───────────────────┐ │
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>│  │  Public Subnet       │  │  Public Subnet       │  │  Public Subnet    │ │
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>│  │  10.0.64.0/20 (AZ-a) │  │  10.0.80.0/20 (AZ-b) │  │  10.0.96.0/20(AZ-c)│ │
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>│  │  NAT Gateway         │  │  NAT Gateway         │  │  NAT Gateway      │ │
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>│  │  ALB targets         │  │  ALB targets         │  │  ALB targets      │ │
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>│  └──────────┬───────────┘  └──────────┬───────────┘  └────────┬──────────┘ │
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>│             │ private route            │                       │            │
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>│  ┌──────────▼───────────┐  ┌──────────▼───────────┐  ┌────────▼──────────┐ │
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>│  │  Private Subnet      │  │  Private Subnet      │  │  Private Subnet   │ │
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>│  │  10.0.0.0/20  (AZ-a) │  │  10.0.16.0/20 (AZ-b) │  │  10.0.32.0/20(AZ-c)│ │
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>│  │  EKS nodes           │  │  EKS nodes           │  │  EKS nodes        │ │
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>│  │  RDS (primary)       │  │  RDS (standby)       │  │                   │ │
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>│  └──────────────────────┘  └──────────────────────┘  └───────────────────┘ │
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>└─────────────────────────────────────────────────────────────────────────────┘
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>          │
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>          │  Internet-facing ALBs (one per service with ingressClassName: alb)
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>          ▼
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>┌─────────────────────────────────┐
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>│  Internet / Developer Browser   │
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>│  Backstage  · Grafana · ArgoCD  │
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>│  Prometheus · Pushgateway       │
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>│  OpenCost   · hello-service     │
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>└─────────────────────────────────┘
+</code></pre></div>
 <h3 id="aws-services-used">AWS Services Used<a class="headerlink" href="#aws-services-used" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -3521,209 +4371,110 @@ rebuilding from IaC and restoring backups. See
 </tbody>
 </table>
 <h3 id="eks-namespace-map">EKS Namespace Map<a class="headerlink" href="#eks-namespace-map" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span>
-<span class="normal">54</span>
-<span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span>
-<span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span></pre></div></td><td class="code"><div><pre><span></span><code>EKS Cluster: idp-mvp (us-east-1)
-│
-├── kube-system
-│   ├── aws-load-balancer-controller  (creates ALBs from Ingress resources)
-│   ├── ebs-csi-controller            (persistent volumes)
-│   └── coredns, kube-proxy
-│
-├── backstage                         (developer portal)
-│   ├── deployment/backstage          (official Backstage image, 1 replica)
-│   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
-│   └── service/backstage             (ALB ingress)
-│
-├── kyverno                           (admission controller)
-│   ├── kyverno-admission-controller  (mutate + validate webhooks)
-│   ├── ClusterPolicy: crossplane-inject-team-tag   (auto-inject idp:team on Crossplane claims)
-│   └── ClusterPolicy: crossplane-require-cost-tags (block claims without owner/costCenter)
-│
-├── argocd                            (GitOps controller)
-│   ├── argocd-server                 (UI + API, ALB ingress)
-│   ├── ApplicationSet: idp-services  (auto-discovers services/*/ — legacy flat services)
-│   ├── AppProject: team-&lt;name&gt;       (one per team, created by scaffold; scoped to team-&lt;name&gt; ns)
-│   ├── ApplicationSet: team-&lt;name&gt;   (auto-discovers teams/&lt;name&gt;/services/*/)
-│   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
-│
-├── monitoring                        (observability stack)
-│   ├── prometheus-kube-prometheus-prometheus  (metrics store, no public ALB)
-│   ├── prometheus-grafana                     (dashboards, ALB ingress)
-│   ├── prometheus-pushgateway                 (push endpoint, no public ALB)
-│   ├── cronjob/dora-exporter                  (GitHub → Pushgateway + CloudWatch)
-│   └── cronjob/tech-insights-exporter         (scorecard metrics → Pushgateway)
-│
-├── external-secrets                  (ESO)
-│   ├── external-secrets              (ESO controller, created by Helm)
-│   └── external-secrets-sa           (SA created by bootstrap.sh, annotated with IRSA)
-│
-├── services                          (manually deployed services)
-│   └── deployment/hello-service      (reference Go service)
-│
-├── services-dev                      (ArgoCD-managed dev services; ResourceQuota + LimitRange applied)
-│   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
-│   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
-│   ├── deployment/qa-mcp-server      (QA MCP server)
-│   └── deployment/contract-mcp-server (contract testing tools)
-│
-├── team-&lt;name&gt;                       (one per team; created by Provision Team Namespace scaffold)
-│   ├── ResourceQuota / LimitRange    (tier-based; auto-generated by Kyverno team-quota-policy)
-│   ├── NetworkPolicy                 (deny-all ingress; allow intra-ns + monitoring + ingress-nginx)
-│   ├── RoleBinding: idp-developer    (team members get deploy+observe access)
-│   ├── ServiceAccount: deployer      (CI/CD identity for the team)
-│   ├── SecretStore: team-&lt;name&gt;-secrets  (scoped to /&lt;name&gt;/* in Secrets Manager)
-│   └── ConfigMap: grafana-folder-team-&lt;name&gt;  (→ Grafana sidecar creates team dashboard folder)
-│
-├── kagent                            (AI agents)
-│   ├── deployment/kagent-controller  (KAgent operator)
-│   ├── deployment/kagent-ui          (KAgent web UI, ALB ingress)
-│   ├── Agent/idp-assistant           (IDP assistant A2A agent)
-│   ├── Agent/qa-agent                (QA agent)
-│   └── Agent/contract-assistant      (contract testing agent)
-│
-├── ml-platform                       (MLflow)
-│   └── deployment/mlflow             (tracking server, ALB ingress)
-│
-├── opencost                          (FinOps)
-│   └── deployment/opencost           (cost visibility, cluster-internal only)
-│
-├── crossplane-system                 (Crossplane)
-│   ├── crossplane                    (core controller)
-│   └── provider-aws-*               (AWS provider — S3, RDS, SQS, MSK, DynamoDB)
-│
-└── gatekeeper-system                 (OPA/Gatekeeper policy enforcement)
-    └── gatekeeper-controller-manager
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>EKS Cluster: idp-mvp (us-east-1)
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>│
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>├── kube-system
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>│   ├── aws-load-balancer-controller  (creates ALBs from Ingress resources)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>│   ├── ebs-csi-controller            (persistent volumes)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>│   └── coredns, kube-proxy
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>│
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>├── backstage                         (developer portal)
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>│   ├── deployment/backstage          (official Backstage image, 1 replica)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>│   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>│   └── service/backstage             (ALB ingress)
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>│
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>├── kyverno                           (admission controller)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>│   ├── kyverno-admission-controller  (mutate + validate webhooks)
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>│   ├── ClusterPolicy: crossplane-inject-team-tag   (auto-inject idp:team on Crossplane claims)
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>│   └── ClusterPolicy: crossplane-require-cost-tags (block claims without owner/costCenter)
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>│
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>├── argocd                            (GitOps controller)
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>│   ├── argocd-server                 (UI + API, ALB ingress)
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>│   ├── ApplicationSet: idp-services  (auto-discovers services/*/ — legacy flat services)
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>│   ├── AppProject: team-&lt;name&gt;       (one per team, created by scaffold; scoped to team-&lt;name&gt; ns)
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>│   ├── ApplicationSet: team-&lt;name&gt;   (auto-discovers teams/&lt;name&gt;/services/*/)
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>│   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>│
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>├── monitoring                        (observability stack)
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>│   ├── prometheus-kube-prometheus-prometheus  (metrics store, no public ALB)
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>│   ├── prometheus-grafana                     (dashboards, ALB ingress)
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>│   ├── prometheus-pushgateway                 (push endpoint, no public ALB)
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>│   ├── cronjob/dora-exporter                  (GitHub → Pushgateway + CloudWatch)
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>│   └── cronjob/tech-insights-exporter         (scorecard metrics → Pushgateway)
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>│
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>├── external-secrets                  (ESO)
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>│   ├── external-secrets              (ESO controller, created by Helm)
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>│   └── external-secrets-sa           (SA created by bootstrap.sh, annotated with IRSA)
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>│
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>├── services                          (manually deployed services)
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>│   └── deployment/hello-service      (reference Go service)
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>│
+<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>├── services-dev                      (ArgoCD-managed dev services; ResourceQuota + LimitRange applied)
+<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>│   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
+<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>│   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
+<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>│   ├── deployment/qa-mcp-server      (QA MCP server)
+<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>│   └── deployment/contract-mcp-server (contract testing tools)
+<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>│
+<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>├── team-&lt;name&gt;                       (one per team; created by Provision Team Namespace scaffold)
+<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>│   ├── ResourceQuota / LimitRange    (tier-based; auto-generated by Kyverno team-quota-policy)
+<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>│   ├── NetworkPolicy                 (deny-all ingress; allow intra-ns + monitoring + ingress-nginx)
+<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>│   ├── RoleBinding: idp-developer    (team members get deploy+observe access)
+<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>│   ├── ServiceAccount: deployer      (CI/CD identity for the team)
+<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>│   ├── SecretStore: team-&lt;name&gt;-secrets  (scoped to /&lt;name&gt;/* in Secrets Manager)
+<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>│   └── ConfigMap: grafana-folder-team-&lt;name&gt;  (→ Grafana sidecar creates team dashboard folder)
+<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>│
+<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a>├── kagent                            (AI agents)
+<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a>│   ├── deployment/kagent-controller  (KAgent operator)
+<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>│   ├── deployment/kagent-ui          (KAgent web UI, ALB ingress)
+<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>│   ├── Agent/idp-assistant           (IDP assistant A2A agent)
+<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a>│   ├── Agent/qa-agent                (QA agent)
+<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a>│   └── Agent/contract-assistant      (contract testing agent)
+<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a>│
+<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a>├── ml-platform                       (MLflow)
+<a id="__codelineno-7-61" name="__codelineno-7-61" href="#__codelineno-7-61"></a>│   └── deployment/mlflow             (tracking server, ALB ingress)
+<a id="__codelineno-7-62" name="__codelineno-7-62" href="#__codelineno-7-62"></a>│
+<a id="__codelineno-7-63" name="__codelineno-7-63" href="#__codelineno-7-63"></a>├── opencost                          (FinOps)
+<a id="__codelineno-7-64" name="__codelineno-7-64" href="#__codelineno-7-64"></a>│   └── deployment/opencost           (cost visibility, cluster-internal only)
+<a id="__codelineno-7-65" name="__codelineno-7-65" href="#__codelineno-7-65"></a>│
+<a id="__codelineno-7-66" name="__codelineno-7-66" href="#__codelineno-7-66"></a>├── crossplane-system                 (Crossplane)
+<a id="__codelineno-7-67" name="__codelineno-7-67" href="#__codelineno-7-67"></a>│   ├── crossplane                    (core controller)
+<a id="__codelineno-7-68" name="__codelineno-7-68" href="#__codelineno-7-68"></a>│   └── provider-aws-*               (AWS provider — S3, RDS, SQS, MSK, DynamoDB)
+<a id="__codelineno-7-69" name="__codelineno-7-69" href="#__codelineno-7-69"></a>│
+<a id="__codelineno-7-70" name="__codelineno-7-70" href="#__codelineno-7-70"></a>└── gatekeeper-system                 (OPA/Gatekeeper policy enforcement)
+<a id="__codelineno-7-71" name="__codelineno-7-71" href="#__codelineno-7-71"></a>    └── gatekeeper-controller-manager
+</code></pre></div>
 <h3 id="secrets-flow-aws-secrets-manager-pods">Secrets Flow (AWS Secrets Manager → Pods)<a class="headerlink" href="#secrets-flow-aws-secrets-manager-pods" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span></pre></div></td><td class="code"><div><pre><span></span><code>Terraform
-  └── creates placeholders in AWS Secrets Manager
-        idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
-                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET,
-                               PAGERDUTY_TOKEN, JIRA_TOKEN, JIRA_URL,
-                               DD_API_KEY, DD_APP_KEY
-        idp-mvp/dora-exporter → GITHUB_TOKEN
-        idp-mvp/kagent      → ANTHROPIC_API_KEY
-        idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
-
-bootstrap.sh
-  └── injects real values (reads from local/.env and cluster)
-        K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
-        BACKSTAGE_CATALOG_TOKEN   ← generated random value
-        GITHUB_TOKEN              ← read from env
-        GITHUB_APP_ID/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET ← GitHub App (optional; replaces PAT)
-        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
-
-External Secrets Operator (ESO)
-  ├── ClusterSecretStore: aws-secretsmanager
-  │     auth: IRSA via external-secrets-sa (annotated with idp-mvp-backstage IAM role)
-  │     → assumes role → calls secretsmanager:GetSecretValue
-  │
-  └── ExternalSecret (per namespace)
-        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage
-        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter
-        kagent-secret (namespace: kagent)           → idp-mvp/kagent
-              │
-              ▼ syncs every 1h (or on force-sync annotation)
-        Kubernetes Secret → mounted as env vars into pods
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Terraform
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  └── creates placeholders in AWS Secrets Manager
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET,
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>                               PAGERDUTY_TOKEN, JIRA_TOKEN, JIRA_URL,
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>                               DD_API_KEY, DD_APP_KEY
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        idp-mvp/dora-exporter → GITHUB_TOKEN
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        idp-mvp/kagent      → ANTHROPIC_API_KEY
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>bootstrap.sh
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>  └── injects real values (reads from local/.env and cluster)
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        BACKSTAGE_CATALOG_TOKEN   ← generated random value
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        GITHUB_TOKEN              ← read from env
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        GITHUB_APP_ID/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET ← GitHub App (optional; replaces PAT)
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>External Secrets Operator (ESO)
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>  ├── ClusterSecretStore: aws-secretsmanager
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  │     auth: IRSA via external-secrets-sa (annotated with idp-mvp-backstage IAM role)
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>  │     → assumes role → calls secretsmanager:GetSecretValue
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>  │
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>  └── ExternalSecret (per namespace)
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>        kagent-secret (namespace: kagent)           → idp-mvp/kagent
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>              │
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>              ▼ syncs every 1h (or on force-sync annotation)
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        Kubernetes Secret → mounted as env vars into pods
+</code></pre></div>
 <h3 id="irsa-roles-iam-roles-for-service-accounts">IRSA Roles (IAM Roles for Service Accounts)<a class="headerlink" href="#irsa-roles-iam-roles-for-service-accounts" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -3777,84 +4528,48 @@ External Secrets Operator (ESO)
 </tbody>
 </table>
 <h3 id="bootstrap-sequence">Bootstrap Sequence<a class="headerlink" href="#bootstrap-sequence" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
-<span class="normal"> 2</span>
-<span class="normal"> 3</span>
-<span class="normal"> 4</span>
-<span class="normal"> 5</span>
-<span class="normal"> 6</span>
-<span class="normal"> 7</span>
-<span class="normal"> 8</span>
-<span class="normal"> 9</span>
-<span class="normal">10</span>
-<span class="normal">11</span>
-<span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
-<span class="normal">17</span>
-<span class="normal">18</span>
-<span class="normal">19</span>
-<span class="normal">20</span>
-<span class="normal">21</span>
-<span class="normal">22</span>
-<span class="normal">23</span>
-<span class="normal">24</span>
-<span class="normal">25</span>
-<span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code>./scripts/setup.sh
-  └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
-
-./scripts/bootstrap.sh
-  ├── Phase 1 — Terraform (~20 min)
-  │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
-  │
-  ├── Phase 2 — Platform base (~5 min)
-  │     Namespaces · `services-quota.yaml` (ResourceQuota+LimitRange for services-dev/staging/prod)
-  │     RBAC · AWS Load Balancer Controller
-  │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
-  │
-  ├── Phase 3 — GitOps (~8 min)
-  │     ArgoCD · OPA/Gatekeeper · Crossplane
-  │     idp-services ApplicationSet (auto-discovers services/*/)
-  │     Kyverno 3.2.7 + team policies (crossplane-team-label-policy, team-quota-policy)
-  │     Secrets Manager updated: GITHUB_APP_* + TEAM_MAP (if env vars set)
-  │
-  ├── Phase 4 — Observability (~10 min)
-  │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
-  │     Pushgateway (cluster-internal)
-  │     OpenCost (cluster-internal)
-  │     DORA exporter CronJob
-  │
-  ├── Phase 5 — hello-service (~5 min)
-  │     docker buildx build --platform linux/amd64 → ECR push
-  │     ArgoCD syncs hello-service-dev
-  │
-  └── Phase 6 — Backstage (~5 min)
-        Build + push Backstage image to ECR
-        kubectl apply -f kubernetes/backstage/rbac.yaml  (shared RBAC)
-        kubectl apply -f aws/backstage/external-secret.yaml
-        kubectl apply -f aws/backstage/deployment.yaml
-        ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
-
-./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)
-  └── KAgent · idp-assistant · MLflow · MCP servers (idp, qa, contract)
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>./scripts/setup.sh
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>./scripts/bootstrap.sh
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  ├── Phase 1 — Terraform (~20 min)
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  │
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  ├── Phase 2 — Platform base (~5 min)
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>  │     Namespaces · `services-quota.yaml` (ResourceQuota+LimitRange for services-dev/staging/prod)
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>  │     RBAC · AWS Load Balancer Controller
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>  │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>  │
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>  ├── Phase 3 — GitOps (~8 min)
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  │     ArgoCD · OPA/Gatekeeper · Crossplane
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>  │     idp-services ApplicationSet (auto-discovers services/*/)
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>  │     Kyverno 3.2.7 + team policies (crossplane-team-label-policy, team-quota-policy)
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>  │     Secrets Manager updated: GITHUB_APP_* + TEAM_MAP (if env vars set)
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  │
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>  ├── Phase 4 — Observability (~10 min)
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>  │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>  │     Pushgateway (cluster-internal)
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>  │     OpenCost (cluster-internal)
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>  │     DORA exporter CronJob
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>  │
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>  ├── Phase 5 — hello-service (~5 min)
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>  │     docker buildx build --platform linux/amd64 → ECR push
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>  │     ArgoCD syncs hello-service-dev
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>  │
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>  └── Phase 6 — Backstage (~5 min)
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>        Build + push Backstage image to ECR
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>        kubectl apply -f kubernetes/backstage/rbac.yaml  (shared RBAC)
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>        kubectl apply -f aws/backstage/external-secret.yaml
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>        kubectl apply -f aws/backstage/deployment.yaml
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>        ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>  └── KAgent · idp-assistant · MLflow · MCP servers (idp, qa, contract)
+</code></pre></div>
 <h3 id="alb-ingress-map">ALB Ingress Map<a class="headerlink" href="#alb-ingress-map" title="Permanent link">&para;</a></h3>
 <p>All ingresses use <code>ingressClassName: alb</code> with <code>alb.ingress.kubernetes.io/scheme: internet-facing</code> and <code>target-type: ip</code>. Get the hostname for any service:</p>
-<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">&#39;{printf &quot;%-30s %-20s %s\n&quot;, $1, $2, $4}&#39;</span>
-</code></pre></div></td></tr></table></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{printf "%-30s %-20s %s\n", $1, $2, $4}'</span>
+</code></pre></div>
 <table>
 <thead>
 <tr>
@@ -3937,8 +4652,16 @@ External Secrets Operator (ESO)
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
         
       </main>
       
@@ -3949,35 +4672,35 @@ External Secrets Operator (ESO)
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../screenshots/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Screenshots">
+          <a href="../demo-runbook/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Demo Runbook">
             <div class="md-footer__button md-icon">
               
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
             </div>
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Previous
               </span>
               <div class="md-ellipsis">
-                Screenshots
+                Demo Runbook
               </div>
             </div>
           </a>
         
         
           
-          <a href="../golden-path/" class="md-footer__link md-footer__link--next" aria-label="Next: Golden Path">
+          <a href="../cli-reference/" class="md-footer__link md-footer__link--next" aria-label="Next: CLI Reference">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Golden Path
+                CLI Reference
               </div>
             </div>
             <div class="md-footer__button md-icon">
               
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
             </div>
           </a>
         
@@ -4006,12 +4729,13 @@ External Secrets Operator (ESO)
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "toc.integrate", "navigation.footer", "content.action.edit"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
-    
-      <script src="../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
-        <script src="../search/main.js"></script>
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
