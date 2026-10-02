@@ -579,5 +579,5 @@ Stated plainly, because finding these by surprise is worse than reading them her
 | Limitation | Detail |
 |---|---|
 | **Coarse authorization** | Any authenticated user can run any of the 59 templates against any namespace — GitHub Org Team sync gates sign-in, not template execution. Catalog deletes are owner-scoped (#155). [ADR-0004](design/adr-0004-identity-and-access.md), issue #153 |
-| **Sloth has no in-cluster operator** | SLO rules are vendored; editing a source file without the `sloth` binary silently changes nothing |
+| **Sloth has no in-cluster operator** | SLO rules are compiled ahead of time and committed (`scripts/generate-slo-rules.sh`); the `slo-drift` CI job fails a PR whose source and generated rules disagree. Backstage itself has no SLO yet (its metrics endpoint is #604) |
 | **No CI exercises an AWS bootstrap** | `terraform validate` and a guard against committed account ids is all that gates it |

@@ -1054,12 +1054,15 @@ _p44a2_pid=$!
   # output committed, so this is a plain kubectl apply with no new dependency. The
   # generated rules carry `release: prometheus`, which is what the kube-prometheus
   # ruleSelector matches, so Prometheus picks them up without further wiring.
-  _slo_gen="${ROOT_DIR}/observability/slo/generated/hello-service-slo-rules.yaml"
-  if [[ -f "$_slo_gen" ]]; then
-    kubectl apply -f "$_slo_gen"
+  # Every generated file, not just hello-service's: the MCP server SLOs (#314)
+  # live alongside it, and scripts/generate-slo-rules.sh + the slo-drift CI job
+  # guarantee each one matches its source.
+  _slo_dir="${ROOT_DIR}/observability/slo/generated"
+  if compgen -G "${_slo_dir}/*-slo-rules.yaml" >/dev/null; then
+    kubectl apply -f "$_slo_dir"
     log "  Sloth SLO rules applied — error budgets available in Grafana and /slo."
   else
-    log "  WARNING: ${_slo_gen##*/} not found — /slo will show demo data."
+    log "  WARNING: no generated SLO rules in ${_slo_dir} — /slo will show demo data."
   fi
 ) > "$_p44a_log" 2>&1 &
 _p44a_pid=$!
