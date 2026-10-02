@@ -117,3 +117,6 @@ terraform/lambda/*/handler.zip
 
 # generated diagram builds
 docs/diagrams/.build/
+
+# Go coverage profiles (CI writes them; check-go-coverage.sh reads them)
+coverage.out
