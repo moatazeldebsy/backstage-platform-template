@@ -48,23 +48,14 @@
 # }
 
 # ── Monitoring Secret Rotation ────────────────────────────────────────────────
-# Add CloudWatch alarm for failed secret rotation
-resource "aws_cloudwatch_metric_alarm" "secret_rotation_failure" {
-  alarm_name          = "${var.cluster_name}-secret-rotation-failure"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = "1"
-  metric_name         = "RotationFailure"
-  namespace           = "AWS/SecretsManager"
-  period              = "3600"
-  statistic           = "Sum"
-  threshold           = "1"
-  alarm_description   = "Alert when secret rotation fails"
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    SecretId = aws_secretsmanager_secret.kagent.id
-  }
-
-  # SNS notification
-  # alarm_actions = [aws_sns_topic.alerts.arn]
-}
+# Removed: a CloudWatch alarm on AWS/SecretsManager RotationFailure for
+# idp-mvp/kagent. That secret has no rotation configured, Secrets Manager does
+# not publish such a metric (rotation failures arrive as EventBridge events),
+# and the alarm had no alarm_actions — it could never fire or notify anyone,
+# while looking like rotation was being watched.
+#
+# Current state, stated plainly: no secret in this stack rotates. The RDS master
+# passwords are random_password values held in Terraform state (encrypted in the
+# S3 backend). Moving them to manage_master_user_password (RDS-managed, rotated)
+# changes how DATABASE_URLs are composed in rds.tf/grafana.tf and is tracked as
+# a follow-up rather than done here.

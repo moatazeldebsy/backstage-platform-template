@@ -177,7 +177,7 @@ variable "budget_alert_email" {
 }
 
 variable "slack_webhook_secret_name" {
-  description = "AWS Secrets Manager secret name containing the Slack webhook URL (key: 'url')"
+  description = "Unused: the cost-alert Lambda now reads the secret terraform/secrets.tf creates (idp-mvp/slack-webhook, key SLACK_WEBHOOK_URL). Kept so existing tfvars still plan."
   type        = string
   default     = "idp-mvp/slack-webhook"
 }
@@ -404,4 +404,29 @@ variable "s3_bucket_suffix" {
     condition     = can(regex("^(-[a-z0-9]+)*$", var.s3_bucket_suffix)) && length(var.s3_bucket_suffix) <= 12
     error_message = "s3_bucket_suffix must be empty or like \"-usw2\": lowercase letters, digits and hyphens, starting with a hyphen, at most 12 characters."
   }
+}
+
+# ── Audit / network evidence (off by default, on in profiles/medium|large) ────
+variable "eks_control_plane_log_types" {
+  description = "EKS control-plane log types sent to CloudWatch. [] keeps them off (they ingest at $0.50/GB); medium/large set api, audit, authenticator."
+  type        = list(string)
+  default     = []
+}
+
+variable "eks_control_plane_log_retention_days" {
+  description = "Retention for /aws/eks/<cluster>/cluster."
+  type        = number
+  default     = 7
+}
+
+variable "eks_public_access_cidrs" {
+  description = "CIDRs allowed to reach the public EKS API endpoint. The default allows everyone because bootstrap.sh and GitHub-hosted runners call it from outside the VPC; narrow it to office/VPN/runner ranges where possible."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "enable_vpc_flow_logs" {
+  description = "Send VPC flow logs to CloudWatch (30-day retention)."
+  type        = bool
+  default     = false
 }

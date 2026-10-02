@@ -14,15 +14,12 @@ resource "aws_ecr_repository" "services" {
   }
 }
 
-resource "aws_ecr_lifecycle_policy" "services" {
-  for_each   = aws_ecr_repository.services
-  repository = each.value.name
-
-  policy = jsonencode({
+locals {
+  ecr_lifecycle_policy = jsonencode({
     rules = [
       {
         rulePriority = 1
-        description  = "Keep last 10 tagged images"
+        description  = "Keep last 10 v* release images"
         selection = {
           tagStatus     = "tagged"
           tagPrefixList = ["v"]
@@ -41,9 +38,30 @@ resource "aws_ecr_lifecycle_policy" "services" {
           countNumber = 7
         }
         action = { type = "expire" }
+      },
+      {
+        # CI tags images with the short commit SHA (and `latest`), which the v*
+        # rule never matched, so every pushed image was kept forever. The cap
+        # is deliberately high: the prod overlay can pin an image several
+        # promotions old, and expiring it would ImagePullBackOff the next
+        # reschedule.
+        rulePriority = 3
+        description  = "Keep the newest 200 images of any tag"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 200
+        }
+        action = { type = "expire" }
       }
     ]
   })
+}
+
+resource "aws_ecr_lifecycle_policy" "services" {
+  for_each   = aws_ecr_repository.services
+  repository = each.value.name
+  policy     = local.ecr_lifecycle_policy
 }
 
 # ECR for Backstage
@@ -55,6 +73,12 @@ resource "aws_ecr_repository" "backstage" {
   image_scanning_configuration {
     scan_on_push = true
   }
+}
+
+# The backstage repo had no lifecycle policy at all.
+resource "aws_ecr_lifecycle_policy" "backstage" {
+  repository = aws_ecr_repository.backstage.name
+  policy     = local.ecr_lifecycle_policy
 }
 
 output "ecr_registry_url" {

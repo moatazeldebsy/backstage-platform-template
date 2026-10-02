@@ -38,6 +38,13 @@ langfuse:
   features:
     telemetryEnabled: false
 
+  # No self-service sign-up: the only account is the headless-init admin
+  # (langfuse-init). Signup was open, so anyone who could reach the UI could
+  # create an account and read every trace.
+  additionalEnv:
+    - name: AUTH_DISABLE_SIGNUP
+      value: "true"
+
   # Headless initialization — see the note in the local values file.
   additionalEnvFrom:
     - secretRef:

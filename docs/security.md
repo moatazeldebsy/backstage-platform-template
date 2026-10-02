@@ -104,8 +104,10 @@ with these safety defaults:
 - GitHub Actions CI uses `aws-actions/configure-aws-credentials` with OIDC — no long-lived AWS keys in repo secrets.
 - Trivy scans every image build; Cosign signs images pushed to ECR/GHCR.
 - OPA/Gatekeeper policies in `kubernetes/policies/` reject pods that pull `:latest`, lack resource limits, or omit cost-allocation labels.
-- RDS security group restricts ingress to the VPC CIDR (no `0.0.0.0/0`).
-- All namespaces enforce Pod Security Standards (`restricted` where possible, `baseline` for system namespaces).
+- RDS security group allows ingress only from the EKS node security group, and has no egress rule.
+- Pod Security Standards: `services*` namespaces enforce `restricted`; `backstage`, `ml-platform`, `kagent`, `argocd`, `external-secrets` and `crossplane-system` enforce `baseline` (warn/audit `restricted`); `monitoring` is `privileged` (node-exporter and promtail need host access). `kubernetes/namespaces/namespaces.yaml` is the source of truth.
+- CI fails the build on a fixable CRITICAL vulnerability (Trivy) before the image is signed or deployed; HIGH and unfixed findings are reported to the Security tab only.
+- On `--profile medium|large`: EKS control-plane `api`/`audit`/`authenticator` logs (90-day retention) and VPC flow logs (30 days). Off on smaller installs for cost.
 
 ## Production Backstage Hardening
 

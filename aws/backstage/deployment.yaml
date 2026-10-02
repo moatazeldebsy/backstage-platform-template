@@ -39,6 +39,19 @@ spec:
         - name: backstage
           image: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/backstage:BACKSTAGE_IMAGE_TAG
           imagePullPolicy: IfNotPresent
+          # Had none. Numeric runAsUser because the image says `USER node`, and
+          # the kubelet cannot verify runAsNonRoot against a user NAME (1000 is
+          # node in the node:* base images). Not readOnlyRootFilesystem: the
+          # TechDocs local builder writes under /tmp.
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 7007
             # Prometheus metrics from instrumentation.js (#604). Scraped through

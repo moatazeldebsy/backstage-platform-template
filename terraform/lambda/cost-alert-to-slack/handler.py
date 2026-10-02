@@ -2,32 +2,47 @@
 Lambda: Forward AWS cost alerts (Budget + Cost Anomaly Detection) to Slack.
 
 Triggered by SNS. Reads the Slack webhook URL from AWS Secrets Manager.
-Set SLACK_WEBHOOK_SECRET_NAME env var to the Secrets Manager secret name.
+SLACK_WEBHOOK_SECRET_NAME (set by terraform/finops.tf) is the secret's name or
+ARN; the secret is terraform/secrets.tf's idp-mvp/slack-webhook.
 """
 import json
 import os
 import urllib.request
 import boto3
 
-SLACK_WEBHOOK_SECRET_NAME = os.environ["SLACK_WEBHOOK_SECRET_NAME"]
-AWS_REGION = os.environ.get("AWS_REGION_NAME", "us-east-1")
+SLACK_WEBHOOK_SECRET_NAME = os.environ.get("SLACK_WEBHOOK_SECRET_NAME", "")
 
 _webhook_url_cache: str | None = None
 
 
 def _get_slack_webhook_url() -> str:
+    """The webhook URL, or "" when none is configured.
+
+    secrets.tf stores it under SLACK_WEBHOOK_URL; "url" is accepted for secrets
+    written by hand from this handler's old docstring.
+    """
     global _webhook_url_cache
-    if _webhook_url_cache:
+    if _webhook_url_cache is not None:
         return _webhook_url_cache
-    client = boto3.client("secretsmanager", region_name=AWS_REGION)
+    if not SLACK_WEBHOOK_SECRET_NAME:
+        _webhook_url_cache = ""
+        return _webhook_url_cache
+    # No region_name: the Lambda runtime sets AWS_REGION, which boto3 reads.
+    client = boto3.client("secretsmanager")
     secret = client.get_secret_value(SecretId=SLACK_WEBHOOK_SECRET_NAME)
     data = json.loads(secret["SecretString"])
-    _webhook_url_cache = data["url"]
+    _webhook_url_cache = data.get("SLACK_WEBHOOK_URL") or data.get("url") or ""
     return _webhook_url_cache
 
 
 def _post_to_slack(text: str) -> None:
     webhook_url = _get_slack_webhook_url()
+    if not webhook_url or webhook_url == "REPLACE_ME":
+        # Not an error: Slack is optional (budget_alert_email is the other
+        # channel). Raising would only make SNS retry a delivery that can
+        # never succeed.
+        print("cost-alert-to-slack: no Slack webhook configured; dropping: " + text.splitlines()[0])
+        return
     payload = json.dumps({"text": text}).encode("utf-8")
     req = urllib.request.Request(
         webhook_url,

@@ -40,3 +40,9 @@ secret_recovery_window_days      = 7
 rds_max_allocated_storage        = 2000
 rds_performance_insights_enabled = true
 enable_vpc_interface_endpoints   = true
+
+# Audit and network evidence — see variables.tf. Control-plane audit logs and
+# VPC flow logs are what an incident review works from.
+eks_control_plane_log_types          = ["api", "audit", "authenticator"]
+eks_control_plane_log_retention_days = 90
+enable_vpc_flow_logs                 = true
