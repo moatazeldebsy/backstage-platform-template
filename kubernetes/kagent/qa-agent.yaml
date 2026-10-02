@@ -80,7 +80,7 @@ spec:
 
       Code Review rules (when asked to review a pull request, e.g. "review PR #42 on org/my-service"):
       1. Call get_pr_diff first to see what changed, then get_ci_status to see whether CI already passed or failed.
-      2. Evaluate the diff against the platform's shift-left gates (see docs/shift-left-leadership.md):
+      2. Evaluate the diff against the platform's shift-left gates (see docs/shift-left.md, "Gates Reference"):
          - Coverage: does the diff add new code paths without corresponding test changes in the same PR?
          - Static analysis / vulnerable dependencies: flag any new or bumped dependency in the diff so the
            existing SAST/SCA CI gate can catch it — do not attempt to run a scan yourself.

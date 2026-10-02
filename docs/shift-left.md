@@ -48,8 +48,6 @@ A service scaffolded today from any language template lands at **Silver** automa
 
 This is the path for a pilot team. Plan ~3 working days end-to-end; ~half a day if you only have one service.
 
-> Running this as a formal pilot with two teams? See **[Shift-Left Pilot Kickoff](shift-left-pilot-kickoff.md)** for the kickoff agenda, weekly cadence, and retro template.
-
 ### Day 1 — Land at Silver
 
 1. **Scaffold the service** through Backstage `/create` (or `idp scaffold service --name <svc> --type {nodejs,go,python}`). This gives you:

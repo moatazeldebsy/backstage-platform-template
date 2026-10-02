@@ -28,7 +28,7 @@ A Backstage developer portal, golden-path Helm chart, 59 scaffold templates, an 
 
 - **Developer portal**: Backstage with catalog, TechDocs, Tech Radar and 59 software templates (services, QA suites, mobile, AI/ML, infra). See [Golden Path](docs/golden-path.md).
 - **Golden-path chart**: one Helm chart for every service, with health checks, metrics, RBAC, PDBs and optional Argo Rollouts canaries.
-- **Shift-left quality**: a Bronze/Silver/Gold scorecard, PR quality gates and contract testing. See [Shift-Left Leadership](docs/shift-left-leadership.md).
+- **Shift-left quality**: a Bronze/Silver/Gold scorecard, PR quality gates and contract testing. See [Shift-Left Quality](docs/shift-left.md).
 - **AI/ML platform**: KAgent agents, 8 MCP servers, MLflow and Langfuse, all behind one AI Gateway and LiteLLM. See [AI Assistant](docs/ai-assistant.md).
 - **Observability**: Prometheus, Grafana, Loki, Tempo, Sloth SLOs, DORA and FinOps. See [DORA + FinOps](docs/dora-finops.md).
 - **Engineering Intelligence**: evidence-backed health scores and a maturity model built from the platform's own telemetry. See [docs](docs/engineering-intelligence/product-vision.md).

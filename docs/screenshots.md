@@ -114,7 +114,7 @@ Incidents are records, not Slack threads — auto-filed from Alertmanager, sever
 
 ![Incidents](assets/screenshots/incidents.jpg)
 
-<details>
+<details markdown="1">
 <summary><b>More screens</b> — Tech Radar, onboarding, Learning Center, API explorer, Copilot metrics, admin, activity feed, search, support</summary>
 
 <br>
