@@ -25,8 +25,9 @@ Locally this takes **about 15–20 minutes** and needs no cloud account. On AWS 
 | Terraform | ≥ 1.5 | `brew install terraform` (AWS only) |
 
 !!! warning "The full local stack is heavy"
-    A 16 GB machine runs the core platform plus at most **one** AI component.
-    The full stack needs 24 GB. Read [Machine requirements](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them)
+    A 16 GB machine runs the core platform plus at most **one** AI component
+    (Langfuse, KAgent with a couple of agents, or MLflow). The full stack needs a
+    24 GB machine with 16 GB given to Docker. Read [Machine requirements](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them)
     before adding the AI layer.
 
 !!! tip "Set `GITHUB_TOKEN` first"
