@@ -1,4 +1,9 @@
-import { createBackendPlugin, coreServices } from '@backstage/backend-plugin-api';
+import {
+  createBackendPlugin,
+  coreServices,
+  type HttpAuthService,
+  type LoggerService,
+} from '@backstage/backend-plugin-api';
 import express, { Router } from 'express';
 import { Readable } from 'stream';
 
@@ -19,6 +24,79 @@ import { Readable } from 'stream';
 // ignore whatever the client sent, and set X-Backstage-User ourselves before
 // forwarding to KAgent. A forged header in the incoming request simply never
 // reaches KAgent.
+export interface IdentityProxyOptions {
+  httpAuth: HttpAuthService;
+  logger: LoggerService;
+  /** KAgent base URL, e.g. http://kagent.idp.local */
+  kagentUrl: string;
+  /** Injectable for tests. */
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * The proxy route on its own, so it can be tested without a backend (#321).
+ * The property that matters: the X-Backstage-User header KAgent receives comes
+ * from the caller's verified credentials and nothing the client sent.
+ */
+export function createIdentityProxyRouter(opts: IdentityProxyOptions): Router {
+  const { httpAuth, logger, kagentUrl } = opts;
+  const fetchImpl = opts.fetchImpl ?? fetch;
+
+  const router = Router();
+  router.use(express.json());
+
+  // POST /api/idp-ai-identity/a2a/kagent/:agent — same JSON-RPC body shape
+  // the frontend already sends, just re-signed with a verified identity.
+  router.post('/a2a/kagent/:agent', async (req, res, next) => {
+    // Express 4 does not catch a rejected async handler: a throw here (e.g. a
+    // service token, which credentials({ allow: ['user'] }) refuses) used to
+    // leave the request hanging. next(err) lets Backstage's error middleware
+    // answer it with the right 401/403.
+    let userRef: string;
+    try {
+      const credentials = await httpAuth.credentials(req, { allow: ['user'] });
+      userRef = credentials.principal.userEntityRef;
+    } catch (err) {
+      next(err);
+      return;
+    }
+
+    const target = `${kagentUrl}/a2a/kagent/${encodeURIComponent(req.params.agent)}`;
+    let upstream: Response;
+    try {
+      upstream = await fetchImpl(target, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // The only identity header that matters — set from verified
+          // credentials, never from req.get('x-backstage-user').
+          'X-Backstage-User': userRef,
+        },
+        body: JSON.stringify(req.body),
+      });
+    } catch (err) {
+      logger.warn(`idp-ai-identity: request to KAgent failed: ${err}`);
+      res.status(502).json({ error: 'KAgent request failed' });
+      return;
+    }
+
+    res.status(upstream.status);
+    const contentType = upstream.headers.get('content-type');
+    if (contentType) res.setHeader('content-type', contentType);
+
+    if (!upstream.body) {
+      res.end();
+      return;
+    }
+    // a2a normally streams text/event-stream for the agent turn; pipe it
+    // through rather than buffering, same as the frontend's own handling
+    // of the streamed response today.
+    Readable.fromWeb(upstream.body as unknown as import('stream/web').ReadableStream).pipe(res);
+  });
+
+  return router;
+}
+
 export const idpAiIdentityProxyPlugin = createBackendPlugin({
   pluginId: 'idp-ai-identity',
   register(env) {
@@ -33,51 +111,9 @@ export const idpAiIdentityProxyPlugin = createBackendPlugin({
         // already use to reach KAgent from the backend.
         const kagentUrl = process.env.KAGENT_EXTERNAL_URL ?? 'http://kagent.idp.local';
 
-        const router = Router();
-        router.use(express.json());
-
-        // POST /api/idp-ai-identity/a2a/kagent/:agent — same JSON-RPC body shape
-        // the frontend already sends, just re-signed with a verified identity.
-        router.post('/a2a/kagent/:agent', async (req, res) => {
-          const credentials = await httpAuth.credentials(req, { allow: ['user'] });
-          const userRef = credentials.principal.userEntityRef;
-
-          const target = `${kagentUrl}/a2a/kagent/${encodeURIComponent(req.params.agent)}`;
-          let upstream: Response;
-          try {
-            upstream = await fetch(target, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                // The only identity header that matters — set from verified
-                // credentials, never from req.get('x-backstage-user').
-                'X-Backstage-User': userRef,
-              },
-              body: JSON.stringify(req.body),
-            });
-          } catch (err) {
-            logger.warn(`idp-ai-identity: request to KAgent failed: ${err}`);
-            res.status(502).json({ error: 'KAgent request failed' });
-            return;
-          }
-
-          res.status(upstream.status);
-          const contentType = upstream.headers.get('content-type');
-          if (contentType) res.setHeader('content-type', contentType);
-
-          if (!upstream.body) {
-            res.end();
-            return;
-          }
-          // a2a normally streams text/event-stream for the agent turn; pipe it
-          // through rather than buffering, same as the frontend's own handling
-          // of the streamed response today.
-          Readable.fromWeb(upstream.body as unknown as import('stream/web').ReadableStream).pipe(res);
-        });
-
-        httpRouter.use(router);
+        httpRouter.use(createIdentityProxyRouter({ httpAuth, logger, kagentUrl }));
         // Every route here already requires an authenticated user via
-        // httpAuth.credentials(..., { allow: ['user'] }) above — no separate
+        // httpAuth.credentials(..., { allow: ['user'] }) — no separate
         // addAuthPolicy override needed, same reasoning as idpLearningCenter.ts.
 
         logger.info(`idp-ai-identity proxy initialized (target: ${kagentUrl})`);
