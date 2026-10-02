@@ -21,7 +21,12 @@
 #   kubectl apply -f observability/alertmanager/alertmanager-config.yaml
 ---
 # AlertmanagerConfig CRD — defines routes and receivers.
-# Picked up automatically by the Prometheus Operator when alertmanagerConfigSelector: {}.
+# Picked up by the Prometheus Operator via alertmanagerConfigSelector (the
+# part-of label below). It applies to ALL alerts only because the Alertmanager
+# runs with alertmanagerConfigMatcherStrategy OnNamespaceExceptForAlertmanagerNamespace
+# (prometheus-stack-values.yaml, local and AWS); under the default OnNamespace it
+# silently matched namespace="monitoring" alerts only (#159). Per-team routing
+# lives in each team's own namespace: kubernetes/teams/<team>/alertmanager-config.yaml.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: AlertmanagerConfig
 metadata:
