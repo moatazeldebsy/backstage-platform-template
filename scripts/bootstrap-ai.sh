@@ -1969,10 +1969,46 @@ EOF
   # pinned chart version and values file are byte-identical to the last
   # successful install. Both fall through to a real install on any version bump,
   # values edit, or release Helm no longer reports as deployed.
+  # AWS: KAgent's database on RDS (terraform/rds.tf, created with enable_ai)
+  # instead of the chart's bundled single-pod Postgres. The URL Secret must exist
+  # before the chart installs (the controller mounts it), and pgvector must be
+  # created before the controller runs its vector migrations. If either step
+  # fails, this run stays on the bundled Postgres rather than leaving the
+  # controller unable to start.
+  KAGENT_USE_RDS=false
+  KAGENT_EXTRA_VALUES=()
+  if [[ "$DEPLOY_MODE" == "aws" && -n "$(tf_output kagent_db_secret_arn)" ]]; then
+    info "Wiring KAgent to its RDS database..."
+    kubectl create namespace kagent --dry-run=client -o yaml | kubectl apply -f -
+    KAGENT_ESO_ROLE_ARN=$(tf_output kagent_eso_role_arn)
+    sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+      "${REPO_ROOT}/aws/kagent/external-secret.yaml" | kubectl apply -f -
+    [[ -n "$KAGENT_ESO_ROLE_ARN" ]] && kubectl annotate serviceaccount kagent-eso-sa -n kagent \
+      "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" --overwrite
+    kubectl apply -f "${REPO_ROOT}/aws/kagent/db-external-secret.yaml"
+    if kubectl wait --for=condition=Ready externalsecret/kagent-db -n kagent --timeout=180s >/dev/null 2>&1; then
+      kubectl delete pod kagent-db-init -n kagent --ignore-not-found >/dev/null 2>&1
+      if kubectl run kagent-db-init -n kagent --rm -i --restart=Never --quiet \
+           --image=postgres:17-alpine \
+           --overrides='{"spec":{"containers":[{"name":"kagent-db-init","image":"postgres:17-alpine",
+             "command":["sh","-c","psql \"$(cat /db/url)\" -v ON_ERROR_STOP=1 -c \"CREATE EXTENSION IF NOT EXISTS vector\""],
+             "volumeMounts":[{"name":"db","mountPath":"/db","readOnly":true}]}],
+             "volumes":[{"name":"db","secret":{"secretName":"kagent-db"}}]}}' >/dev/null; then
+        KAGENT_USE_RDS=true
+        KAGENT_EXTRA_VALUES=(--values "${REPO_ROOT}/aws/kagent/values-rds.yaml")
+        check "KAgent database: RDS (pgvector ready)"
+      else
+        warn "Could not create the pgvector extension on KAgent's RDS database — staying on the bundled Postgres this run."
+      fi
+    else
+      warn "ExternalSecret kagent/kagent-db not Ready after 180s — staying on the bundled Postgres this run. Check: kubectl describe externalsecret kagent-db -n kagent"
+    fi
+  fi
+
   _crds_fp_file="${CACHE_DIR}/kagent-crds.fingerprint"
   _crds_fp="${KAGENT_CHART_VERSION}"
   _kagent_fp_file="${CACHE_DIR}/kagent.fingerprint"
-  _kagent_fp="${KAGENT_CHART_VERSION}:$(_sha256 "$KAGENT_VALUES")"
+  _kagent_fp="${KAGENT_CHART_VERSION}:$(_sha256 "$KAGENT_VALUES"):${KAGENT_USE_RDS}"
 
   if helm_release_unchanged kagent-crds kagent "$_crds_fp_file" "$_crds_fp"; then
     info "KAgent CRDs already at v${KAGENT_CHART_VERSION} — skipping reinstall."
@@ -2005,6 +2041,7 @@ EOF
       --version "${KAGENT_CHART_VERSION}" \
       --namespace kagent \
       --values "${KAGENT_VALUES}" \
+      ${KAGENT_EXTRA_VALUES[@]+"${KAGENT_EXTRA_VALUES[@]}"} \
       --set registry=ghcr.io \
       --force-conflicts
     helm_record_fingerprint "$_kagent_fp_file" "$_kagent_fp"
@@ -2040,7 +2077,9 @@ EOF
   # "5c. Restart kagent-controller" below. This flag records whether it's needed.
   _ctrl_restart_needed=false
 
-  if [[ "$_pg_image" == "pgvector/pgvector:pg18" && "$_vector_enabled" == "true" ]]; then
+  if [[ "$KAGENT_USE_RDS" == "true" ]]; then
+    check "KAgent uses RDS — no bundled Postgres to patch."
+  elif [[ "$_pg_image" == "pgvector/pgvector:pg18" && "$_vector_enabled" == "true" ]]; then
     check "pgvector image + DATABASE_VECTOR_ENABLED already applied — skipping patch and controller restart."
   else
     _ctrl_restart_needed=true

@@ -8,7 +8,7 @@
 #
 # Destruction order matters:
 #   1. ALBs (K8s-managed, block VPC deletion) + stale ALB-controller security groups
-#   2. RDS deletion-protection off (backstage, langfuse, litellm, grafana)
+#   2. RDS deletion-protection off (backstage, langfuse, litellm, grafana, kagent)
 #   3. Scaffolded services: ArgoCD Applications + Crossplane Claims (must go
 #      before Phase 4, or Crossplane recreates what Phase 4 deletes)
 #   4. Crossplane-orphaned resources (idp:provisioner=crossplane tag)
@@ -316,7 +316,7 @@ _cleanup_stale_k8s_security_groups
 # Backstage, so a prod teardown with Langfuse or LiteLLM enabled stopped there.
 log "Phase 2: Disabling RDS deletion protection..."
 
-for _db in backstage langfuse litellm grafana; do
+for _db in backstage langfuse litellm grafana kagent; do
   RDS_INSTANCE="${CLUSTER_NAME}-${_db}"
   if aws rds describe-db-instances \
     --db-instance-identifier "$RDS_INSTANCE" \

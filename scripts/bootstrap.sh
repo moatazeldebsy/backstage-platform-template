@@ -1621,6 +1621,31 @@ configuration:
       provider: aws
       config:
         region: ${AWS_REGION}
+# A backup that fails every night used to be invisible until a restore was
+# needed. Scraped with the release label kube-prometheus-stack selects on.
+metrics:
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+  prometheusRule:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+    spec:
+      - alert: VeleroBackupFailed
+        expr: increase(velero_backup_failure_total{schedule!=""}[26h]) > 0 or increase(velero_backup_partial_failure_total{schedule!=""}[26h]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Velero schedule {{ \$labels.schedule }} had a failed or partially failed backup in the last day"
+          runbook: "velero backup get; velero backup describe <name> --details; velero backup logs <name>"
+      - alert: VeleroNoRecentBackup
+        expr: time() - max by (schedule) (velero_backup_last_successful_timestamp{schedule!=""}) > 2 * 86400
+        labels:
+          severity: critical
+        annotations:
+          summary: "Velero schedule {{ \$labels.schedule }} has not completed a backup in over 48h"
 snapshotsEnabled: true
 deployNodeAgent: true
 # The node agent backs up pod volumes on every node, including Karpenter's
@@ -1647,12 +1672,17 @@ spec:
   schedule: "0 3 * * *"
   template:
     ttl: 720h0m0s
+    # Every namespace except the system ones. The list used to name five
+    # platform namespaces, which left out services-*, team-* (created on demand
+    # by ArgoCD), crossplane-system (the claims and composites that point at
+    # live AWS resources) and external-secrets.
     includedNamespaces:
-      - backstage
-      - argocd
-      - monitoring
-      - ml-platform
-      - kagent
+      - "*"
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - velero
     snapshotVolumes: true
 EOF
 

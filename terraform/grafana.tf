@@ -38,7 +38,10 @@ resource "aws_db_instance" "grafana" {
 
   multi_az          = var.rds_multi_az
   allocated_storage = 20
-  storage_type      = "gp3"
+  # Grows on its own up to this cap instead of going read-only when full
+  # (ADR-0009: storage autoscaling on every instance).
+  max_allocated_storage = 100
+  storage_type          = "gp3"
 
   backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true

@@ -25,12 +25,11 @@ resource "aws_security_group" "rds" {
     security_groups = [module.eks.node_security_group_id]
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # No egress. RDS never opens connections of its own here (replies to the
+  # ingress above are allowed statefully), and this used to allow everything to
+  # 0.0.0.0/0. `egress = []` rather than omitting the block: with no egress
+  # blocks Terraform leaves an existing rule in place instead of removing it.
+  egress = []
 
   tags = {
     Name = "${var.cluster_name}-rds-sg"
@@ -124,7 +123,10 @@ resource "aws_db_instance" "langfuse" {
   # which left this DB as the one single-AZ dependency on a Multi-AZ install.
   multi_az          = var.rds_multi_az
   allocated_storage = 20
-  storage_type      = "gp3"
+  # Grows on its own up to this cap instead of going read-only when full
+  # (ADR-0009: storage autoscaling on every instance).
+  max_allocated_storage = 100
+  storage_type          = "gp3"
 
   backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true
@@ -217,7 +219,10 @@ resource "aws_db_instance" "litellm" {
   # which left this DB as the one single-AZ dependency on a Multi-AZ install.
   multi_az          = var.rds_multi_az
   allocated_storage = 20
-  storage_type      = "gp3"
+  # Grows on its own up to this cap instead of going read-only when full
+  # (ADR-0009: storage autoscaling on every instance).
+  max_allocated_storage = 100
+  storage_type          = "gp3"
 
   backup_retention_period   = var.rds_backup_retention_days
   storage_encrypted         = true
@@ -260,4 +265,81 @@ resource "aws_secretsmanager_secret_version" "litellm_db" {
 output "litellm_db_secret_arn" {
   description = "Secrets Manager ARN holding the LiteLLM Postgres connection string"
   value       = one(aws_secretsmanager_secret.litellm_db[*].arn)
+}
+
+# ── KAgent ────────────────────────────────────────────────────────────────────
+# KAgent's controller database: agent sessions, tasks, checkpoints and the
+# pgvector long-term memory table. It used to be the chart's bundled Postgres —
+# one pod on one single-AZ EBS volume (reclaimPolicy Delete), recoverable only
+# from the daily Velero snapshot, and called "for development and evaluation
+# only" by the chart itself. Same dedicated-RDS-per-component pattern as
+# LiteLLM above. Created with the AI layer (enable_ai), like KAgent itself.
+# PG17 on RDS ships pgvector; bootstrap-ai.sh runs CREATE EXTENSION vector.
+resource "random_password" "kagent_rds" {
+  count = var.enable_ai ? 1 : 0
+
+  length = 32
+  # Composed into a URL below — same URL-safe set as litellm_rds.
+  special          = true
+  override_special = "-_"
+}
+
+resource "aws_db_instance" "kagent" {
+  count = var.enable_ai ? 1 : 0
+
+  identifier     = "${var.cluster_name}-kagent"
+  engine         = "postgres"
+  engine_version = "17"
+  instance_class = var.litellm_rds_instance_class
+
+  db_name  = "kagent"
+  username = "kagent"
+  password = random_password.kagent_rds[0].result
+
+  db_subnet_group_name   = aws_db_subnet_group.backstage.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+
+  multi_az              = var.rds_multi_az
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_type          = "gp3"
+
+  backup_retention_period   = var.rds_backup_retention_days
+  storage_encrypted         = true
+  copy_tags_to_snapshot     = true
+  backup_window             = "03:00-04:00"
+  maintenance_window        = "sun:04:30-sun:05:30"
+  skip_final_snapshot       = var.environment == "prod" ? false : true
+  final_snapshot_identifier = "${var.cluster_name}-kagent-final"
+  deletion_protection       = var.environment == "prod" ? true : false
+
+  tags = {
+    Name = "${var.cluster_name}-kagent-db"
+  }
+}
+
+# The full URL, read by the controller through database.postgres.urlFile
+# (aws/kagent/values-rds.yaml). sslmode=require: RDS PG17's default parameter
+# group forces SSL.
+resource "aws_secretsmanager_secret" "kagent_db" {
+  count = var.enable_ai ? 1 : 0
+
+  name                    = "idp-mvp/kagent-db"
+  description             = "KAgent controller Postgres connection string"
+  recovery_window_in_days = var.secret_recovery_window_days
+}
+
+resource "aws_secretsmanager_secret_version" "kagent_db" {
+  count = var.enable_ai ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.kagent_db[0].id
+
+  secret_string = jsonencode({
+    url = "postgresql://kagent:${random_password.kagent_rds[0].result}@${aws_db_instance.kagent[0].address}:5432/kagent?sslmode=require"
+  })
+}
+
+output "kagent_db_secret_arn" {
+  description = "Secrets Manager ARN holding the KAgent Postgres connection string (empty without enable_ai)"
+  value       = one(aws_secretsmanager_secret.kagent_db[*].arn)
 }

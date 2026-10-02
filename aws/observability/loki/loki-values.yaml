@@ -31,7 +31,15 @@ loki:
           prefix: loki_index_
           period: 24h
   commonConfig:
-    replication_factor: 2
+    # 3 writers, RF 3, quorum 2: one writer can be down (rollout, drain, spot
+    # reclaim) and ingestion continues. RF 2 on 2 writers needed both.
+    replication_factor: 3
+  # retention_period below is only enforced by the compactor, and only with
+  # retention_enabled. Without it nothing was ever deleted and the chunks
+  # bucket grew without bound.
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
   limits_config:
     retention_period: 30d
     ingestion_rate_mb: 16
@@ -52,7 +60,7 @@ read:
       memory: 512Mi
 
 write:
-  replicas: 2
+  replicas: 3
   resources:
     requests:
       cpu: 100m
@@ -62,7 +70,9 @@ write:
       memory: 1Gi
 
 backend:
-  replicas: 1
+  # Runs the compactor (now deleting data) and the index gateway; 2 so a
+  # single pod restart does not stall queries.
+  replicas: 2
   resources:
     requests:
       cpu: 50m
