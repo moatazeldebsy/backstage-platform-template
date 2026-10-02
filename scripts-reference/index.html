@@ -2575,10 +2575,6 @@
 <td><code>recover-docker-restart.sh</code></td>
 <td>Patch Kind after Docker Desktop restarts — fixes IPs, restarts ingress, smoke-tests all URLs</td>
 </tr>
-<tr>
-<td><code>run-exporters-from-host.sh</code></td>
-<td>Runs the DORA / flaky-test / tech-insights exporters from the host against the cluster's Pushgateway, for when a starved cluster is failing to fetch from GitHub and you want the numbers without waiting for it to recover. Reads every env var from the live CronJob so it cannot drift; <code>--list</code>, <code>--dry-run</code>, <code>--loop N</code></td>
-</tr>
 </tbody>
 </table>
 <h2 id="day-0-day-1-platform-setup">Day-0 / Day-1 — Platform setup<a class="headerlink" href="#day-0-day-1-platform-setup" title="Permanent link">&para;</a></h2>
@@ -2612,11 +2608,6 @@
 <td>Manual, after changing anything under <code>packages/engineering-intelligence-core/</code> or <code>engineeringIntelligence/</code></td>
 </tr>
 <tr>
-<td><code>run-exporters-from-host.sh</code></td>
-<td>Runs an exporter from the host against the cluster's Pushgateway. Exists because a starved cluster fails to fetch from GitHub — <code>ConnectionError</code>/<code>SSLError</code> in a pod while the same call answers in ~0.6s on the host — leaving Developer Experience, Reliability and Quality unscored. The cause is resource exhaustion, not the network: once the cluster settled, the same CronJob completed in 3m20s with zero fetch errors, and a 10MB pod download succeeded 6/6 at both MTU 1500 and 1280. Reads every environment variable from the live CronJob spec and only rewrites in-cluster DNS to the ingress, probing each address first, so it cannot drift. Pushgateway is in-memory, so <code>--loop N</code> re-pushes after a restart.</td>
-<td>Manual, when a loaded cluster is failing its exporter jobs</td>
-</tr>
-<tr>
 <td><code>bootstrap.sh</code></td>
 <td>Provisions AWS EKS, ECR, IAM (Terraform), deploys the core platform components — the AI/ML stack only with <code>--with-ai</code>/<code>--adp</code> (Phase 6 then runs <code>bootstrap-ai.sh --aws</code> internally) — and pushes <code>hello-service</code> to ECR. ~40–70 min. See <a href="../DEPLOYMENT_GUIDE/">DEPLOYMENT_GUIDE.md</a> for full walkthrough.</td>
 <td><code>setup.sh</code> → AWS path, or standalone</td>
@@ -2630,11 +2621,6 @@
 <td><code>cleanup.sh</code></td>
 <td><strong>Safe teardown.</strong> Runs ordered phases 0–8 (plus 0b, 5b, 7b, 7c): stop ArgoCD + Loki writers → drain Karpenter nodes (if enabled) → delete orphaned ALBs and stale SGs → disable RDS protection → <strong>remove scaffolded services from ArgoCD + Helm + git</strong> → clean Crossplane-tagged resources → empty S3/ECR → terminate leftover Karpenter instances + delete script-created secrets → terraform destroy → delete CloudWatch log groups → <strong>delete orphaned EBS volumes (PVC disks) owned by the cluster</strong> → delete Karpenter launch templates + instance profiles → verify, including a <strong>tag sweep</strong> that flags anything still tagged for the cluster. Order matters: ALBs and Crossplane resources are created by in-cluster controllers, so <code>terraform destroy</code> alone leaves them orphaned — see <a href="../DEPLOYMENT_GUIDE/#what-terraform-owns-and-what-it-cannot-destroy">DEPLOYMENT_GUIDE.md</a>. Use <code>--force</code> to skip prompts.</td>
 <td>When tearing down AWS resources</td>
-</tr>
-<tr>
-<td><code>cleanup-helm-repos.sh</code></td>
-<td>Removes stale Helm repos and ensures required repos are present before any <code>helm install</code>.</td>
-<td><code>setup.sh</code> (auto), or standalone</td>
 </tr>
 <tr>
 <td><code>get-k8s-credentials.sh</code></td>
@@ -3136,14 +3122,12 @@ the scripts fall back to plain <code>docker build</code> + <code>docker push</co
 <span class="normal">24</span>
 <span class="normal">25</span>
 <span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span></pre></div></td><td class="code"><div><pre><span></span><code># First-time setup (interactive)
+<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code># First-time setup (interactive)
 scripts/setup.sh
   └─ Phase 0: replace placeholders in all files
   └─ Phase 1: choose local | aws | skip
        │
-       ├─ local path ──► cleanup-helm-repos.sh          (auto)
-       │                ► bootstrap-local.sh
+       ├─ local path ──► bootstrap-local.sh
        │                    ├─ get-k8s-credentials.sh   (auto)
        │                    └─ apply-catalog-exporter.sh (auto)
        │                ► bootstrap-local.sh --start-backstage
