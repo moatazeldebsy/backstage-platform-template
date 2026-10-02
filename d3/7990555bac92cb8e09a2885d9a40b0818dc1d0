@@ -1,0 +1,19 @@
+docs/diagrams/platform-planes.html
+  s_dc89fce4a926ca::t_8b2f4a1254c355 180,284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d37990555bac92cb8e09a2885d9a40b0818dc1d0",
+  "prompts": {},
+  "sessions": {
+    "s_dc89fce4a926ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b675f0a9-9665-49ef-970a-1267c5a48265",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
