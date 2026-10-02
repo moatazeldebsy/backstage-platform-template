@@ -7,6 +7,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'mkdocs.site.yml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -32,4 +33,4 @@ jobs:
         run: pip install mkdocs==1.6.1 mkdocs-techdocs-core==1.7.1 mkdocs-material==9.7.7
 
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --clean
+        run: mkdocs gh-deploy --force --clean -f mkdocs.site.yml
