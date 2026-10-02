@@ -163,6 +163,13 @@ proxy:
         Authorization: Bearer ${ARGOCD_AUTH_TOKEN}
     /kagent:
       target: http://kagent-ui.kagent.svc.cluster.local:8080
+      # GET only. The frontend reads agents and sessions through here, but every
+      # agent turn goes through /api/idp-ai-identity (idpAiIdentityProxy.ts),
+      # which sets X-Backstage-User from the verified session. A POST through
+      # this passthrough would forward a browser-forged X-Backstage-User, and
+      # would also let any signed-in user create Agents/ModelConfigs via the
+      # KAgent controller API.
+      allowedMethods: ['GET']
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/kagent': ''

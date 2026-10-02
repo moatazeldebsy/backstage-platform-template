@@ -55,10 +55,14 @@ langfuse:
     enabled: true
     className: alb
     annotations:
-      alb.ingress.kubernetes.io/scheme: internet-facing
-      # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
-      # Langfuse is its listener on :3001.
-      alb.ingress.kubernetes.io/group.name: idp-platform
+      # Internal, not internet-facing: Langfuse has no authentication of its
+      # own, and on the public ALB anyone could reach it. Reach it from inside
+      # the VPC (VPN / bastion) or with kubectl port-forward. Ingresses in one
+      # ALB group must share a scheme, so the internal UIs get their own group
+      # (idp-internal) and listener :3001 there; scripts/lib.sh alb_ingress_url
+      # still resolves the hostname.
+      alb.ingress.kubernetes.io/scheme: internal
+      alb.ingress.kubernetes.io/group.name: idp-internal
       alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 3001}]'
       alb.ingress.kubernetes.io/target-type: ip
       alb.ingress.kubernetes.io/backend-protocol: HTTP
