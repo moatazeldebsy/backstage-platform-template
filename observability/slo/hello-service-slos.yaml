@@ -1,6 +1,8 @@
 # Sloth SLO definitions for hello-service
-# Apply with: sloth generate -i observability/slo/hello-service-slos.yaml | kubectl apply -f -
-# Requires: https://github.com/slok/sloth installed and Prometheus Operator running
+# After editing, run ./scripts/generate-slo-rules.sh and commit generated/ (CI
+# job slo-drift enforces it). Apply with:
+#   kubectl apply -f observability/slo/generated/hello-service-slo-rules.yaml
+# The script downloads a pinned sloth build; applying needs the Prometheus Operator.
 
 apiVersion: sloth.slok.dev/v1
 kind: PrometheusServiceLevel

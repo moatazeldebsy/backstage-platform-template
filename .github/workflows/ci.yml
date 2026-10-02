@@ -62,6 +62,7 @@ jobs:
       mcp-servers: ${{ steps.filter.outputs.mcp-servers }}
       scripts: ${{ steps.filter.outputs.scripts }}
       platform-outputs: ${{ steps.filter.outputs.platform-outputs }}
+      slo: ${{ steps.filter.outputs.slo }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -93,7 +94,7 @@ jobs:
           # A change to the workflow itself re-runs everything.
           if grep -qx '.github/workflows/ci.yml' <<<"$files"; then
             echo "ci.yml changed — running all jobs."
-            for k in go-service cli helm k8s kagent backstage catalog techdocs terraform python-obs contract-mcp mcp-common mcp-servers scripts platform-outputs; do
+            for k in go-service cli helm k8s kagent backstage catalog techdocs terraform python-obs contract-mcp mcp-common mcp-servers scripts platform-outputs slo; do
               echo "$k=true" >> "$GITHUB_OUTPUT"
             done
             exit 0
@@ -167,6 +168,9 @@ jobs:
             # templates themselves, the paths their PRs write, and everything
             # the checks read (chart, policies, XRDs, the scripts).
             echo "platform-outputs=$(match '^(backstage/catalog/templates/|backstage/catalog/all-templates\.yaml$|terraform/infra/|services/[^/]+/(claims/|secrets/|helm-values-)|kubernetes/(teams|policies|namespaces)/|observability/slo/|helm/service-template/|aws/crossplane/compositions/|scripts/(render-template\.js|validate-platform-outputs\.py)$)')"
+            # Sloth sources, their committed output, and the script that
+            # regenerates one from the other.
+            echo "slo=$(match '^(observability/slo/|scripts/generate-slo-rules\.sh$)')"
           } >> "$GITHUB_OUTPUT"
 
   # backstage/catalog/ matched no filter at all, so a PR touching only
@@ -735,6 +739,25 @@ jobs:
   # src/telemetry.ts is copied verbatim into every MCP server (see the header
   # comment in that file for why a shared package is not workable here). This
   # is what stops the copies silently diverging.
+  # observability/slo/*-slos.yaml are Sloth PrometheusServiceLevel sources, but no
+  # Sloth operator runs in-cluster: bootstrap applies the committed PrometheusRule
+  # output in observability/slo/generated/. Nothing tied the two together, so
+  # editing a source silently changed nothing in Prometheus (#314). This
+  # regenerates with the pinned sloth build and fails on any difference, a
+  # missing generated file (e.g. a new SLO from the slo-definition template), or
+  # a generated file whose source is gone.
+  slo-drift:
+    needs: changes
+    if: needs.changes.outputs.slo == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Check generated SLO rules against their Sloth sources
+        run: ./scripts/generate-slo-rules.sh --check
+
   mcp-telemetry-drift:
     needs: changes
     # contract-mcp-server carries a copy too, but is excluded from the
