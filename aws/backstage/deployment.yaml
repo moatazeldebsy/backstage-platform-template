@@ -4,7 +4,8 @@ metadata:
   name: backstage
   namespace: backstage
 spec:
-  # 1 in git; bootstrap.sh rewrites this line to 2 for --profile medium|large.
+  # 1 in git; bootstrap.sh rewrites this line to 2 for --profile medium|large,
+  # where hpa.yaml then scales between that and 4 (medium) or 6 (large).
   # Running more than one is safe: catalog, scaffolder tasks, search (pg engine)
   # and the custom plugins all keep state in Postgres, and scheduled tasks are
   # global (one replica runs each, under a DB lock).

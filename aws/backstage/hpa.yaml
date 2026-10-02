@@ -1,0 +1,40 @@
+# HorizontalPodAutoscaler for Backstage — applied by bootstrap.sh only for
+# --profile medium|large (PLATFORM_HA), which run the platform node group across
+# 3 AZs with room for extra replicas. profiles/small and no-profile installs stay
+# at a single replica with no HPA, where scaling out would only add Pending pods.
+#
+# minReplicas matches the replicas bootstrap.sh writes into deployment.yaml for
+# the same profile (BACKSTAGE_MIN_REPLICAS_PLACEHOLDER), so re-applying the
+# Deployment never sets it below what the HPA would choose to keep.
+# Needs metrics-server, which is an EKS add-on here (terraform/eks.tf).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backstage
+  minReplicas: BACKSTAGE_MIN_REPLICAS_PLACEHOLDER
+  maxReplicas: BACKSTAGE_MAX_REPLICAS_PLACEHOLDER
+  metrics:
+    # CPU only. Memory is a poor signal for a Node backend: the heap grows to
+    # its limit and stays there, so a memory target would pin it at max.
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    # Catalog refreshes and TechDocs builds cause short CPU spikes. Wait five
+    # minutes before removing a replica so a spike does not scale up and down
+    # in a loop.
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
