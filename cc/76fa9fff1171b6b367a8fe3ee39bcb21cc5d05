@@ -1,0 +1,22 @@
+docs/diagrams/platform-planes.html
+  s_dc89fce4a926ca::t_5d246031ea98ef 137-138,191,204,289
+docs/diagrams/build-platform-planes.py
+  s_dc89fce4a926ca::t_5d246031ea98ef 63,77
+  s_dc89fce4a926ca::t_d41473fac79d84 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cc76fa9fff1171b6b367a8fe3ee39bcb21cc5d05",
+  "prompts": {},
+  "sessions": {
+    "s_dc89fce4a926ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b675f0a9-9665-49ef-970a-1267c5a48265",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
