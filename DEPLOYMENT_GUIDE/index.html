@@ -4523,21 +4523,29 @@ ALB</strong> (IngressGroup <code>idp-platform</code>), so they share a hostname 
 </tr>
 <tr>
 <td>agent-event-router</td>
-<td><code>http://&lt;shared-alb&gt;:8082</code></td>
+<td><code>http://&lt;shared-alb&gt;:8082/webhook/github</code> (only that path is published)</td>
 <td>AI stack</td>
 </tr>
 <tr>
 <td>KAgent UI / IDP Assistant</td>
-<td><code>http://&lt;shared-alb&gt;:8083</code> / <code>:8084</code></td>
+<td><code>http://&lt;internal-alb&gt;:8083</code> / <code>:8084</code> — VPC only</td>
 <td>AI stack</td>
 </tr>
 <tr>
 <td>MLflow / Langfuse / Argo Workflows</td>
-<td><code>http://&lt;shared-alb&gt;:5000</code> / <code>:3001</code> / <code>:2746</code></td>
+<td><code>http://&lt;internal-alb&gt;:5000</code> / <code>:3001</code> / <code>:2746</code> — VPC only</td>
 <td>AI stack</td>
 </tr>
 </tbody>
 </table>
+<p>KAgent, the IDP Assistant A2A endpoint, MLflow, Langfuse and Argo Workflows have
+no authentication of their own (or, for Argo Workflows, take a bearer token over
+plain HTTP), so they sit on a second, <strong>internal</strong> ALB (<code>group.name:
+idp-internal</code>) rather than the internet-facing <code>idp-platform</code> one. Reach them
+from inside the VPC (VPN, bastion, SSM port forwarding) or with
+<code>kubectl port-forward</code>, e.g.
+<code>kubectl port-forward -n kagent svc/kagent-ui 8083:8080</code>.
+<code>alb_ingress_url</code> returns their internal hostname the same way.</p>
 <hr />
 <h2 id="adding-aws-cd-to-a-scaffolded-service">Adding AWS CD to a Scaffolded Service<a class="headerlink" href="#adding-aws-cd-to-a-scaffolded-service" title="Permanent link">&para;</a></h2>
 <p>Nothing to add. Scaffold the service with <strong>Deployment Target: AWS</strong> and the
@@ -5046,7 +5054,9 @@ quote.</p>
 <p><strong>Done without a domain: one ALB, one listener port per service.</strong> Every
 platform Ingress carries <code>alb.ingress.kubernetes.io/group.name: idp-platform</code>
 and its own <code>listen-ports</code> (ArgoCD <code>:8080</code>, Grafana <code>:3000</code>, hello-service
-<code>:8081</code>, the AI-stack UIs <code>:2746</code>–<code>:8084</code>; see the URL table above). Rules live
+<code>:8081</code>, agent-event-router <code>:8082</code>; the unauthenticated AI-stack UIs
+<code>:2746</code>–<code>:8084</code> use the same pattern on the internal <code>idp-internal</code> group — see
+the URL table above). Rules live
 per listener, so the <code>host: ""</code> + <code>path: /</code> entries no longer collide. That
 replaced ~9 ALBs, each ~$0.0375/h with its three public IPv4 addresses, with
 one. <code>validate-deployment.sh</code> flags any internet-facing ALB Ingress that is
