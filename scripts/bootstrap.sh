@@ -135,11 +135,14 @@ case "$TF_PROFILE" in
   medium|large)
     PLATFORM_HA=true
     ARGOCD_HA_VALUES=(--values aws/argocd/argocd-ha-values.yaml)
-    BACKSTAGE_REPLICAS=2 ;;
+    BACKSTAGE_REPLICAS=2
+    # Ceiling for aws/backstage/hpa.yaml; the floor is BACKSTAGE_REPLICAS.
+    if [[ "$TF_PROFILE" == "large" ]]; then BACKSTAGE_MAX_REPLICAS=6; else BACKSTAGE_MAX_REPLICAS=4; fi ;;
   *)
     PLATFORM_HA=false
     ARGOCD_HA_VALUES=()
-    BACKSTAGE_REPLICAS=1 ;;
+    BACKSTAGE_REPLICAS=1
+    BACKSTAGE_MAX_REPLICAS=1 ;;
 esac
 
 # ── Phase 1: Terraform — EKS + ECR + IAM + RDS + S3 + Secrets Manager ────────
@@ -1383,6 +1386,17 @@ sed -e "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BAC
     -e "s|BACKSTAGE_IMAGE_TAG|${BACKSTAGE_IMAGE_TAG}|g" \
     -e "s|^  replicas: 1$|  replicas: ${BACKSTAGE_REPLICAS}|" \
   aws/backstage/deployment.yaml | kubectl apply -f -
+
+# Autoscaling follows the profile like the replica count above (#311). Deleted
+# when not HA so moving an install from medium back to small does not leave an
+# HPA holding Backstage at 2+ replicas on a node group sized for one.
+if [[ "$PLATFORM_HA" == "true" ]]; then
+  sed -e "s|BACKSTAGE_MIN_REPLICAS_PLACEHOLDER|${BACKSTAGE_REPLICAS}|" \
+      -e "s|BACKSTAGE_MAX_REPLICAS_PLACEHOLDER|${BACKSTAGE_MAX_REPLICAS}|" \
+    aws/backstage/hpa.yaml | kubectl apply -f -
+else
+  kubectl delete hpa backstage -n backstage --ignore-not-found >/dev/null
+fi
 
 # Wait for the Backstage, ArgoCD and Grafana load balancers to be assigned
 # hostnames. These three provision concurrently in AWS and nothing here depends

@@ -112,7 +112,15 @@
     "fflate": "^0.8.3"
   },
   "jest": {
-    "coverageProvider": "v8"
+    "coverageProvider": "v8",
+    "coverageThreshold": {
+      "global": {
+        "lines": 55,
+        "statements": 55,
+        "functions": 60,
+        "branches": 85
+      }
+    }
   },
   "prettier": "@backstage/cli/config/prettier",
   "lint-staged": {
