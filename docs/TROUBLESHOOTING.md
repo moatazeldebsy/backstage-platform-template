@@ -609,8 +609,9 @@ The service account annotation must match the IRSA role ARN. `bootstrap.sh` crea
 
 ```bash
 # Re-annotate the SA
+# The ESO role, NOT the Backstage one (terraform output external_secrets_role_arn)
 kubectl annotate sa external-secrets-sa -n external-secrets \
-  eks.amazonaws.com/role-arn=<IRSA_ROLE_ARN> --overwrite
+  eks.amazonaws.com/role-arn="$(terraform -chdir=terraform output -raw external_secrets_role_arn)" --overwrite
 
 # Restart the operator to pick up the new annotation
 kubectl rollout restart deployment/external-secrets -n external-secrets

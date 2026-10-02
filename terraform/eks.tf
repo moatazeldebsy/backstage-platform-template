@@ -91,7 +91,22 @@ module "eks" {
   cluster_addons = {
     coredns    = { most_recent = true }
     kube-proxy = { most_recent = true }
-    vpc-cni    = { most_recent = true }
+    # Prefix delegation: each ENI slot gets a /28 (16 IPs) instead of one IP.
+    # Karpenter's EC2NodeClass sets kubelet maxPods: 110 (karpenter.tf); without
+    # this a c6g.large has ~29 pod IPs, and pods past that sat in
+    # ContainerCreating with "failed to assign an IP address". before_compute
+    # applies it ahead of the node groups so their first nodes already use it;
+    # existing nodes pick it up when they are replaced.
+    vpc-cni = {
+      most_recent    = true
+      before_compute = true
+      configuration_values = jsonencode({
+        env = {
+          ENABLE_PREFIX_DELEGATION = "true"
+          WARM_PREFIX_TARGET       = "1"
+        }
+      })
+    }
     aws-ebs-csi-driver = {
       most_recent              = true
       service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
@@ -132,10 +147,12 @@ module "eks" {
     }
   }
 
-  # Platform node group (on-demand, always present) — runs ArgoCD, Crossplane,
-  # Backstage, Prometheus, and other platform components that must not land on spot.
-  # When Karpenter is enabled, team service workloads run on Karpenter-managed nodes
-  # (labeled role=services) instead. Platform pods use a nodeSelector: {role: platform}.
+  # Platform node group (always present) — runs ArgoCD, Crossplane, Backstage,
+  # Prometheus, and other platform components that must not land on spot. When
+  # Karpenter is enabled, team service workloads run on Karpenter's `services`
+  # NodePool (labeled role=services, tainted idp/services — karpenter.tf), which
+  # platform pods do not tolerate; platform overflow goes to the on-demand
+  # `platform` NodePool. Nothing selects this group by label.
   eks_managed_node_groups = {
     platform = {
       instance_types = local.platform_instance_types
@@ -214,6 +231,17 @@ resource "aws_eks_access_policy_association" "github_actions_cluster_admin" {
   }
 
   depends_on = [aws_eks_access_entry.github_actions]
+}
+
+# PR-run role (iam.tf github_actions_pr): no access policy, only a Kubernetes
+# group whose namespaced Roles live in kubernetes/rbac/github-actions.yaml.
+resource "aws_eks_access_entry" "github_actions_pr" {
+  cluster_name      = module.eks.cluster_name
+  principal_arn     = aws_iam_role.github_actions_pr.arn
+  type              = "STANDARD"
+  kubernetes_groups = ["idp:ci-pr-reader"]
+
+  depends_on = [module.eks]
 }
 
 # AWS Load Balancer Controller

@@ -60,6 +60,11 @@ jobs:
       (github.event.action != 'labeled' || github.event.label.name == 'preview') &&
       github.event.action != 'unlabeled'
     runs-on: ubuntu-latest
+    # The AWS role is cluster-admin and this job runs the PR's own code, so the
+    # role trusts only this environment (terraform/iam.tf). Give `preview`
+    # required reviewers in Settings → Environments; without them any
+    # same-repo PR could add `environment: preview` to its own workflow.
+    environment: preview
     timeout-minutes: 40
     permissions:
       id-token: write
@@ -317,6 +322,11 @@ jobs:
       (github.event.action == 'closed' ||
        (github.event.action == 'unlabeled' && github.event.label.name == 'preview'))
     runs-on: ubuntu-latest
+    # The AWS role is cluster-admin and this job runs the PR's own code, so the
+    # role trusts only this environment (terraform/iam.tf). Give `preview`
+    # required reviewers in Settings → Environments; without them any
+    # same-repo PR could add `environment: preview` to its own workflow.
+    environment: preview
     timeout-minutes: 15
     permissions:
       id-token: write

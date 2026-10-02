@@ -49,12 +49,12 @@ Use this checklist before promoting the IDP to a production environment.
 - [ ] RDS password uses `special = true` for full entropy ✅ (fixed)
 - [ ] CI role is least-privilege ✅ — `aws_iam_role_policy.github_actions_ci` allows only ECR push/pull on `<cluster>/*` repos and `eks:DescribeCluster` ([#315](https://github.com/moatazeldebsy/backstage-platform-template/issues/315)). Inside the cluster it is still `AmazonEKSClusterAdminPolicy` (`terraform/eks.tf`); narrow that if CI's kubectl use is ever reduced
 - [ ] S3 buckets for TechDocs have bucket versioning and server-side encryption enabled
-- [ ] RDS egress security group rule restricts to VPC CIDR, not `0.0.0.0/0`
+- [x] RDS security group has no egress rule at all (was `0.0.0.0/0`) — `terraform/rds.tf`
 
 ### Infrastructure (Crossplane)
 - [ ] Crossplane IRSA role is least-privilege ✅ — `terraform/iam-crossplane.tf` uses scoped inline policies (S3, RDS, Kafka, DynamoDB, SQS, tagging) restricted to `idp-*` resources, no AWS-managed policies
 - [ ] All Crossplane-provisioned resources carry `idp:provisioner=crossplane`, `idp:owner`, `idp:cost-center` tags ✅ (enforced by Compositions)
-- [ ] No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names)
+- [x] No naming collision between TF-managed and Crossplane-managed resources of the same kind (e.g. RDS instance names) — Crossplane's IRSA role carries an explicit Deny on `${cluster_name}-*` S3/RDS/DynamoDB/SQS (`terraform/iam-crossplane.tf`, `crossplane_deny_platform_owned`)
 - [ ] `kubectl get providers.pkg.crossplane.io` shows all five providers `HEALTHY=True`
 - [ ] Backstage `*-crossplane` scaffolder templates produce PRs that sync within ~60s of merge
 

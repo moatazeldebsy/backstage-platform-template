@@ -558,6 +558,7 @@ if $DESTROY; then
   # above: it's opt-in on local but must not be left behind after --destroy.
   kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-external-secret.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-serviceaccount.yaml" 2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/aws/ml-platform/litellm-pdb.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/local/ml-platform/litellm-ingress.yaml" 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml" 2>/dev/null || true
   # Its dedicated Postgres (local only — AWS's RDS instance goes with
@@ -1391,11 +1392,17 @@ _wt="${WEBHOOK_TOKEN:-}"
 _ghtok="${GITHUB_TOKEN:-}"
 if [[ -n "$_ghws" || -n "$_wt" || -n "$_ghtok" ]]; then
   info "Creating agent-event-router-secrets in services-dev..."
+  # Unset values stay EMPTY, never a fixed placeholder string. The router reads
+  # empty as "not configured": /webhook/github fails closed (503), the bearer
+  # check is skipped (Alertmanager sends no credential), and incident-issue
+  # creation is off. A placeholder from this public repo was worse on every
+  # count — anyone could sign a GitHub webhook with it, and a placeholder
+  # WEBHOOK_TOKEN made the router 401 Alertmanager's unauthenticated calls.
   kubectl create secret generic agent-event-router-secrets \
     --namespace services-dev \
-    --from-literal=github-webhook-secret="${_ghws:-placeholder-set-in-github-webhook}" \
-    --from-literal=webhook-token="${_wt:-placeholder-set-webhook-token}" \
-    --from-literal=github-token="${_ghtok:-placeholder-set-github-token}" \
+    --from-literal=github-webhook-secret="${_ghws}" \
+    --from-literal=webhook-token="${_wt}" \
+    --from-literal=github-token="${_ghtok}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret agent-event-router-secrets ready"
 else
@@ -1544,7 +1551,18 @@ if [[ "$LITELLM" == "true" ]]; then
       || warn "litellm-postgres did not become ready — check: kubectl logs -n ml-platform deploy/litellm-postgres"
   fi
   info "Deploying LiteLLM to ml-platform..."
-  kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml"
+  if [[ "$DEPLOY_MODE" == "aws" ]]; then
+    # Two replicas on EKS: every model call from every agent (and Backstage's
+    # LITELLM_BASE_URL) goes through LiteLLM, and it is stateless there (state
+    # is in RDS), so one pod was a single point of failure for the whole AI
+    # layer. Set before apply, not patched after, so a re-run never scales it
+    # down to 1 in between. Local keeps 1 (~768Mi each, docs/local-setup.md).
+    sed 's/^  replicas: 1$/  replicas: 2/' "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml" \
+      | kubectl apply -f -
+    kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-pdb.yaml"
+  else
+    kubectl apply -f "${REPO_ROOT}/kubernetes/ml-platform/litellm.yaml"
+  fi
   if [[ "$DEPLOY_MODE" == "aws" ]]; then
     kubectl apply -f "${REPO_ROOT}/aws/ml-platform/litellm-serviceaccount.yaml"
     # Applied here, before the rollout wait below, not later alongside the
@@ -1570,8 +1588,12 @@ if [[ "$LITELLM" == "true" ]]; then
     # no OIDC provider to federate against); patch it to the IRSA-annotated SA
     # here rather than forking the Deployment into two files. Strategic merge,
     # not JSON patch, so it works whether the field is already set or not.
-    kubectl patch deployment litellm -n ml-platform \
-      -p '{"spec":{"template":{"spec":{"serviceAccountName":"litellm"}}}}'
+    # The zone spread rides on the same patch: AWS-only, since Kind has one node
+    # and no topology.kubernetes.io/zone label.
+    kubectl patch deployment litellm -n ml-platform -p '{"spec":{"template":{"spec":{
+      "serviceAccountName":"litellm",
+      "topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"topology.kubernetes.io/zone",
+        "whenUnsatisfiable":"ScheduleAnyway","labelSelector":{"matchLabels":{"app":"litellm"}}}]}}}}'
   else
     kubectl apply -f "${REPO_ROOT}/local/ml-platform/litellm-ingress.yaml"
   fi
@@ -1947,10 +1969,46 @@ EOF
   # pinned chart version and values file are byte-identical to the last
   # successful install. Both fall through to a real install on any version bump,
   # values edit, or release Helm no longer reports as deployed.
+  # AWS: KAgent's database on RDS (terraform/rds.tf, created with enable_ai)
+  # instead of the chart's bundled single-pod Postgres. The URL Secret must exist
+  # before the chart installs (the controller mounts it), and pgvector must be
+  # created before the controller runs its vector migrations. If either step
+  # fails, this run stays on the bundled Postgres rather than leaving the
+  # controller unable to start.
+  KAGENT_USE_RDS=false
+  KAGENT_EXTRA_VALUES=()
+  if [[ "$DEPLOY_MODE" == "aws" && -n "$(tf_output kagent_db_secret_arn)" ]]; then
+    info "Wiring KAgent to its RDS database..."
+    kubectl create namespace kagent --dry-run=client -o yaml | kubectl apply -f -
+    KAGENT_ESO_ROLE_ARN=$(tf_output kagent_eso_role_arn)
+    sed "s|AWS_REGION_PLACEHOLDER|${AWS_REGION}|g" \
+      "${REPO_ROOT}/aws/kagent/external-secret.yaml" | kubectl apply -f -
+    [[ -n "$KAGENT_ESO_ROLE_ARN" ]] && kubectl annotate serviceaccount kagent-eso-sa -n kagent \
+      "eks.amazonaws.com/role-arn=${KAGENT_ESO_ROLE_ARN}" --overwrite
+    kubectl apply -f "${REPO_ROOT}/aws/kagent/db-external-secret.yaml"
+    if kubectl wait --for=condition=Ready externalsecret/kagent-db -n kagent --timeout=180s >/dev/null 2>&1; then
+      kubectl delete pod kagent-db-init -n kagent --ignore-not-found >/dev/null 2>&1
+      if kubectl run kagent-db-init -n kagent --rm -i --restart=Never --quiet \
+           --image=postgres:17-alpine \
+           --overrides='{"spec":{"containers":[{"name":"kagent-db-init","image":"postgres:17-alpine",
+             "command":["sh","-c","psql \"$(cat /db/url)\" -v ON_ERROR_STOP=1 -c \"CREATE EXTENSION IF NOT EXISTS vector\""],
+             "volumeMounts":[{"name":"db","mountPath":"/db","readOnly":true}]}],
+             "volumes":[{"name":"db","secret":{"secretName":"kagent-db"}}]}}' >/dev/null; then
+        KAGENT_USE_RDS=true
+        KAGENT_EXTRA_VALUES=(--values "${REPO_ROOT}/aws/kagent/values-rds.yaml")
+        check "KAgent database: RDS (pgvector ready)"
+      else
+        warn "Could not create the pgvector extension on KAgent's RDS database — staying on the bundled Postgres this run."
+      fi
+    else
+      warn "ExternalSecret kagent/kagent-db not Ready after 180s — staying on the bundled Postgres this run. Check: kubectl describe externalsecret kagent-db -n kagent"
+    fi
+  fi
+
   _crds_fp_file="${CACHE_DIR}/kagent-crds.fingerprint"
   _crds_fp="${KAGENT_CHART_VERSION}"
   _kagent_fp_file="${CACHE_DIR}/kagent.fingerprint"
-  _kagent_fp="${KAGENT_CHART_VERSION}:$(_sha256 "$KAGENT_VALUES")"
+  _kagent_fp="${KAGENT_CHART_VERSION}:$(_sha256 "$KAGENT_VALUES"):${KAGENT_USE_RDS}"
 
   if helm_release_unchanged kagent-crds kagent "$_crds_fp_file" "$_crds_fp"; then
     info "KAgent CRDs already at v${KAGENT_CHART_VERSION} — skipping reinstall."
@@ -1983,6 +2041,7 @@ EOF
       --version "${KAGENT_CHART_VERSION}" \
       --namespace kagent \
       --values "${KAGENT_VALUES}" \
+      ${KAGENT_EXTRA_VALUES[@]+"${KAGENT_EXTRA_VALUES[@]}"} \
       --set registry=ghcr.io \
       --force-conflicts
     helm_record_fingerprint "$_kagent_fp_file" "$_kagent_fp"
@@ -2018,7 +2077,9 @@ EOF
   # "5c. Restart kagent-controller" below. This flag records whether it's needed.
   _ctrl_restart_needed=false
 
-  if [[ "$_pg_image" == "pgvector/pgvector:pg18" && "$_vector_enabled" == "true" ]]; then
+  if [[ "$KAGENT_USE_RDS" == "true" ]]; then
+    check "KAgent uses RDS — no bundled Postgres to patch."
+  elif [[ "$_pg_image" == "pgvector/pgvector:pg18" && "$_vector_enabled" == "true" ]]; then
     check "pgvector image + DATABASE_VECTOR_ENABLED already applied — skipping patch and controller restart."
   else
     _ctrl_restart_needed=true

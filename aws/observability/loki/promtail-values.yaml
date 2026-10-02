@@ -42,10 +42,8 @@ resources:
     cpu: 200m
     memory: 256Mi
 
+# Every node, whatever its taints: a log shipper that skips Karpenter's tainted
+# `services` nodes (idp/services:NoSchedule, terraform/karpenter.tf) would drop
+# the logs of every team service running there, silently.
 tolerations:
-  - key: node-role.kubernetes.io/master
-    operator: Exists
-    effect: NoSchedule
-  - key: node-role.kubernetes.io/control-plane
-    operator: Exists
-    effect: NoSchedule
+  - operator: Exists

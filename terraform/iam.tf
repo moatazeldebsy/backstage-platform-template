@@ -47,17 +47,25 @@ resource "aws_iam_role" "github_actions" {
       }
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
-        # Scoped to the platform repo, not the whole org. The role can push to
+        # Scoped to the platform repo, not the whole org: the role can push to
         # every service's ECR repo and is cluster-admin inside EKS (eks.tf), and
-        # the scaffolder creates new repos under the same org — an org-wide
-        # "repo:<org>/*:*" trust would hand that to any scaffolded repo's
-        # workflow. The trailing ":*" still needs StringLike so branches and
-        # environments match.
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.platform_repo}:*"
-        }
+        # the scaffolder creates new repos under the same org.
+        #
+        # And within the repo, to two subjects only:
+        #   - ref:refs/heads/main — build-and-deploy.yml's push/dispatch jobs,
+        #     all gated on github.ref == 'refs/heads/main'
+        #   - environment:preview — preview.yml, which runs unreviewed PR code
+        #     and so must sit behind the `preview` GitHub environment's required
+        #     reviewers (Settings → Environments → preview)
+        # It used to be "repo:<org>/<repo>:*", so a pull_request run from any
+        # same-repo branch could rewrite its own workflow and get cluster-admin.
+        # PR jobs that only need to read (cost-context) use github_actions_pr.
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = [
+            "repo:${var.github_org}/${var.platform_repo}:ref:refs/heads/main",
+            "repo:${var.github_org}/${var.platform_repo}:environment:preview",
+          ]
         }
       }
     }]
@@ -117,6 +125,47 @@ resource "aws_iam_role_policy" "github_actions_ci" {
   })
 }
 
+# Read-only role for pull_request runs (build-and-deploy.yml cost-context).
+# Trusted for the repo's pull_request subject only. In IAM it can do nothing but
+# DescribeCluster (for update-kubeconfig); inside EKS its access entry maps it to
+# the idp:ci-pr-reader group, which kubernetes/rbac/github-actions.yaml lets
+# port-forward to OpenCost and read the Grafana ingress, and nothing else.
+resource "aws_iam_role" "github_actions_pr" {
+  name = "${var.cluster_name}-github-actions-pr"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github_actions.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.platform_repo}:pull_request"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "github_actions_pr" {
+  name = "ci-pr-eks-describe"
+  role = aws_iam_role.github_actions_pr.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "EksKubeconfig"
+      Effect   = "Allow"
+      Action   = ["eks:DescribeCluster"]
+      Resource = module.eks.cluster_arn
+    }]
+  })
+}
+
 # Upper bound for the per-service image-push roles idp:provision-ecr creates:
 # push to (and read from) this cluster's ECR repositories, nothing else. Each
 # role's own inline policy narrows it further to the one repository.
@@ -159,13 +208,58 @@ module "backstage_irsa" {
   oidc_providers = {
     main = {
       provider_arn = module.eks.oidc_provider_arn
-      # Includes both backstage SA and ESO SA so both can assume this role
+      # Backstage only. The ESO controller used to share this role, which gave
+      # the cluster-wide aws-secretsmanager ClusterSecretStore read access to
+      # idp-mvp/backstage (RDS master password, GitHub token, auth secrets) from
+      # ANY namespace, plus this role's write and IAM permissions. ESO now has
+      # its own read-only role (external_secrets_irsa below); Backstage's own
+      # secrets sync through the namespaced SecretStore in
+      # aws/backstage/external-secret.yaml, which runs as this role.
       namespace_service_accounts = [
         "backstage:backstage",
-        "external-secrets:external-secrets-sa"
       ]
     }
   }
+}
+
+# Role behind the cluster-wide aws-secretsmanager ClusterSecretStore
+# (aws/external-secrets/cluster-secret-store.yaml). Any ExternalSecret in any
+# namespace can use that store, so this role may read only secrets that are safe
+# for every namespace to see. Today that is the DORA exporter's GitHub token
+# (aws/observability/dora/dora-cronjob.yaml). Platform components with their
+# own secrets use their own SecretStore + role (Backstage, LiteLLM), and team
+# services use the per-team stores (iam-team-secret-store.tf).
+module "external_secrets_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.30"
+
+  role_name = "${var.cluster_name}-external-secrets"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["external-secrets:external-secrets-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "external_secrets" {
+  name = "cluster-secret-store-read"
+  role = module.external_secrets_irsa.iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret",
+      ]
+      Resource = [
+        "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:idp-mvp/dora-exporter*",
+      ]
+    }]
+  })
 }
 
 resource "aws_iam_role_policy" "backstage" {
@@ -465,6 +559,16 @@ output "github_actions_role_arn" {
   value       = aws_iam_role.github_actions.arn
 }
 
+output "github_actions_pr_role_arn" {
+  description = "Read-only IAM role ARN for GitHub Actions pull_request runs (AWS_PR_ROLE_ARN)"
+  value       = aws_iam_role.github_actions_pr.arn
+}
+
+output "external_secrets_role_arn" {
+  description = "IAM role ARN for the External Secrets ClusterSecretStore ServiceAccount (IRSA)"
+  value       = module.external_secrets_irsa.iam_role_arn
+}
+
 output "backstage_role_arn" {
   description = "IAM role ARN for Backstage"
   value       = module.backstage_irsa.iam_role_arn
@@ -676,7 +780,11 @@ resource "aws_iam_role_policy" "kagent_eso" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = aws_secretsmanager_secret.kagent.arn
+        # idp-mvp/kagent-db exists only with enable_ai (rds.tf).
+        Resource = concat(
+          [aws_secretsmanager_secret.kagent.arn],
+          aws_secretsmanager_secret.kagent_db[*].arn,
+        )
       }
     ]
   })

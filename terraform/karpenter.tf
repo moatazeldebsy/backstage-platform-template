@@ -109,7 +109,16 @@ resource "kubectl_manifest" "karpenter_node_class" {
   depends_on = [helm_release.karpenter]
 }
 
-# NodePool — defines the node fleet Karpenter can provision for team workloads
+# NodePool — defines the node fleet Karpenter can provision for team workloads.
+#
+# Tainted idp/services=true:NoSchedule. Only pods that tolerate it land here:
+# everything deployed through helm/service-template (which tolerates it by
+# default) plus the log/metric DaemonSets. Platform components (ArgoCD,
+# Prometheus, Backstage, KAgent's Postgres, …) do not, so they can no longer
+# drift onto spot capacity and be consolidated every few minutes. The platform
+# node group's own taint is only PREFER_NO_SCHEDULE, and nothing selects it, so
+# that used to happen whenever it was full. Platform overflow now goes to the
+# on-demand `platform` NodePool below instead.
 resource "kubectl_manifest" "karpenter_node_pool" {
   count = var.enable_karpenter ? 1 : 0
 
@@ -119,12 +128,18 @@ resource "kubectl_manifest" "karpenter_node_pool" {
     metadata:
       name: services
     spec:
+      # Preferred over `platform` for pods that tolerate both.
+      weight: 50
       template:
         metadata:
           labels:
             role: services
             karpenter.sh/managed: "true"
         spec:
+          taints:
+            - key: idp/services
+              value: "true"
+              effect: NoSchedule
           nodeClassRef:
             group: karpenter.k8s.aws
             kind: EC2NodeClass
@@ -151,6 +166,59 @@ resource "kubectl_manifest" "karpenter_node_pool" {
       disruption:
         consolidationPolicy: WhenEmptyOrUnderutilized
         consolidateAfter: 5m   # reclaim underutilised nodes after 5 minutes idle
+  YAML
+
+  depends_on = [kubectl_manifest.karpenter_node_class]
+}
+
+# Overflow for platform components once the managed platform node group is full.
+# There is no cluster-autoscaler, and the group's max is capped (eks.tf
+# platform_node_group_max_size), so without this pool a platform pod that does
+# not fit stays Pending. On-demand only, untainted, and consolidated only when
+# a node is empty: these pods are stateful or single-replica often enough that
+# spot reclaims and 5-minute consolidation would be outages.
+resource "kubectl_manifest" "karpenter_node_pool_platform" {
+  count = var.enable_karpenter ? 1 : 0
+
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: platform
+    spec:
+      weight: 10
+      template:
+        metadata:
+          labels:
+            role: platform
+            karpenter.sh/managed: "true"
+        spec:
+          nodeClassRef:
+            group: karpenter.k8s.aws
+            kind: EC2NodeClass
+            name: default
+          requirements:
+            - key: karpenter.k8s.aws/instance-family
+              operator: In
+              values: [m7g, m6g, r7g, r6g, m7i, m6i, r7i, r6i]
+            - key: kubernetes.io/arch
+              operator: In
+              values: [arm64, amd64]
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: [on-demand]
+            - key: karpenter.k8s.aws/instance-size
+              operator: NotIn
+              values: [nano, micro, small, medium]
+      limits:
+        cpu: 64
+        memory: 256Gi
+      disruption:
+        consolidationPolicy: WhenEmpty
+        consolidateAfter: 10m
+        # Never more than one platform node voluntarily disrupted at a time.
+        budgets:
+          - nodes: "1"
   YAML
 
   depends_on = [kubectl_manifest.karpenter_node_class]

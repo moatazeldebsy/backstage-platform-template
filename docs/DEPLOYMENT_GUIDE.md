@@ -299,9 +299,18 @@ alb_ingress_url argocd-server argocd          # -> <shared-alb>:8080
 | ArgoCD | `http://<shared-alb>:8080` | `alb_ingress_url argocd-server argocd` |
 | Grafana | `http://<shared-alb>:3000` (`:443` HTTPS with `domain_name`) | `alb_ingress_url prometheus-grafana monitoring` |
 | hello-service | `http://<shared-alb>:8081` | `alb_ingress_url hello-service-dev-service-template services-dev` |
-| agent-event-router | `http://<shared-alb>:8082` | AI stack |
-| KAgent UI / IDP Assistant | `http://<shared-alb>:8083` / `:8084` | AI stack |
-| MLflow / Langfuse / Argo Workflows | `http://<shared-alb>:5000` / `:3001` / `:2746` | AI stack |
+| agent-event-router | `http://<shared-alb>:8082/webhook/github` (only that path is published) | AI stack |
+| KAgent UI / IDP Assistant | `http://<internal-alb>:8083` / `:8084` — VPC only | AI stack |
+| MLflow / Langfuse / Argo Workflows | `http://<internal-alb>:5000` / `:3001` / `:2746` — VPC only | AI stack |
+
+KAgent, the IDP Assistant A2A endpoint, MLflow, Langfuse and Argo Workflows have
+no authentication of their own (or, for Argo Workflows, take a bearer token over
+plain HTTP), so they sit on a second, **internal** ALB (`group.name:
+idp-internal`) rather than the internet-facing `idp-platform` one. Reach them
+from inside the VPC (VPN, bastion, SSM port forwarding) or with
+`kubectl port-forward`, e.g.
+`kubectl port-forward -n kagent svc/kagent-ui 8083:8080`.
+`alb_ingress_url` returns their internal hostname the same way.
 
 ---
 
@@ -779,7 +788,9 @@ quote.
 **Done without a domain: one ALB, one listener port per service.** Every
 platform Ingress carries `alb.ingress.kubernetes.io/group.name: idp-platform`
 and its own `listen-ports` (ArgoCD `:8080`, Grafana `:3000`, hello-service
-`:8081`, the AI-stack UIs `:2746`–`:8084`; see the URL table above). Rules live
+`:8081`, agent-event-router `:8082`; the unauthenticated AI-stack UIs
+`:2746`–`:8084` use the same pattern on the internal `idp-internal` group — see
+the URL table above). Rules live
 per listener, so the `host: ""` + `path: /` entries no longer collide. That
 replaced ~9 ALBs, each ~$0.0375/h with its three public IPv4 addresses, with
 one. `validate-deployment.sh` flags any internet-facing ALB Ingress that is
@@ -1041,7 +1052,7 @@ Terraform has never heard of those.
 | **S3/RDS/DynamoDB/SQS/MSK from Claims** | **Crossplane** | Provisioned from Claims committed to Git. Compositions set `deletionPolicy: Orphan` *on purpose* — a deleted Claim must not silently destroy a team's data. They are found by the `idp:provisioner=crossplane` tag instead. |
 | ECR repos created by `bootstrap-ai.sh` | **The script**, imperatively | AI/MCP service repos are created on demand, not declared in Terraform |
 | **Contents** of S3 buckets and ECR repos | Nobody — runtime data | Terraform can delete a bucket but AWS refuses while it holds objects and `force_destroy = false`. Contents must be emptied first, which is Phase 5. |
-| **EBS volumes behind PersistentVolumes** (Prometheus, Loki, Grafana, the kagent/mlflow Postgres PVCs, …) | **EBS CSI driver** | Created on demand for each PVC and tagged `kubernetes.io/cluster/<cluster>=owned`. Deleting the cluster detaches them but never deletes them; they keep billing as `available` volumes (18 volumes / 145 GB had piled up across deploy cycles by 2026-09). Phase 7b deletes them by that tag after `terraform destroy`. |
+| **EBS volumes behind PersistentVolumes** (Prometheus, Alertmanager, Loki, the MLflow SQLite PVC, …; KAgent's database is RDS when the AI layer is on) | **EBS CSI driver** | Created on demand for each PVC and tagged `kubernetes.io/cluster/<cluster>=owned`. Deleting the cluster detaches them but never deletes them; they keep billing as `available` volumes (18 volumes / 145 GB had piled up across deploy cycles by 2026-09). Phase 7b deletes them by that tag after `terraform destroy`. |
 | **Karpenter nodes, launch templates, instance profiles** (only with `enable_karpenter = true`) | **Karpenter** | Launched by the controller from NodePools, not by Terraform. If the controller is uninstalled while nodes are still terminating they orphan at full EC2 price, and their ENIs block the VPC delete. Phase 0b drains the NodePools while the controller is alive; Phase 5b terminates stragglers before `terraform destroy`; Phase 7c deletes the launch templates (`karpenter.k8s.aws/cluster`) and `<cluster>_*` instance profiles afterwards. |
 | Secret `<cluster>/langfuse/project-keys` | **`bootstrap-ai.sh`**, imperatively | Created with the CLI when Langfuse is enabled on AWS; deleted in Phase 5b with the same zero-day recovery window Terraform uses for its own secrets. |
 | `/aws/eks/*`, `/aws/lambda/*` log groups | **EKS / Lambda**, at runtime | Created by the services themselves and outlive the cluster |

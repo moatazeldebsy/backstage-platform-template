@@ -74,6 +74,24 @@ cilium-manager-agent:
 cilium-debug-agent:
   enabled: false
 
+# Also off on AWS, matching local/kagent/values.yaml: their ground is covered by
+# the MCP servers (k8s/helm by idp-mcp-server, promql/observability by the
+# Grafana and Prometheus integrations, argo-rollouts by argocd-mcp-server), and
+# unlike those they carry kagent-tools' kubectl/helm write tools with no
+# approval gate or audit log. Nothing in this repo references them.
+# NOTE: argo-rollouts-agent is the chart key; its pod is
+# argo-rollouts-conversion-agent.
+k8s-agent:
+  enabled: false
+helm-agent:
+  enabled: false
+promql-agent:
+  enabled: false
+observability-agent:
+  enabled: false
+argo-rollouts-agent:
+  enabled: false
+
 postgres:
   # Enable pgvector so the controller can create the memory table (vector(768)).
   vectorEnabled: true
