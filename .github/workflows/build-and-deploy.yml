@@ -1168,10 +1168,13 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - name: Check AWS_ROLE_ARN secret
+      # AWS_PR_ROLE_ARN, not AWS_ROLE_ARN: the deploy role no longer trusts
+      # pull_request runs (terraform/iam.tf). This read-only role can only
+      # port-forward to OpenCost and read the Grafana ingress.
+      - name: Check AWS_PR_ROLE_ARN secret
         id: guard
         env:
-          ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          ROLE_ARN: ${{ secrets.AWS_PR_ROLE_ARN }}
         run: |
           if [ -z "$ROLE_ARN" ]; then
             echo "has_aws=false" >> "$GITHUB_OUTPUT"
@@ -1192,7 +1195,7 @@ jobs:
         continue-on-error: true
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_PR_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       # Separately tolerant: credentials can be valid while the cluster itself
@@ -1212,7 +1215,7 @@ jobs:
           echo "### 💰 Cost context skipped" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ steps.guard.outputs.has_aws }}" != "true" ]; then
-            echo "No \`AWS_ROLE_ARN\` secret configured." >> "$GITHUB_STEP_SUMMARY"
+            echo "No \`AWS_PR_ROLE_ARN\` secret configured." >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ steps.creds.outcome }}" != "success" ]; then
             echo "Could not assume the AWS role — the EKS stack is most likely torn down." >> "$GITHUB_STEP_SUMMARY"
           else

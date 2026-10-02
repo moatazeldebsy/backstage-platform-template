@@ -73,3 +73,61 @@ subjects:
   - kind: User
     name: github-actions
     apiGroup: rbac.authorization.k8s.io
+---
+# Pull-request runs (build-and-deploy.yml cost-context). The github-actions-pr
+# IAM role maps to group idp:ci-pr-reader through its EKS access entry
+# (terraform/eks.tf) and gets exactly what that job does: port-forward to the
+# OpenCost service, and read the Grafana ingress hostname for the PR comment.
+# Namespaced Roles, not a ClusterRole: port-forward reaches whatever the pod
+# listens on, so it must not extend past OpenCost.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-pr-reader
+  namespace: opencost
+rules:
+  - apiGroups: [""]
+    resources: ["services", "pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-pr-reader
+  namespace: opencost
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-pr-reader
+subjects:
+  - kind: Group
+    name: idp:ci-pr-reader
+    apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-pr-reader
+  namespace: monitoring
+rules:
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    resourceNames: ["prometheus-grafana"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-pr-reader
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ci-pr-reader
+subjects:
+  - kind: Group
+    name: idp:ci-pr-reader
+    apiGroup: rbac.authorization.k8s.io

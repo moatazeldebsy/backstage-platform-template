@@ -276,3 +276,80 @@ resource "aws_iam_role_policy" "crossplane_tagging" {
     }]
   })
 }
+
+# ── Platform-owned resources are off limits ──────────────────────────────────
+# The Allow statements above are scoped to "idp-*", which also matches every
+# resource Terraform owns: they are all named "${var.cluster_name}-*" (state
+# bucket and lock table in scripts/lib.sh, the four RDS instances, the techdocs /
+# mlflow / velero / loki / tempo buckets). Claim names come straight from the
+# requester (the XRDs only pattern-check them), so a claim named e.g.
+# "idp-mvp-backstage" would have Crossplane adopt the Backstage database —
+# ModifyDBInstance can lift deletion_protection — or take over a platform bucket
+# and rewrite its public-access block.
+#
+# An explicit Deny wins over any Allow, so this holds whatever the Allows grow
+# into. Team claims must not use the cluster-name prefix.
+resource "aws_iam_role_policy" "crossplane_deny_platform_owned" {
+  name = "${var.cluster_name}-crossplane-deny-platform-owned"
+  role = aws_iam_role.crossplane_aws.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyPlatformOwnedS3"
+        Effect = "Deny"
+        Action = "s3:*"
+        Resource = [
+          "arn:aws:s3:::${var.cluster_name}-*",
+          "arn:aws:s3:::${var.cluster_name}-*/*",
+        ]
+      },
+      {
+        Sid    = "DenyPlatformOwnedRDS"
+        Effect = "Deny"
+        Action = [
+          "rds:CreateDBInstance",
+          "rds:DeleteDBInstance",
+          "rds:ModifyDBInstance",
+          "rds:RebootDBInstance",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource",
+          "rds:CreateDBSnapshot",
+          "rds:DeleteDBSnapshot",
+        ]
+        Resource = [
+          "arn:aws:rds:*:*:db:${var.cluster_name}-*",
+          "arn:aws:rds:*:*:snapshot:${var.cluster_name}-*",
+        ]
+      },
+      {
+        # Separate statement: CreateDBInstance is also authorised against the
+        # subnet group it names, and a team DB placed in the platform's subnet
+        # group must keep working. Only changing the group itself is denied.
+        Sid    = "DenyPlatformOwnedRDSSubnetGroups"
+        Effect = "Deny"
+        Action = [
+          "rds:CreateDBSubnetGroup",
+          "rds:DeleteDBSubnetGroup",
+          "rds:ModifyDBSubnetGroup",
+        ]
+        Resource = "arn:aws:rds:*:*:subgrp:${var.cluster_name}-*"
+      },
+      {
+        Sid    = "DenyPlatformOwnedDynamoDB"
+        Effect = "Deny"
+        Action = "dynamodb:*"
+        Resource = [
+          "arn:aws:dynamodb:*:*:table/${var.cluster_name}-*",
+        ]
+      },
+      {
+        Sid      = "DenyPlatformOwnedSQS"
+        Effect   = "Deny"
+        Action   = "sqs:*"
+        Resource = "arn:aws:sqs:*:*:${var.cluster_name}-*"
+      },
+    ]
+  })
+}

@@ -90,7 +90,7 @@ kubectl rollout restart deployment/approval-service -n services-dev
 
 Open **<http://backstage.idp.local/approvals>** (nav item: **Agent Approvals**). The page lists pending approvals by default, with an **All (last 100)** toggle for history, and shows each request's action, target, requesting agent, and the free-form `context` the agent supplied — its stated reason for wanting the action.
 
-Approve or deny writes `decided_by` from your Backstage identity. The agent's next `get_approval_status` call sees the decision and either retries or reports the denial.
+Approve or deny writes `decided_by` from your Backstage identity, resolved server-side: the page posts to `/api/idp-approvals/approvals/:id/decide` (`idpApprovalDecision.ts`), which ignores any client-supplied name, and the `/approval-service` proxy is GET-only. You cannot approve a request made on your own behalf (`requested_by_user` equal to the decider gets a 403); you can still deny it. The agent's next `get_approval_status` call sees the decision and either retries or reports the denial.
 
 The page requires `bootstrap-ai.sh --adp` to have run: it reveals the route in the generated `local/backstage/app-config.ai.yaml`, and Backstage reads config **only at startup**, so restart it afterwards with `./scripts/bootstrap-local.sh --start-backstage`. Without that, the route is disabled; with the route on but `approval-service` down, the page shows `HTTP … — is approval-service deployed?`. See [AI Assistant § Where the AI pages come from](ai-assistant.md#where-the-ai-pages-come-from-and-why-theyre-hidden) for how that gating works.
 
@@ -106,7 +106,7 @@ Base URL: `http://approval-service.idp.local` (local) · `http://approval-servic
 | `POST` | `/approvals` | `{action, agent, target, context?}` | 201 — the approval, already `approved` if policy auto-approves |
 | `GET` | `/approvals` | `?status=pending` | `{total, approvals[]}` (unfiltered: last 100) |
 | `GET` | `/approvals/:id` | — | the approval, or 404 |
-| `POST` | `/approvals/:id/decide` | `{decision: approved\|denied, decided_by}` | the updated approval, or 409 |
+| `POST` | `/approvals/:id/decide` | `{decision: approved\|denied, decided_by}` | the updated approval; 409 if already decided; 403 if `decided_by` is the requester approving their own request |
 | `GET` | `/healthz` · `/ready` · `/metrics` | — | health, readiness, Prometheus metrics |
 
 `decide` is guarded by `WHERE status = 'pending'`, so a second decision on the same approval returns **409** rather than overwriting the first — decisions are immutable once made.
