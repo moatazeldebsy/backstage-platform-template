@@ -1,0 +1,28 @@
+# KAgent on RDS — layered on aws/kagent/values.yaml by bootstrap-ai.sh --aws when
+# Terraform has created the KAgent database (output kagent_db_secret_arn, i.e.
+# enable_ai). Replaces the chart's bundled single-pod Postgres, which the chart
+# itself calls "for development and evaluation only" (terraform/rds.tf).
+#
+# The URL comes from idp-mvp/kagent-db via the kagent-db ExternalSecret
+# (aws/kagent/db-external-secret.yaml) and is read from a file, so it is
+# never in the Helm values or the controller ConfigMap.
+database:
+  postgres:
+    urlFile: /etc/kagent-db/url
+    # pgvector long-term memory; bootstrap-ai.sh creates the extension first.
+    vectorEnabled: true
+    bundled:
+      enabled: false
+
+controller:
+  volumes:
+    - name: kagent-db
+      secret:
+        secretName: kagent-db
+        items:
+          - key: url
+            path: url
+  volumeMounts:
+    - name: kagent-db
+      mountPath: /etc/kagent-db
+      readOnly: true

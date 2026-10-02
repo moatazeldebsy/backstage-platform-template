@@ -676,7 +676,11 @@ resource "aws_iam_role_policy" "kagent_eso" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = aws_secretsmanager_secret.kagent.arn
+        # idp-mvp/kagent-db exists only with enable_ai (rds.tf).
+        Resource = concat(
+          [aws_secretsmanager_secret.kagent.arn],
+          aws_secretsmanager_secret.kagent_db[*].arn,
+        )
       }
     ]
   })

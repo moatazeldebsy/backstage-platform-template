@@ -62,7 +62,10 @@ distributor:
       memory: 256Mi
 
 ingester:
-  replicas: 2
+  # 3, matching the chart's default replication_factor of 3. With 2 ingesters
+  # every write needed both, so restarting either one (rollout, drain, spot
+  # reclaim) failed trace ingestion until it came back.
+  replicas: 3
   resources:
     requests:
       cpu: 100m
