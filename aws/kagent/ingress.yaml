@@ -1,5 +1,5 @@
 # KAgent UI ingress — AWS/EKS variant (AWS Load Balancer Controller / ALB).
-# No TLS at the ingress level; ALB handles SSL termination.
+# No TLS at the ingress level (#310). Internal ALB only — see the annotations.
 # kagent-ui's backend nginx only speaks HTTP/1.1 — ALB forwards HTTP to port 8080.
 # Applied by: scripts/bootstrap-ai.sh --aws
 apiVersion: networking.k8s.io/v1
@@ -10,10 +10,14 @@ metadata:
   labels:
     app: kagent-ui
   annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    # One shared ALB for every platform UI (scripts/lib.sh alb_ingress_url):
-    # KAgent UI is its listener on :8083.
-    alb.ingress.kubernetes.io/group.name: idp-platform
+    # Internal, not internet-facing: KAgent UI has no authentication of its
+    # own, and on the public ALB anyone could reach it. Reach it from inside
+    # the VPC (VPN / bastion) or with kubectl port-forward. Ingresses in one
+    # ALB group must share a scheme, so the internal UIs get their own group
+    # (idp-internal) and listener :8083 there; scripts/lib.sh alb_ingress_url
+    # still resolves the hostname.
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/group.name: idp-internal
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 8083}]'
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
