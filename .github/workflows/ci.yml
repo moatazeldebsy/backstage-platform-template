@@ -311,6 +311,12 @@ jobs:
             services/hello-service/junit.xml
           retention-days: 7
 
+      # Ratchet, not a target (#166): just under what this measured when set.
+      # Raise it when coverage rises; never lower it to make a PR pass.
+      - name: Coverage floor
+        working-directory: services/hello-service
+        run: ../../scripts/check-go-coverage.sh coverage.out 70
+
   test-cli:
     needs: changes
     if: needs.changes.outputs.cli == 'true'
@@ -340,7 +346,12 @@ jobs:
         working-directory: cli
         run: |
           set -o pipefail
-          go test ./... -v 2>&1 | tee /tmp/go-cli.log
+          go test ./... -v -coverprofile=coverage.out 2>&1 | tee /tmp/go-cli.log
+
+      # Ratchet, not a target (#166) — see the hello-service job.
+      - name: Coverage floor
+        working-directory: cli
+        run: ../scripts/check-go-coverage.sh coverage.out 55
 
       - name: Generate JUnit report
         if: always()
@@ -561,11 +572,13 @@ jobs:
       # watch mode when it is not set, which produces no output and never exits —
       # note the deliberate `CI: ''` on the build step below, so the trap is one
       # copy-paste away.
+      # --coverage so jest enforces coverageThreshold in backstage/app/package.json
+      # (#166). text-summary keeps the log to four lines.
       - name: Test
         working-directory: backstage/app
         env:
           CI: 'true'
-        run: yarn test
+        run: yarn test --coverage --coverageReporters=text-summary
 
       - name: Build backend bundle
         working-directory: backstage/app
