@@ -2634,8 +2634,10 @@ terraform<span class="w"> </span>output<span class="w"> </span>team_eso_role_arn
 <code>iamRoleArn</code> is blank.</p>
 <hr />
 <h2 id="step-3-merge-the-scaffold-pr">Step 3 — Merge the scaffold PR<a class="headerlink" href="#step-3-merge-the-scaffold-pr" title="Permanent link">&para;</a></h2>
-<p>Merge <code>team/payments-namespace</code> on the platform repo. The <code>scaffold.yml</code> CI workflow
-runs <code>kubectl apply -f kubernetes/teams/payments/</code> which creates:</p>
+<p>Merge <code>team/payments-namespace</code> on the platform repo. ArgoCD's <code>idp-teams</code>
+ApplicationSet (<code>aws/argocd/app-of-apps.yaml</code>, <code>local/argocd/app-of-apps-local.yaml</code>)
+picks up the new <code>kubernetes/teams/payments/</code> directory as Application <code>team-payments</code>
+and syncs it within its git polling interval (about 3 minutes), creating:</p>
 <div class="language-text highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -2655,6 +2657,13 @@ runs <code>kubectl apply -f kubernetes/teams/payments/</code> which creates:</p>
 ├── applicationset.yaml     # scans teams/payments/services/*
 ├── secret-store.yaml       # namespace-scoped SecretStore (if IAM role set)
 └── grafana-folder.yaml     # ConfigMap → Grafana sidecar creates folder
+</code></pre></div></td></tr></table></div>
+<p>ArgoCD keeps these in sync with git (manual <code>kubectl</code> edits are reverted), but it
+does <strong>not</strong> prune: deleting the directory from git leaves the namespace and its
+workloads in place. Removing a team is a deliberate manual step:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>kubectl<span class="w"> </span>delete<span class="w"> </span>application<span class="w"> </span>team-payments<span class="w"> </span>-n<span class="w"> </span>argocd
+kubectl<span class="w"> </span>delete<span class="w"> </span>namespace<span class="w"> </span>team-payments
 </code></pre></div></td></tr></table></div>
 <p>The Backstage Group entity for the team is <strong>not</strong> part of this PR. Teams and
 their members are synced live from the GitHub Org
