@@ -98,6 +98,7 @@ services:
       SAUCE_ACCESS_KEY: ${SAUCE_ACCESS_KEY:-}
     ports:
       - "3000:3000"   # Backstage backend (Node.js) listens on port 3000
+      - "127.0.0.1:9464:9464"   # Prometheus metrics (instrumentation.js); localhost only
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/healthcheck"]
       interval: 15s
@@ -176,7 +177,7 @@ services:
           find /catalog -name "*.yaml" \
             -exec sed -i "s/moatazeldebsy/${GITHUB_ORG}/g" {} \;
         fi &&
-        node packages/backend \
+        node --require ./instrumentation.js packages/backend \
           --config app-config.yaml \
           --config app-config.local.yaml \
           --config app-config.ai.yaml

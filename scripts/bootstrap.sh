@@ -1386,6 +1386,9 @@ sed -e "s|image: .*backstage:BACKSTAGE_IMAGE_TAG|image: ${BACKSTAGE_IMAGE}:${BAC
     -e "s|BACKSTAGE_IMAGE_TAG|${BACKSTAGE_IMAGE_TAG}|g" \
     -e "s|^  replicas: 1$|  replicas: ${BACKSTAGE_REPLICAS}|" \
   aws/backstage/deployment.yaml | kubectl apply -f -
+# Metrics Service + ServiceMonitor (#604). Prometheus is installed in Phase 3,
+# so the ServiceMonitor CRD exists by now.
+kubectl apply -f aws/backstage/metrics.yaml
 
 # Autoscaling follows the profile like the replica count above (#311). Deleted
 # when not HA so moving an install from medium back to small does not leave an
