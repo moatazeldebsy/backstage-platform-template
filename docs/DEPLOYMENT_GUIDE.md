@@ -299,9 +299,18 @@ alb_ingress_url argocd-server argocd          # -> <shared-alb>:8080
 | ArgoCD | `http://<shared-alb>:8080` | `alb_ingress_url argocd-server argocd` |
 | Grafana | `http://<shared-alb>:3000` (`:443` HTTPS with `domain_name`) | `alb_ingress_url prometheus-grafana monitoring` |
 | hello-service | `http://<shared-alb>:8081` | `alb_ingress_url hello-service-dev-service-template services-dev` |
-| agent-event-router | `http://<shared-alb>:8082` | AI stack |
-| KAgent UI / IDP Assistant | `http://<shared-alb>:8083` / `:8084` | AI stack |
-| MLflow / Langfuse / Argo Workflows | `http://<shared-alb>:5000` / `:3001` / `:2746` | AI stack |
+| agent-event-router | `http://<shared-alb>:8082/webhook/github` (only that path is published) | AI stack |
+| KAgent UI / IDP Assistant | `http://<internal-alb>:8083` / `:8084` — VPC only | AI stack |
+| MLflow / Langfuse / Argo Workflows | `http://<internal-alb>:5000` / `:3001` / `:2746` — VPC only | AI stack |
+
+KAgent, the IDP Assistant A2A endpoint, MLflow, Langfuse and Argo Workflows have
+no authentication of their own (or, for Argo Workflows, take a bearer token over
+plain HTTP), so they sit on a second, **internal** ALB (`group.name:
+idp-internal`) rather than the internet-facing `idp-platform` one. Reach them
+from inside the VPC (VPN, bastion, SSM port forwarding) or with
+`kubectl port-forward`, e.g.
+`kubectl port-forward -n kagent svc/kagent-ui 8083:8080`.
+`alb_ingress_url` returns their internal hostname the same way.
 
 ---
 
@@ -779,7 +788,9 @@ quote.
 **Done without a domain: one ALB, one listener port per service.** Every
 platform Ingress carries `alb.ingress.kubernetes.io/group.name: idp-platform`
 and its own `listen-ports` (ArgoCD `:8080`, Grafana `:3000`, hello-service
-`:8081`, the AI-stack UIs `:2746`–`:8084`; see the URL table above). Rules live
+`:8081`, agent-event-router `:8082`; the unauthenticated AI-stack UIs
+`:2746`–`:8084` use the same pattern on the internal `idp-internal` group — see
+the URL table above). Rules live
 per listener, so the `host: ""` + `path: /` entries no longer collide. That
 replaced ~9 ALBs, each ~$0.0375/h with its three public IPv4 addresses, with
 one. `validate-deployment.sh` flags any internet-facing ALB Ingress that is

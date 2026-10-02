@@ -1391,11 +1391,17 @@ _wt="${WEBHOOK_TOKEN:-}"
 _ghtok="${GITHUB_TOKEN:-}"
 if [[ -n "$_ghws" || -n "$_wt" || -n "$_ghtok" ]]; then
   info "Creating agent-event-router-secrets in services-dev..."
+  # Unset values stay EMPTY, never a fixed placeholder string. The router reads
+  # empty as "not configured": /webhook/github fails closed (503), the bearer
+  # check is skipped (Alertmanager sends no credential), and incident-issue
+  # creation is off. A placeholder from this public repo was worse on every
+  # count — anyone could sign a GitHub webhook with it, and a placeholder
+  # WEBHOOK_TOKEN made the router 401 Alertmanager's unauthenticated calls.
   kubectl create secret generic agent-event-router-secrets \
     --namespace services-dev \
-    --from-literal=github-webhook-secret="${_ghws:-placeholder-set-in-github-webhook}" \
-    --from-literal=webhook-token="${_wt:-placeholder-set-webhook-token}" \
-    --from-literal=github-token="${_ghtok:-placeholder-set-github-token}" \
+    --from-literal=github-webhook-secret="${_ghws}" \
+    --from-literal=webhook-token="${_wt}" \
+    --from-literal=github-token="${_ghtok}" \
     --dry-run=client -o yaml | kubectl apply -f -
   check "Secret agent-event-router-secrets ready"
 else
