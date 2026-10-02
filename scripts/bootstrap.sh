@@ -1575,8 +1575,6 @@ configuration:
       provider: aws
       config:
         region: ${AWS_REGION}
-snapshotsEnabled: true
-deployNodeAgent: true
 # A backup that fails every night used to be invisible until a restore was
 # needed. Scraped with the release label kube-prometheus-stack selects on.
 metrics:
@@ -1602,6 +1600,8 @@ metrics:
           severity: critical
         annotations:
           summary: "Velero schedule {{ \$labels.schedule }} has not completed a backup in over 48h"
+snapshotsEnabled: true
+deployNodeAgent: true
 EOF
 
       helm_upgrade_cached velero velero vmware-tanzu/velero \
