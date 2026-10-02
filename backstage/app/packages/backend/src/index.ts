@@ -102,7 +102,7 @@ backend.add(idpGithubOrgTeamMetadataModule);
 // See https://backstage.io/docs/features/software-catalog/configuration#subscribing-to-catalog-errors
 backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 
-// permission plugin — guests get read-only access; authenticated users get full access
+// permission plugin — guests read-only; catalog deletes owner-scoped; platform-team full access (idpPermissionPolicy.ts)
 backend.add(import('@backstage/plugin-permission-backend'));
 backend.add(idpPermissionPolicyModule);
 
