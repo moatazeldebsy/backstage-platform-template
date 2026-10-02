@@ -2313,6 +2313,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#alert-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alert Routing
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pagerduty-escalation" class="md-nav__link">
     <span class="md-ellipsis">
       PagerDuty Escalation
@@ -3308,6 +3317,27 @@ spike, an error-rate jump) can be correlated with "which deploy caused it."</p>
   (no <code>smoke-test-production</code> exists, unlike dev/staging). Add one if you want a prod-env marker.</li>
 </ul>
 <hr />
+<h2 id="alert-routing">Alert Routing<a class="headerlink" href="#alert-routing" title="Permanent link">&para;</a></h2>
+<p>All alerts go to <code>#platform-alerts</code>, and critical and warning alerts also go to <code>agent-event-router</code>
+(<code>observability/alertmanager/alertmanager-config.yaml</code>, in the <code>monitoring</code> namespace).</p>
+<p><strong>Per-team channels:</strong> set <strong>Team Slack alert channel</strong> (e.g. <code>#payments-alerts</code>) when running
+the <em>Team Namespace</em> template, together with the ESO IAM role ARN. The template adds
+<code>kubernetes/teams/&lt;team&gt;/alertmanager-config.yaml</code>, which routes critical and warning alerts from
+<code>team-&lt;team&gt;</code> to that channel <strong>in addition to</strong> <code>#platform-alerts</code>. Store the channel's
+incoming-webhook URL first:</p>
+<div class="language-bash highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code>aws<span class="w"> </span>secretsmanager<span class="w"> </span>create-secret<span class="w"> </span>--name<span class="w"> </span>&lt;team&gt;/slack-webhook<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--secret-string<span class="w"> </span><span class="s1">&#39;{&quot;webhook-url&quot;:&quot;https://hooks.slack.com/services/...&quot;}&#39;</span>
+</code></pre></div></td></tr></table></div>
+<p>Until that secret exists, the operator skips only that team's config; platform routing and other
+teams keep working.</p>
+<p><strong>Why the scoping works:</strong> the Alertmanager runs with
+<code>alertmanagerConfigMatcherStrategy: OnNamespaceExceptForAlertmanagerNamespace</code>
+(<code>prometheus-stack-values.yaml</code>, local and AWS). The config in <code>monitoring</code> sees every alert, and
+each team's config only sees alerts from its own namespace. Under the operator's default,
+<code>OnNamespace</code>, the platform config was silently limited to alerts labelled
+<code>namespace="monitoring"</code>, so service alerts and SLO burn alerts never reached Slack or the
+router (#159).</p>
 <h2 id="pagerduty-escalation">PagerDuty Escalation<a class="headerlink" href="#pagerduty-escalation" title="Permanent link">&para;</a></h2>
 <h3 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
 <p>PagerDuty is wired into AlertManager as a receiver for <strong>Critical</strong> severity alerts. Configure it by setting the integration key in <code>local/.env</code>:</p>
