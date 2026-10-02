@@ -1,0 +1,20 @@
+/* Small tweaks on top of mkdocs-material. Backstage TechDocs ignores this file. */
+
+/* Use more of a wide screen for tables and code. */
+.md-grid {
+  max-width: 1440px;
+}
+
+/* Numbered quickstart steps ("## 1. Start the platform") read as steps. */
+.md-typeset h2 {
+  margin-top: 2.2em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Screenshots inside steps. */
+.md-typeset img.screenshot {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+  box-shadow: var(--md-shadow-z1);
+}

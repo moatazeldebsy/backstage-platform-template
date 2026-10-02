@@ -1,64 +1,110 @@
 # Internal Developer Platform
 
-Welcome to the IDP MVP documentation. Use the navigation above to explore the platform.
+A golden-path platform for building, deploying and operating services on Kubernetes.
+Backstage is the front door. ArgoCD, Crossplane, Prometheus, OPA/Gatekeeper and an
+opt-in AI layer do the work behind it, the same way on a laptop (Kind) as on AWS (EKS).
 
-## Quick Links
+**New here?** Start with the [Quickstart](getting-started.md). It takes 15–20 minutes
+locally and needs no cloud account.
 
-### Getting Started
-- [Getting Started](getting-started.md) — 5-minute quickstart for local or AWS
-- [Local Setup](local-setup.md) — Run the full platform on your laptop with Kind
-- [Pre-Deployment Secrets Verification](PRE_DEPLOYMENT_CHECKLIST.md) — **Read this first!** Verify all API keys and credentials before AWS deployment
-- [AWS Deployment Guide](DEPLOYMENT_GUIDE.md) — Complete AWS EKS deployment with pre-flight checklist, known issues, and troubleshooting
+![Platform planes](assets/platform-planes.png)
 
-### Core Concepts
-- [Golden Path](golden-path.md) — Conventions every service must follow
-- [Mobile Platform](mobile-platform.md) — 7 mobile golden-path templates (Android, iOS, Flutter, SDK, code signing, app store, device farm)
-- [Crossplane](crossplane.md) — Self-serve per-service AWS resources via in-cluster Claims
-- [Crossplane vs Terraform](crossplane-vs-terraform.md) — Which tool owns what, and why
-- [CLI Reference](cli-reference.md) — `idp` CLI commands, flags, and all 18 test-suite types
-- [Scripts Reference](scripts-reference.md) — Every `scripts/*.sh` script, grouped by day-0/1/2
+## Explore the docs
 
-### Team Management
-- [Team Management](team-management.md) — Onboard a team: namespace, SecretStore, ArgoCD ApplicationSet, Grafana folder, DORA metrics
-- [GitHub App Setup](github-app-setup.md) — Replace PAT with GitHub App for higher rate limits and per-installation scoping
-- [Scaling Runbook](scaling-runbook.md) — Small/Medium/Large tiers, scaling signals, implementation status
+<div class="grid cards" markdown>
 
-### Engineering Intelligence
-- [Product Vision](engineering-intelligence/product-vision.md) — What the intelligence layer answers, and for whom
-- [Architecture](engineering-intelligence/architecture.md) — How it is built, and an honest inventory of which data actually exists
-- [Maturity Model](engineering-intelligence/maturity-model.md) — Ad Hoc → Standardised → Platform Enabled → AI Enabled → Autonomous
-- [Scoring](engineering-intelligence/scoring.md) — The evidence contract: no score without evidence, no number without data
-- [Integrations](engineering-intelligence/integrations.md) — Every collector, its source, and what happens when that source is down
-- [AI Advisor](engineering-intelligence/ai-advisor.md) — What it may say, what it refuses to say, and why
-- [Roadmap](engineering-intelligence/roadmap.md) — The thirteen phases and the data blocker on each
+-   **Get Started**
 
-### Advanced Topics
-- [Contract Testing](contract-testing.md) — Self-describing, self-testing APIs with MCP
-- [AI Assistant](ai-assistant.md) — KAgent AI agents embedded in Backstage
-- [Agentic Development Platform (ADP)](agentic-platform.md) — Agent-driven dev workflow + ops, HiTL approval gate, opt-in via `bootstrap-ai.sh --adp`
-- [Agent Approvals](agent-approvals.md) — Human-in-the-loop gate for agent-initiated mutating actions: policy, approval API, Backstage UI
-- [DORA & FinOps](dora-finops.md) — DORA entity tab (Elite/High/Medium/Low badges) + FinOps cost overview with team dimension in Backstage
-- [Security](security.md) — Pod Security Standards, OPA/Gatekeeper, RBAC, per-team secret isolation, production hardening
-- [Flaky-Test Quarantine](flaky-test-quarantine.md) — How flaky tests get detected (exporter) and acted on (auto quarantine PRs)
-- [Test-Impact Analysis](test-impact-analysis.md) — Selective test execution on PRs via pytest-testmon (python-service golden path)
+    ---
 
-### Operations
-- [Troubleshooting](TROUBLESHOOTING.md) — **Start here when something is broken.** Symptom-indexed fixes
-- [SRE & Reliability](sre-reliability.md) — SLOs, burn-rate alerts, PodDisruptionBudgets, rollback
-- [Production Readiness](readiness-checklist.md) — Pre-production checklist
-- [AWS Install Failure Modes](aws-install-failure-modes.md) — What breaks during an EKS bootstrap, and why
-- [Docker Recovery](docker-recovery.md) — Recover Kind cluster after Docker Desktop restarts
-- [Security Scanning](security-scanning.md) — gitleaks, CodeQL, Trivy, Snyk and how findings are triaged
-- [Postmortem Template](postmortem-template.md) — Blameless incident write-up scaffold
-- [Runbooks](runbooks/index.md) — Operational procedures and on-call guides
+    [Quickstart](getting-started.md): bring it up and ship a first service
 
-### Shift-Left Programme
-- [Shift-Left Quality](shift-left.md) — How the platform embeds testing at scaffold, PR, deploy, and runtime
-- [Pilot Kickoff](shift-left-pilot-kickoff.md) — Running the programme with a first team
-- [Leadership Brief](shift-left-leadership.md) — The case, the metrics, and what to expect
-- [Demo Cheatsheet](shift-left-demo-cheatsheet.md) — Short script for demoing the quality story
-- [Demo Runbook](demo-runbook.md) — Full end-to-end platform demo walkthrough
+    [Local Setup](local-setup.md): the full platform on your laptop with Kind
 
-### Reference
-- [Roadmap](https://github.com/users/moatazeldebsy/projects/5) — Upcoming features and milestones, tracked as GitHub Project issues
-- [Architecture](architecture.md) — System design and data flow
+    [Screenshots](screenshots.md): a tour of the portal
+
+-   **Deploy on AWS**
+
+    ---
+
+    [Pre-Deployment Checklist](PRE_DEPLOYMENT_CHECKLIST.md): **read this first**, verify every key and credential
+
+    [Deployment Guide](DEPLOYMENT_GUIDE.md): EKS walkthrough, known issues, cost
+
+    [Known Failure Modes](aws-install-failure-modes.md): what breaks during an EKS bootstrap, and why
+
+    [Readiness Checklist](readiness-checklist.md) · [GitHub App Setup](github-app-setup.md)
+
+-   **Platform**
+
+    ---
+
+    [Golden Path](golden-path.md): conventions every service follows
+
+    [Mobile Platform](mobile-platform.md): 7 mobile golden-path templates
+
+    [PR Preview Environments](preview-environments.md) · [Contract Testing](contract-testing.md)
+
+    [Crossplane](crossplane.md) · [Crossplane vs Terraform](crossplane-vs-terraform.md)
+
+    [Team Management](team-management.md) · [DORA & FinOps](dora-finops.md)
+
+-   **AI & Agents**
+
+    ---
+
+    [AI Assistant](ai-assistant.md): KAgent agents embedded in Backstage
+
+    [Agentic Development Platform](agentic-platform.md): agent-driven dev workflow and ops, opt-in via `bootstrap-ai.sh --adp`
+
+    [Agent Approvals](agent-approvals.md): human-in-the-loop gate for mutating agent actions
+
+-   **Engineering Intelligence**
+
+    ---
+
+    [Product Vision](engineering-intelligence/product-vision.md) · [Architecture](engineering-intelligence/architecture.md)
+
+    [Maturity Model](engineering-intelligence/maturity-model.md) · [Scoring](engineering-intelligence/scoring.md)
+
+    [Integrations](engineering-intelligence/integrations.md) · [AI Advisor](engineering-intelligence/ai-advisor.md)
+
+    [Roadmap](engineering-intelligence/roadmap.md)
+
+-   **Quality & Security**
+
+    ---
+
+    [Shift-Left Quality](shift-left.md): testing at scaffold, PR, deploy and runtime
+
+    [Flaky-Test Quarantine](flaky-test-quarantine.md) · [Test-Impact Analysis](test-impact-analysis.md)
+
+    [Security](security.md) · [Security Scanning](security-scanning.md)
+
+-   **Operate**
+
+    ---
+
+    [Troubleshooting](TROUBLESHOOTING.md): **start here when something is broken**
+
+    [SRE & Reliability](sre-reliability.md): SLOs, burn-rate alerts, PDBs, rollback
+
+    [Runbooks](runbooks/index.md) · [Scaling Runbook](scaling-runbook.md)
+
+    [Docker Recovery](docker-recovery.md) · [Post-Mortem Template](postmortem-template.md)
+
+-   **Reference**
+
+    ---
+
+    [Architecture](architecture.md): system design and data flow
+
+    [CLI Reference](cli-reference.md): `idp` commands and flags
+
+    [Scripts Reference](scripts-reference.md): every `scripts/*.sh`, grouped into day-0, day-1 and day-2
+
+    [Design Decisions](design/adr-0001-batch-orchestration.md): ADR-0001 to ADR-0009
+
+    [Roadmap](https://github.com/users/moatazeldebsy/projects/5): tracked as GitHub issues
+
+</div>
