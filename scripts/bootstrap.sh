@@ -135,12 +135,24 @@ case "$TF_PROFILE" in
   medium|large)
     PLATFORM_HA=true
     ARGOCD_HA_VALUES=(--values aws/argocd/argocd-ha-values.yaml)
+    # Prometheus x2 + Alertmanager x3 (aws/observability/prometheus-ha-values.yaml).
+    OBS_HA_VALUES=(--values aws/observability/prometheus-ha-values.yaml)
+    # Admission webhooks and ESO: one replica means a node drain or a single
+    # pod crash blocks (Kyverno, failurePolicy Fail) or silently un-enforces
+    # (Gatekeeper, fail-open) admission, and stalls every ExternalSecret.
+    ADMISSION_REPLICAS=3
+    ESO_HA_ARGS=(--set replicaCount=2 --set leaderElect=true
+                 --set podDisruptionBudget.enabled=true
+                 --set webhook.replicaCount=2 --set webhook.podDisruptionBudget.enabled=true)
     BACKSTAGE_REPLICAS=2
     # Ceiling for aws/backstage/hpa.yaml; the floor is BACKSTAGE_REPLICAS.
     if [[ "$TF_PROFILE" == "large" ]]; then BACKSTAGE_MAX_REPLICAS=6; else BACKSTAGE_MAX_REPLICAS=4; fi ;;
   *)
     PLATFORM_HA=false
     ARGOCD_HA_VALUES=()
+    OBS_HA_VALUES=()
+    ADMISSION_REPLICAS=1
+    ESO_HA_ARGS=()
     BACKSTAGE_REPLICAS=1
     BACKSTAGE_MAX_REPLICAS=1 ;;
 esac
@@ -243,6 +255,7 @@ BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
 
 log "Terraform apply complete."
 sync_actions_role_secret "$(tf_output github_actions_role_arn)"
+sync_actions_role_secret "$(tf_output github_actions_pr_role_arn)" AWS_PR_ROLE_ARN
 
 timer_end "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 
@@ -381,6 +394,7 @@ helm_upgrade_cached external-secrets external-secrets external-secrets/external-
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true \
+  ${ESO_HA_ARGS[@]+"${ESO_HA_ARGS[@]}"} \
   --wait --timeout "${HELM_WAIT_MED}"
 
 # ── Phase 3.6a: Create ClusterSecretStore (AWS Secrets Manager backend for ESO) ─
@@ -393,15 +407,17 @@ kubectl wait --for=condition=ready pod \
   -n external-secrets \
   --timeout=300s || log "  WARNING: ESO pods not ready — proceeding anyway"
 
-# Annotate the ESO ServiceAccount with the Backstage IRSA role so it can
-# authenticate to Secrets Manager via pod identity (no static credentials).
-# The IAM trust policy references external-secrets-sa (not the default external-secrets SA).
-# Create it if missing so the ClusterSecretStore IRSA authentication succeeds.
+# Annotate the ESO ServiceAccount with its own read-only IRSA role (no static
+# credentials). Not the Backstage role: the ClusterSecretStore serves every
+# namespace, and that role can read idp-mvp/backstage (terraform/iam.tf
+# external_secrets_irsa). The IAM trust policy references external-secrets-sa
+# (not the default external-secrets SA); create it if missing.
+ESO_ROLE_ARN=$(tf_output_required external_secrets_role_arn)
 kubectl create serviceaccount external-secrets-sa -n external-secrets \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl annotate serviceaccount external-secrets-sa \
   -n external-secrets \
-  "eks.amazonaws.com/role-arn=${BACKSTAGE_ROLE_ARN}" \
+  "eks.amazonaws.com/role-arn=${ESO_ROLE_ARN}" \
   --overwrite
 
 # Substitute the AWS region placeholder and apply
@@ -495,6 +511,18 @@ fi
     BACKSTAGE_AUTH_SECRET=$(_rand_hex)
     log "  Generated a new BACKSTAGE_AUTH_SECRET."
   fi
+  # Grafana's admin password. Its ALB listener is internet-facing, and the
+  # Phase 4 install used to fall back to the literal "changeme" when this was
+  # unset. Keep whatever Secrets Manager already holds; generate one otherwise.
+  # Exported so the merge below writes it back and Phase 4 installs with it.
+  if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
+    GRAFANA_ADMIN_PASSWORD=$(_existing_token GRAFANA_ADMIN_PASSWORD)
+    if [[ -z "$GRAFANA_ADMIN_PASSWORD" || "$GRAFANA_ADMIN_PASSWORD" == "REPLACE_ME" || "$GRAFANA_ADMIN_PASSWORD" == "changeme" ]]; then
+      GRAFANA_ADMIN_PASSWORD=$(_rand_hex)
+      log "  Generated a new GRAFANA_ADMIN_PASSWORD (stored in the Backstage secret)."
+    fi
+  fi
+  export GRAFANA_ADMIN_PASSWORD
 
   UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" BACKSTAGE_AUTH_SECRET="$BACKSTAGE_AUTH_SECRET" python3 -c "
 import json, sys, os
@@ -654,12 +682,22 @@ else
   log "  No domain_name configured — monitoring ALB ingresses stay HTTP-only."
 fi
 
+# Phase 3.7 resolves GRAFANA_ADMIN_PASSWORD; re-read it from Secrets Manager in
+# case that phase did not run in this invocation. Never fall back to a default.
+if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
+  GRAFANA_ADMIN_PASSWORD=$(aws secretsmanager get-secret-value \
+    --secret-id "$BACKSTAGE_SECRET_ARN" --query SecretString --output text 2>/dev/null \
+    | python3 -c "import json,sys; print(json.load(sys.stdin).get('GRAFANA_ADMIN_PASSWORD',''))" 2>/dev/null || true)
+fi
+[[ -n "${GRAFANA_ADMIN_PASSWORD:-}" ]] \
+  || err "GRAFANA_ADMIN_PASSWORD is unset and not in Secrets Manager — export it or re-run Phase 3.7."
 helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
+  ${OBS_HA_VALUES[@]+"${OBS_HA_VALUES[@]}"} \
   ${GRAFANA_VALUES[@]+"${GRAFANA_VALUES[@]}"} \
-  --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
+  --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}" \
   --wait --timeout "${HELM_WAIT_MED}"
 rm -f "${tmp_obs_values}"
 
@@ -732,10 +770,13 @@ if [[ "$SKIP_POLICIES" != "true" ]]; then
   (
     set -e
     log "Phase 3.8: Installing OPA/Gatekeeper policy engine..."
+    # The chart's PDB is minAvailable 1. On one replica that allows zero
+    # disruptions and blocks every node drain / EKS upgrade, as in #318.
     helm_upgrade_cached gatekeeper gatekeeper-system gatekeeper/gatekeeper \
       --namespace gatekeeper-system \
       --create-namespace \
-      --set replicas=1 \
+      --set replicas="${ADMISSION_REPLICAS}" \
+      --set pdb.controllerManager.minAvailable="$(( ADMISSION_REPLICAS > 1 ? 1 : 0 ))" \
       --set auditInterval=60 \
       --set logLevel=WARNING \
       --wait \
@@ -791,11 +832,16 @@ _p39_log=$(mktemp)
   # has no shell (Kyverno's job templates invoke /bin/bash directly) and runs as
   # root, which the CronJob-based cleanup jobs' runAsNonRoot requirement rejects.
   # bitnamilegacy/kubectl keeps the same non-root default and has a real shell.
+  #
+  # admissionController.replicas / admissionController.container.resources, not
+  # replicaCount / resources: chart 3.x silently ignores those 2.x keys, so this
+  # ran ONE admission controller behind a failurePolicy: Fail webhook. The chart
+  # adds a minAvailable-1 PDB itself when replicas > 1.
   helm_upgrade_cached kyverno kyverno kyverno/kyverno \
     --namespace kyverno \
     --create-namespace \
     --version 3.2.7 \
-    --set replicaCount=2 \
+    --set admissionController.replicas="${ADMISSION_REPLICAS}" \
     --set cleanupJobs.admissionReports.image.registry=docker.io \
     --set cleanupJobs.admissionReports.image.repository=bitnamilegacy/kubectl \
     --set cleanupJobs.admissionReports.image.tag=1.28.5 \
@@ -814,8 +860,8 @@ _p39_log=$(mktemp)
     --set webhooksCleanup.image.registry=docker.io \
     --set webhooksCleanup.image.repository=bitnamilegacy/kubectl \
     --set webhooksCleanup.image.tag=1.28.5 \
-    --set resources.requests.cpu=100m \
-    --set resources.requests.memory=256Mi \
+    --set admissionController.container.resources.requests.cpu=100m \
+    --set admissionController.container.resources.requests.memory=256Mi \
     --wait --timeout "${HELM_WAIT_SHORT}"
 
   kubectl wait deployment kyverno-admission-controller \
@@ -1602,6 +1648,11 @@ metrics:
           summary: "Velero schedule {{ \$labels.schedule }} has not completed a backup in over 48h"
 snapshotsEnabled: true
 deployNodeAgent: true
+# The node agent backs up pod volumes on every node, including Karpenter's
+# tainted services nodes (idp/services:NoSchedule, terraform/karpenter.tf).
+nodeAgent:
+  tolerations:
+    - operator: Exists
 EOF
 
       helm_upgrade_cached velero velero vmware-tanzu/velero \
@@ -1658,7 +1709,7 @@ EOF
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  PLATFORM SERVICES"
   log "║    ArgoCD          http://$(_alb argocd-server argocd)"
-  log "║    Grafana         http://$(_alb prometheus-grafana monitoring)"
+  log "║    Grafana         http://$(_alb prometheus-grafana monitoring)  (admin / GRAFANA_ADMIN_PASSWORD in the Backstage Secrets Manager secret)"
   log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  OPERATOR TOOLS — no public ALB by design (~\$82/mo saved, and they have"

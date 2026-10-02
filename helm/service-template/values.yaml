@@ -231,7 +231,16 @@ envFrom: []
   #     name: my-service-secrets
 
 nodeSelector: {}
-tolerations: []
+# Lets services run on Karpenter's spot-capable `services` NodePool on EKS, which
+# carries this taint so platform components stay off it (terraform/karpenter.tf).
+# Tolerating is not requiring: on Kind, or with Karpenter off, it matches nothing
+# and changes nothing. Setting tolerations in a values file replaces this list —
+# keep this entry if you add others.
+tolerations:
+  - key: idp/services
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
 # affinity is built by the chart template using selectorLabels — override here if needed
 affinity: {}
 

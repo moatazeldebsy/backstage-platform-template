@@ -153,8 +153,10 @@ spec:
           # every route in this file down with it.
           #
           # The router accepts unauthenticated calls when WEBHOOK_TOKEN is unset
-          # and says so on startup; it is a ClusterIP service, reachable only from
-          # inside the cluster. To authenticate it anyway, create the secret in
+          # and says so on startup. Its Service is ClusterIP; on AWS its ALB
+          # listener publishes only /webhook/github (HMAC-verified), so
+          # /webhook/alertmanager is reachable only from inside the cluster
+          # (services/agent-event-router/helm-values-aws.yaml). To authenticate it anyway, create the secret in
           # THIS namespace first, then add the block back:
           #
           #   kubectl create secret generic agent-event-router-webhook-token \

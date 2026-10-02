@@ -52,4 +52,8 @@ clusterAgent:
     enabled: false # no HPA-on-Datadog-metrics use case today
 
 agents:
+  # Every node, including Karpenter's tainted `services` nodes
+  # (idp/services:NoSchedule, terraform/karpenter.tf) where the team services run.
+  tolerations:
+    - operator: Exists
   useHostNetwork: false

@@ -657,9 +657,10 @@ rm -f "${TF_DIR}/.idp-profile"
 # skips the ECR push instead of failing on every main push. Not for a replaced
 # stack: the secret already points at the replacement's role.
 if [[ "$REPLACED_STACK" == "true" ]]; then
-  log "  Leaving the repo's AWS_ROLE_ARN secret alone (--replaced-stack)."
+  log "  Leaving the repo's AWS_ROLE_ARN / AWS_PR_ROLE_ARN secrets alone (--replaced-stack)."
 else
   sync_actions_role_secret ""
+  sync_actions_role_secret "" AWS_PR_ROLE_ARN
 fi
 
 # ── Phase 7: CloudWatch log groups ───────────────────────────────────────────

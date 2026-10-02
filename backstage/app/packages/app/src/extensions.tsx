@@ -1244,13 +1244,11 @@ interface Approval {
 function ApprovalsPage() {
   const fetchApi = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
-  const identityApi = useApi(identityApiRef);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deciding, setDeciding] = useState<string | null>(null);
   const [filter, setFilter] = useState<'pending' | 'all'>('pending');
-  const [decidedBy, setDecidedBy] = useState('');
 
   const base = configApi.getString('backend.baseUrl');
   const proxyBase = `${base}/api/proxy/approval-service`;
@@ -1272,7 +1270,6 @@ function ApprovalsPage() {
   };
 
   useEffect(() => {
-    identityApi.getProfileInfo().then(p => setDecidedBy(p.displayName ?? p.email ?? 'unknown')).catch(() => {});
     loadApprovals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
@@ -1280,10 +1277,14 @@ function ApprovalsPage() {
   const decide = async (id: string, decision: 'approved' | 'denied') => {
     setDeciding(id);
     try {
-      const resp = await fetchApi.fetch(`${proxyBase}/approvals/${id}/decide`, {
+      // Through the backend's idp-approvals route, NOT the generic proxy: it
+      // records the decider from the signed-in session
+      // (backend/src/modules/idpApprovalDecision.ts), so this body carries no
+      // decided_by — one sent from here could name anyone.
+      const resp = await fetchApi.fetch(`${base}/api/idp-approvals/approvals/${encodeURIComponent(id)}/decide`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, decided_by: decidedBy }),
+        body: JSON.stringify({ decision }),
       });
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({})) as any;
