@@ -25,11 +25,19 @@ ingress:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 8082}]'
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
+    # The default health check is GET /, which the router answers 404.
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+  # Only the GitHub webhook is published. It is HMAC-verified and fails closed
+  # (503) without GITHUB_WEBHOOK_SECRET. /webhook/alertmanager and
+  # /webhook/argocd accept unauthenticated calls when WEBHOOK_TOKEN is unset
+  # (Alertmanager sends no credential — observability/alertmanager/
+  # alertmanager-config.yaml), so they must stay reachable only in-cluster;
+  # anything else on this listener gets the ALB's default 404.
   hosts:
     - host: ""
       paths:
-        - path: /
-          pathType: Prefix
+        - path: /webhook/github
+          pathType: Exact
   tls: []
 livenessProbe:
   httpGet:

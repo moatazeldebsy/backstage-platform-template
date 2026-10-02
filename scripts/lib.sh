@@ -511,31 +511,34 @@ tf_output_required() {
 # Non-fatal by design: the AWS stack itself is fine either way, so a missing or
 # unauthenticated gh only warns and prints the manual command.
 #   $1 = role ARN, or empty to delete the secret
+#   $2 = secret name (default AWS_ROLE_ARN)
 sync_actions_role_secret() {
-  local arn="${1:-}" repo
+  # $2: the secret name. AWS_ROLE_ARN is the main-branch deploy role;
+  # AWS_PR_ROLE_ARN is the read-only role pull_request runs use (terraform/iam.tf).
+  local arn="${1:-}" name="${2:-AWS_ROLE_ARN}" repo
   if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
     if [[ -n "$arn" ]]; then
-      warn "gh not available/authenticated — set the AWS_ROLE_ARN Actions secret yourself:"
-      warn "  gh secret set AWS_ROLE_ARN --body '${arn}'"
+      warn "gh not available/authenticated — set the ${name} Actions secret yourself:"
+      warn "  gh secret set ${name} --body '${arn}'"
     else
-      warn "gh not available/authenticated — delete the stale AWS_ROLE_ARN Actions secret yourself:"
-      warn "  gh secret delete AWS_ROLE_ARN"
+      warn "gh not available/authenticated — delete the stale ${name} Actions secret yourself:"
+      warn "  gh secret delete ${name}"
     fi
     return 0
   fi
   repo=$(cd "${ROOT_DIR:-.}" && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || repo=""
   if [[ -z "$repo" ]]; then
-    warn "Could not resolve the GitHub repo from the git remote — AWS_ROLE_ARN secret not synced."
+    warn "Could not resolve the GitHub repo from the git remote — ${name} secret not synced."
     return 0
   fi
   if [[ -n "$arn" ]]; then
-    gh secret set AWS_ROLE_ARN --repo "$repo" --body "$arn" >/dev/null \
-      && log "  AWS_ROLE_ARN Actions secret set on ${repo} (CI can push to ECR)." \
-      || warn "  Failed to set AWS_ROLE_ARN on ${repo} — run: gh secret set AWS_ROLE_ARN --body '${arn}'"
-  elif gh secret list --repo "$repo" 2>/dev/null | grep -q '^AWS_ROLE_ARN\b'; then
-    gh secret delete AWS_ROLE_ARN --repo "$repo" >/dev/null \
-      && log "  AWS_ROLE_ARN Actions secret deleted on ${repo} (CI skips the ECR push until the next bootstrap.sh)." \
-      || warn "  Failed to delete AWS_ROLE_ARN on ${repo} — run: gh secret delete AWS_ROLE_ARN"
+    gh secret set "$name" --repo "$repo" --body "$arn" >/dev/null \
+      && log "  ${name} Actions secret set on ${repo}." \
+      || warn "  Failed to set ${name} on ${repo} — run: gh secret set ${name} --body '${arn}'"
+  elif gh secret list --repo "$repo" 2>/dev/null | grep -q "^${name}\b"; then
+    gh secret delete "$name" --repo "$repo" >/dev/null \
+      && log "  ${name} Actions secret deleted on ${repo} (CI skips its AWS steps until the next bootstrap.sh)." \
+      || warn "  Failed to delete ${name} on ${repo} — run: gh secret delete ${name}"
   fi
   return 0
 }

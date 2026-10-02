@@ -37,6 +37,7 @@ import { idpPermissionPolicyModule } from './modules/idpPermissionPolicy';
 import { engineeringIntelligencePlugin } from './modules/idpEngineeringIntelligence';
 import { complianceWatcherPlugin } from './modules/idpComplianceWatcher';
 import { idpAiIdentityProxyPlugin } from './modules/idpAiIdentityProxy';
+import { idpApprovalDecisionPlugin } from './modules/idpApprovalDecision';
 
 
 const backend = createBackend();
@@ -68,6 +69,7 @@ backend.add(ragSearchPlugin);
 backend.add(learningCenterPlugin);
 backend.add(idpRepoCheckPlugin);
 backend.add(idpAiIdentityProxyPlugin);
+backend.add(idpApprovalDecisionPlugin);
 
 // techdocs plugin
 backend.add(import('@backstage/plugin-techdocs-backend'));

@@ -487,14 +487,17 @@ bootstrap.sh
         TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
 
 External Secrets Operator (ESO)
-  ├── ClusterSecretStore: aws-secretsmanager
-  │     auth: IRSA via external-secrets-sa (annotated with idp-mvp-backstage IAM role)
-  │     → assumes role → calls secretsmanager:GetSecretValue
+  ├── ClusterSecretStore: aws-secretsmanager      (usable from every namespace)
+  │     auth: IRSA via external-secrets-sa (idp-mvp-external-secrets role)
+  │     → reads only idp-mvp/dora-exporter
+  ├── SecretStore aws-secrets-manager (namespace: backstage)
+  │     auth: IRSA via the backstage SA (idp-mvp-backstage role)
+  ├── SecretStore (namespace: ml-platform, litellm-eso-sa)
   │
   └── ExternalSecret (per namespace)
-        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage
-        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter
-        kagent-secret (namespace: kagent)           → idp-mvp/kagent
+        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage      [backstage SecretStore]
+        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter [ClusterSecretStore]
+        litellm secrets (namespace: ml-platform)    → idp-mvp/kagent, idp-mvp/litellm [ml-platform SecretStore]
               │
               ▼ syncs every 1h (or on force-sync annotation)
         Kubernetes Secret → mounted as env vars into pods
@@ -504,7 +507,8 @@ External Secrets Operator (ESO)
 
 | Role name | Trusted SA | Permissions |
 |-----------|-----------|-------------|
-| `idp-mvp-backstage` | `backstage:backstage-sa` + `external-secrets:external-secrets-sa` | `secretsmanager:GetSecretValue` on `idp-mvp/*` |
+| `idp-mvp-backstage` | `backstage:backstage` | `secretsmanager:GetSecretValue` on `idp-mvp/backstage`, `idp-mvp/dora-exporter*`, `idp-mvp/langfuse/project-keys*`; scaffolder writes (see `terraform/iam.tf`) |
+| `idp-mvp-external-secrets` | `external-secrets:external-secrets-sa` | `secretsmanager:GetSecretValue` on `idp-mvp/dora-exporter*` only — the ClusterSecretStore serves every namespace |
 | `idp-mvp-dora-exporter` | `monitoring:dora-exporter-sa` | `cloudwatch:PutMetricData` on `IDP/DORA` |
 | `idp-mvp-grafana` | `monitoring:grafana` | `cloudwatch:ListMetrics`, `cloudwatch:GetMetricData` (read-only) |
 | `idp-mvp-db-init` | `services:db-init-sa` | `secretsmanager:GetSecretValue` on `idp-mvp/backstage` |

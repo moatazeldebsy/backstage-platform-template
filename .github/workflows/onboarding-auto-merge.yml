@@ -20,12 +20,55 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          files=$(gh pr view "$PR_NUMBER" --json files --jq '[.files[].path] | join("\n")')
-          unsafe=$(echo "$files" | grep -vE '^services/[^/]+/helm-values[^/]*\.yaml$' || true)
+          set -euo pipefail
+          # path<TAB>status for every file in the PR.
+          gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+            --jq '.[] | "\(.filename)\t\(.status)"' > files.tsv
+
+          unsafe=$(cut -f1 files.tsv | grep -vE '^services/[^/]+/helm-values[^/]*\.yaml$' || true)
           if [ -n "$unsafe" ]; then
             echo "::error::PR touches files outside helm-values -- manual review required"
             exit 1
           fi
-          gh pr review "$PR_NUMBER" --approve --body "Auto-approved: only GitOps values files changed."
+
+          # Onboarding only ever ADDS a new service's values files (the
+          # templates' platform-values/ step). Changing an existing service's
+          # values is not onboarding: that is how a PR titled "feat: onboard"
+          # could re-point another service's image or grant it RBAC.
+          changed=$(awk -F'\t' '$2 != "added"' files.tsv)
+          if [ -n "$changed" ]; then
+            echo "::error::PR modifies or removes existing values files -- manual review required"
+            echo "$changed"
+            exit 1
+          fi
+
+          # Keys the chart turns into cluster-level privilege. The onboarding
+          # templates never set them, so any of them means a human looks first.
+          # rbac.* -> ClusterRole/ClusterRoleBinding (templates/clusterrole.yaml);
+          # serviceAccount.annotations -> an IRSA role.
+          # mikefarah yq (preinstalled on ubuntu-latest) only converts to JSON;
+          # the check itself is jq, so it does not depend on the yq flavour.
+          cat > check.jq <<'JQ'
+          [
+            (if (.rbac.create == true) or (((.rbac.rules // []) | length) > 0) then "rbac" else empty end),
+            (if ((.serviceAccount.annotations // {}) | length) > 0 then "serviceAccount.annotations" else empty end),
+            (if .hostNetwork == true then "hostNetwork" else empty end),
+            (if .hostPID == true then "hostPID" else empty end),
+            (if .securityContext.privileged == true then "securityContext.privileged" else empty end),
+            (if .securityContext.allowPrivilegeEscalation == true then "securityContext.allowPrivilegeEscalation" else empty end),
+            (if .securityContext.runAsUser == 0 then "securityContext.runAsUser=0" else empty end),
+            (if .podSecurityContext.runAsUser == 0 then "podSecurityContext.runAsUser=0" else empty end)
+          ] | join(",")
+          JQ
+          for f in $(cut -f1 files.tsv); do
+            hits=$(yq -o=json '.' "$f" | jq -r -f check.jq)
+            if [ -n "$hits" ]; then
+              echo "::error file=$f::sets privileged keys ($hits) -- manual review required"
+              exit 1
+            fi
+          done
+
+          gh pr review "$PR_NUMBER" --approve --body "Auto-approved: only new GitOps values files, no RBAC/IRSA/privileged settings."
           gh pr merge "$PR_NUMBER" --auto --squash --delete-branch

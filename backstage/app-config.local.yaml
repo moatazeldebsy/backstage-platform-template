@@ -392,7 +392,8 @@ proxy:
     # Approvals page shows a connection error, same as other opt-in proxies here.
     /approval-service:
       target: http://approval-service.idp.local
-      allowedMethods: ['GET', 'POST']
+      # GET only — decisions go through /api/idp-approvals (idpApprovalDecision.ts).
+      allowedMethods: ['GET']
       changeOrigin: true
       pathRewrite:
         '^/api/proxy/approval-service': ''

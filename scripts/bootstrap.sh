@@ -255,6 +255,7 @@ BACKSTAGE_ROLE_ARN=$(tf_output_required backstage_role_arn)
 
 log "Terraform apply complete."
 sync_actions_role_secret "$(tf_output github_actions_role_arn)"
+sync_actions_role_secret "$(tf_output github_actions_pr_role_arn)" AWS_PR_ROLE_ARN
 
 timer_end "1. Terraform (EKS/VPC/RDS/ECR/IAM)"
 
@@ -406,15 +407,17 @@ kubectl wait --for=condition=ready pod \
   -n external-secrets \
   --timeout=300s || log "  WARNING: ESO pods not ready — proceeding anyway"
 
-# Annotate the ESO ServiceAccount with the Backstage IRSA role so it can
-# authenticate to Secrets Manager via pod identity (no static credentials).
-# The IAM trust policy references external-secrets-sa (not the default external-secrets SA).
-# Create it if missing so the ClusterSecretStore IRSA authentication succeeds.
+# Annotate the ESO ServiceAccount with its own read-only IRSA role (no static
+# credentials). Not the Backstage role: the ClusterSecretStore serves every
+# namespace, and that role can read idp-mvp/backstage (terraform/iam.tf
+# external_secrets_irsa). The IAM trust policy references external-secrets-sa
+# (not the default external-secrets SA); create it if missing.
+ESO_ROLE_ARN=$(tf_output_required external_secrets_role_arn)
 kubectl create serviceaccount external-secrets-sa -n external-secrets \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl annotate serviceaccount external-secrets-sa \
   -n external-secrets \
-  "eks.amazonaws.com/role-arn=${BACKSTAGE_ROLE_ARN}" \
+  "eks.amazonaws.com/role-arn=${ESO_ROLE_ARN}" \
   --overwrite
 
 # Substitute the AWS region placeholder and apply
@@ -508,6 +511,18 @@ fi
     BACKSTAGE_AUTH_SECRET=$(_rand_hex)
     log "  Generated a new BACKSTAGE_AUTH_SECRET."
   fi
+  # Grafana's admin password. Its ALB listener is internet-facing, and the
+  # Phase 4 install used to fall back to the literal "changeme" when this was
+  # unset. Keep whatever Secrets Manager already holds; generate one otherwise.
+  # Exported so the merge below writes it back and Phase 4 installs with it.
+  if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
+    GRAFANA_ADMIN_PASSWORD=$(_existing_token GRAFANA_ADMIN_PASSWORD)
+    if [[ -z "$GRAFANA_ADMIN_PASSWORD" || "$GRAFANA_ADMIN_PASSWORD" == "REPLACE_ME" || "$GRAFANA_ADMIN_PASSWORD" == "changeme" ]]; then
+      GRAFANA_ADMIN_PASSWORD=$(_rand_hex)
+      log "  Generated a new GRAFANA_ADMIN_PASSWORD (stored in the Backstage secret)."
+    fi
+  fi
+  export GRAFANA_ADMIN_PASSWORD
 
   UPDATED_SECRET=$(echo "$CURRENT_SECRET" | K8S_SA_TOKEN="$K8S_SA_TOKEN" BACKSTAGE_CATALOG_TOKEN="$BACKSTAGE_CATALOG_TOKEN" AUTH_SESSION_SECRET="$AUTH_SESSION_SECRET" BACKSTAGE_AUTH_SECRET="$BACKSTAGE_AUTH_SECRET" python3 -c "
 import json, sys, os
@@ -667,13 +682,22 @@ else
   log "  No domain_name configured — monitoring ALB ingresses stay HTTP-only."
 fi
 
+# Phase 3.7 resolves GRAFANA_ADMIN_PASSWORD; re-read it from Secrets Manager in
+# case that phase did not run in this invocation. Never fall back to a default.
+if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
+  GRAFANA_ADMIN_PASSWORD=$(aws secretsmanager get-secret-value \
+    --secret-id "$BACKSTAGE_SECRET_ARN" --query SecretString --output text 2>/dev/null \
+    | python3 -c "import json,sys; print(json.load(sys.stdin).get('GRAFANA_ADMIN_PASSWORD',''))" 2>/dev/null || true)
+fi
+[[ -n "${GRAFANA_ADMIN_PASSWORD:-}" ]] \
+  || err "GRAFANA_ADMIN_PASSWORD is unset and not in Secrets Manager — export it or re-run Phase 3.7."
 helm_upgrade_cached prometheus monitoring prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
   --values "${tmp_obs_values}" \
   ${OBS_HA_VALUES[@]+"${OBS_HA_VALUES[@]}"} \
   ${GRAFANA_VALUES[@]+"${GRAFANA_VALUES[@]}"} \
-  --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD:-changeme}" \
+  --set grafana.adminPassword="${GRAFANA_ADMIN_PASSWORD}" \
   --wait --timeout "${HELM_WAIT_MED}"
 rm -f "${tmp_obs_values}"
 
@@ -1655,7 +1679,7 @@ EOF
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  PLATFORM SERVICES"
   log "║    ArgoCD          http://$(_alb argocd-server argocd)"
-  log "║    Grafana         http://$(_alb prometheus-grafana monitoring)"
+  log "║    Grafana         http://$(_alb prometheus-grafana monitoring)  (admin / GRAFANA_ADMIN_PASSWORD in the Backstage Secrets Manager secret)"
   log "║    TechDocs S3     s3://${TECHDOCS_BUCKET}"
   log "╠══════════════════════════════════════════════════════════════════════════════╣"
   log "║  OPERATOR TOOLS — no public ALB by design (~\$82/mo saved, and they have"

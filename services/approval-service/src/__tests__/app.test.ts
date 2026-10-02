@@ -126,6 +126,30 @@ describe('POST /approvals/:id/decide', () => {
     const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved' });
     expect(res.status).toBe(400);
   });
+
+  it('403s when the requester tries to approve their own request', async () => {
+    mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending', requested_by_user: 'user:default/jane' });
+    const app = createApp();
+    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved', decided_by: 'user:default/jane' });
+    expect(res.status).toBe(403);
+    expect(mockDecideApproval).not.toHaveBeenCalled();
+  });
+
+  it('lets the requester deny their own request', async () => {
+    mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending', requested_by_user: 'user:default/jane' });
+    mockDecideApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'denied', decided_by: 'user:default/jane' });
+    const app = createApp();
+    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'denied', decided_by: 'user:default/jane' });
+    expect(res.status).toBe(200);
+  });
+
+  it('lets a different user approve', async () => {
+    mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending', requested_by_user: 'user:default/jane' });
+    mockDecideApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'approved', decided_by: 'user:default/sam' });
+    const app = createApp();
+    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved', decided_by: 'user:default/sam' });
+    expect(res.status).toBe(200);
+  });
 });
 
 describe('POST /consent/grant', () => {
