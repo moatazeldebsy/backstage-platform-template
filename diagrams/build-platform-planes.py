@@ -49,6 +49,7 @@ SOURCES = {
     "kyverno":       f"{CNCF}/kyverno/icon/color/kyverno-icon-color.svg",
     "helm":          f"{CNCF}/helm/icon/color/helm-icon-color.svg",
     "crossplane":    f"{CNCF}/crossplane/icon/color/crossplane-icon-color.svg",
+    "opa":           f"{CNCF}/open-policy-agent/icon/color/opa-icon-color.svg",
 
     "si-github":        f"{SIMPLE}/github.svg",
     "si-githubactions": f"{SIMPLE}/githubactions.svg",
@@ -59,6 +60,7 @@ SOURCES = {
     "si-mlflow":        f"{SIMPLE}/mlflow.svg",
     "si-ollama":        f"{SIMPLE}/ollama.svg",
     "si-docker":        f"{SIMPLE}/docker.svg",
+    "si-datadog":       f"{SIMPLE}/datadog.svg",
 
     "langfuse":  f"{GH}/langfuse/langfuse/main/web/public/icon.svg",
     "karpenter": f"{GH}/aws/karpenter-provider-aws/main/website/static/favicon.svg",
@@ -72,6 +74,7 @@ BRAND = {
     "si-grafana": "#F46800", "si-github": "#181717", "si-githubactions": "#2088FF",
     "si-terraform": "#844FBA", "si-postgresql": "#4169E1", "si-mlflow": "#0194E2",
     "si-ollama": "#000000", "si-go": "#00ADD8", "si-docker": "#2496ED",
+    "si-datadog": "#632CA6",
 }
 
 # Near-black wordmarks. On the black cards they would not be visible at all, so
