@@ -2076,6 +2076,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#backstage-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backstage Metrics
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#poddisruptionbudgets" class="md-nav__link">
     <span class="md-ellipsis">
       PodDisruptionBudgets
@@ -3027,6 +3036,38 @@ PR where a source and its generated rules disagree (or a new source has no gener
 </code></pre></div></td></tr></table></div>
 <p>The SLO dashboard shows current error budget burn rate, remaining budget percentage, and a 30-day trend per service.</p>
 <hr />
+<h2 id="backstage-metrics">Backstage Metrics<a class="headerlink" href="#backstage-metrics" title="Permanent link">&para;</a></h2>
+<p>The Backstage backend exposes Prometheus metrics on <strong><code>:9464/metrics</code></strong>
+(<code>backstage/app/packages/backend/src/instrumentation.js</code>, preloaded with
+<code>node --require ./instrumentation.js</code> by every start command). It provides:</p>
+<ul>
+<li><code>http_server_request_duration_seconds_*</code> from the OpenTelemetry HTTP
+  instrumentation, labelled by method and <code>http_response_status_code</code>. Health
+  probes (<code>/ready</code>, <code>/healthz</code>, <code>/healthcheck</code>) are excluded, so these counts
+  are real traffic: the basis for a Backstage availability or latency SLO.</li>
+<li>Backstage's own metrics (catalog processing, scaffolder and scheduler tasks),
+  which it records through <code>@opentelemetry/api</code> and which had nowhere to go
+  without a MeterProvider.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th>How it is scraped</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AWS</td>
+<td><code>aws/backstage/metrics.yaml</code>: a ClusterIP Service plus a ServiceMonitor (<code>release: prometheus</code>), applied by <code>bootstrap.sh</code>. Deliberately not on the public NLB Service.</td>
+</tr>
+<tr>
+<td>Local</td>
+<td>Published on <code>127.0.0.1:9464</code> for <code>curl</code>. Not scraped by the in-cluster Prometheus, because Backstage runs in Docker Compose outside Kind.</td>
+</tr>
+</tbody>
+</table>
+<p>Turn it off with <code>BACKSTAGE_METRICS_ENABLED=false</code>, or move it with <code>BACKSTAGE_METRICS_PORT</code>.</p>
 <h2 id="poddisruptionbudgets">PodDisruptionBudgets<a class="headerlink" href="#poddisruptionbudgets" title="Permanent link">&para;</a></h2>
 <h3 id="what-ships-by-default">What ships by default<a class="headerlink" href="#what-ships-by-default" title="Permanent link">&para;</a></h3>
 <p>The golden-path Helm chart (<code>helm/service-template/</code>) includes a <code>PodDisruptionBudget</code> with <code>maxUnavailable: 1</code> enabled by default. This stops voluntary disruptions (node drains, cluster upgrades) from evicting more than one replica of a service at a time.</p>
