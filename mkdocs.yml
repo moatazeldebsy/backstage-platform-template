@@ -127,7 +127,6 @@ nav:
       - KAgent Guardrails: runbooks/kagent-guardrails.md
       - Regional Rebuild: runbooks/regional-rebuild.md
     - Post-Mortem Template: postmortem-template.md
-    - Demo Runbook: demo-runbook.md
   - Reference:
     - Architecture: architecture.md
     - CLI Reference: cli-reference.md
