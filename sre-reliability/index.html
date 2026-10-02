@@ -2935,8 +2935,11 @@ does this on every run:</p>
 </ul>
 <p>If neither is available the bootstrap warns and the Grafana SRE dashboard reports
 "no <code>sloth_slo_info</code> metrics found" — which is the symptom to look for when error budgets
-are empty on a fresh cluster. <strong>After editing an SLO source file without <code>sloth</code> installed,
-regenerate and commit the rules</strong>, or the cluster keeps applying the stale committed copy.</p>
+are empty on a fresh cluster. <strong>After editing an SLO source file, run
+<code>./scripts/generate-slo-rules.sh</code> and commit <code>observability/slo/generated/</code></strong>, or the cluster
+keeps applying the stale committed copy. The script downloads a pinned, checksum-verified sloth
+build, so it needs no local install, and the <code>slo-drift</code> CI job runs it with <code>--check</code> to fail any
+PR where a source and its generated rules disagree (or a new source has no generated file).</p>
 <h3 id="multi-window-burn-rate-alerts">Multi-window burn-rate alerts<a class="headerlink" href="#multi-window-burn-rate-alerts" title="Permanent link">&para;</a></h3>
 <p>The platform ships two alert groups in <code>observability/alertmanager/prometheus-rules.yaml</code>:</p>
 <table>
