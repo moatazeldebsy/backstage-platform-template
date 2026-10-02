@@ -1,0 +1,306 @@
+# Sloth SLO definitions for the eight MCP servers behind the AI gateway (#314).
+# After editing, run ./scripts/generate-slo-rules.sh and commit generated/ (CI
+# job slo-drift enforces it). Apply with:
+#   kubectl apply -f observability/slo/generated/mcp-servers-slo-rules.yaml
+#
+# One availability SLO per server, on the shared mcp_tool_calls_total counter
+# (labels server/tool/outcome, kept consistent across servers by
+# scripts/validate-mcp-metrics.py). outcome="error" is a tool call that threw.
+#
+# No latency SLO: tool durations range from milliseconds (catalog_search) to
+# minutes (scaffold_service), so a per-server latency objective would be
+# either always violated or meaningless.
+#
+# Ticket alerts only (severity: warning), no page. Tool-call volume is low and
+# bursty, so one failed call in a quiet hour is a large error ratio; paging on
+# that would be noise. The burn-rate alert still opens a ticket-level warning.
+# 99% is a starting objective, not a measured one — tighten it once a few weeks
+# of real error rates exist.
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: idp-mcp-server
+  namespace: monitoring
+  labels:
+    app: idp-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: idp-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of idp-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="idp-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="idp-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: idp-mcp-server
+        annotations:
+          summary: "idp-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: qa-mcp-server
+  namespace: monitoring
+  labels:
+    app: qa-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: qa-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of qa-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="qa-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="qa-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: qa-mcp-server
+        annotations:
+          summary: "qa-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: contract-mcp-server
+  namespace: monitoring
+  labels:
+    app: contract-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: contract-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of contract-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="contract-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="contract-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: contract-mcp-server
+        annotations:
+          summary: "contract-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: github-mcp-server
+  namespace: monitoring
+  labels:
+    app: github-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: github-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of github-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="github-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="github-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: github-mcp-server
+        annotations:
+          summary: "github-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: argocd-mcp-server
+  namespace: monitoring
+  labels:
+    app: argocd-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: argocd-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of argocd-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="argocd-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="argocd-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: argocd-mcp-server
+        annotations:
+          summary: "argocd-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: cost-mcp-server
+  namespace: monitoring
+  labels:
+    app: cost-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: cost-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of cost-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="cost-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="cost-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: cost-mcp-server
+        annotations:
+          summary: "cost-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: incident-mcp-server
+  namespace: monitoring
+  labels:
+    app: incident-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: incident-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of incident-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="incident-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="incident-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: incident-mcp-server
+        annotations:
+          summary: "incident-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
+---
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: security-mcp-server
+  namespace: monitoring
+  labels:
+    app: security-mcp-server
+    team: platform-team
+    release: prometheus
+spec:
+  service: security-mcp-server
+  labels:
+    team: platform-team
+  slos:
+    - name: tool-call-availability
+      objective: 99.0
+      description: "99% of security-mcp-server tool calls complete without an error"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(mcp_tool_calls_total{server="security-mcp-server", outcome="error"}[{{.window}}])) or vector(0)
+          totalQuery: |
+            sum(rate(mcp_tool_calls_total{server="security-mcp-server"}[{{.window}}]))
+      alerting:
+        name: MCPServerToolErrorBudgetBurn
+        labels:
+          category: availability
+          server: security-mcp-server
+        annotations:
+          summary: "security-mcp-server is burning its tool-call error budget"
+        pageAlert:
+          disable: true
+        ticketAlert:
+          labels:
+            severity: warning
