@@ -2978,6 +2978,31 @@
 <li>The template writes a Sloth YAML to <code>observability/slo/&lt;service&gt;-slos.yaml</code> and opens a PR</li>
 </ol>
 <p>Example reference: <code>observability/slo/hello-service-slos.yaml</code> — 99.5% availability, p99 &lt; 500 ms.</p>
+<p>Platform SLOs that ship with the repo:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>SLOs</th>
+<th>Alerts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>observability/slo/hello-service-slos.yaml</code></td>
+<td>99.5% availability, 99% of requests &lt; 500 ms</td>
+<td>page + ticket</td>
+</tr>
+<tr>
+<td><code>observability/slo/mcp-servers-slos.yaml</code></td>
+<td>99% tool-call availability for each of the 8 MCP servers (<code>mcp_tool_calls_total{outcome="error"}</code>)</td>
+<td>ticket only: tool-call volume is too low and bursty to page on</td>
+</tr>
+</tbody>
+</table>
+<p>On AWS, <code>bootstrap.sh</code> applies every file in <code>observability/slo/generated/</code>. Locally,
+<code>bootstrap-local.sh</code> still applies only hello-service's rules; apply the rest with
+<code>kubectl apply -f observability/slo/generated/</code>.</p>
 <h3 id="how-slos-reach-the-cluster">How SLOs reach the cluster<a class="headerlink" href="#how-slos-reach-the-cluster" title="Permanent link">&para;</a></h3>
 <p>The <code>PrometheusServiceLevel</code> in <code>observability/slo/</code> is a Sloth CRD, and no Sloth operator runs
 on the local cluster — it has to be compiled into a <code>PrometheusRule</code> first. <code>bootstrap-local.sh</code>

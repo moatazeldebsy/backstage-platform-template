@@ -3912,7 +3912,7 @@ External Secrets Operator (ESO)
 </tr>
 <tr>
 <td><strong>Sloth has no in-cluster operator</strong></td>
-<td>SLO rules are vendored; editing a source file without the <code>sloth</code> binary silently changes nothing</td>
+<td>SLO rules are compiled ahead of time and committed (<code>scripts/generate-slo-rules.sh</code>); the <code>slo-drift</code> CI job fails a PR whose source and generated rules disagree. Backstage itself has no SLO yet (its metrics endpoint is #604)</td>
 </tr>
 <tr>
 <td><strong>No CI exercises an AWS bootstrap</strong></td>
