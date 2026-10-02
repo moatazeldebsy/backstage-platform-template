@@ -435,6 +435,21 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
 
+      # The scan above only reports (continue-on-error, so the SARIF uploads).
+      # This is the gate: a FIXABLE critical vulnerability stops the job here,
+      # before the image is signed and before update-image-tag deploys it.
+      # Unfixed criticals and HIGHs stay report-only in the Security tab.
+      - name: Fail on fixable CRITICAL vulnerabilities
+        if: steps.guard.outputs.has_aws == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.EKS_CLUSTER_NAME }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          skip-setup-trivy: true
+
       # ── Cosign keyless image signing ──────────────────────────────────────
       - name: Install Cosign
         if: steps.guard.outputs.has_aws == 'true'

@@ -72,7 +72,11 @@ resource "aws_lambda_function" "cost_alert_to_slack" {
 
   environment {
     variables = {
-      SLACK_WEBHOOK_SECRET = var.slack_webhook_secret_name
+      # Was SLACK_WEBHOOK_SECRET, which the handler never read: it raised
+      # KeyError on SLACK_WEBHOOK_SECRET_NAME at import, so no cost alert ever
+      # reached Slack. The ARN of the secret Terraform itself creates, so the
+      # name cannot drift from secrets.tf either.
+      SLACK_WEBHOOK_SECRET_NAME = aws_secretsmanager_secret.slack_webhook.arn
     }
   }
 
@@ -99,6 +103,31 @@ resource "aws_iam_role" "cost_alert_lambda" {
 resource "aws_iam_role_policy_attachment" "cost_alert_lambda_basic" {
   role       = aws_iam_role.cost_alert_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# The handler reads the webhook URL from Secrets Manager; the basic execution
+# role only covers CloudWatch Logs.
+resource "aws_iam_role_policy" "cost_alert_lambda_secret" {
+  name = "read-slack-webhook"
+  role = aws_iam_role.cost_alert_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = aws_secretsmanager_secret.slack_webhook.arn
+    }]
+  })
+}
+
+# Email fallback for the same alerts. budget_alert_email was declared but never
+# wired to anything. AWS sends a confirmation mail; alerts arrive once accepted.
+resource "aws_sns_topic_subscription" "cost_alert_email" {
+  count     = var.budget_alert_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.cost_alerts.arn
+  protocol  = "email"
+  endpoint  = var.budget_alert_email
 }
 
 resource "aws_sns_topic_subscription" "cost_alert_lambda" {

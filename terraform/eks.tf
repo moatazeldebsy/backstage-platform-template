@@ -68,13 +68,20 @@ module "eks" {
   vpc_id                         = module.vpc.vpc_id
   subnet_ids                     = module.vpc.private_subnets
   cluster_endpoint_public_access = true
+  # Who can reach the public API endpoint at all. Defaults to everyone, because
+  # bootstrap.sh and CI (GitHub-hosted runners) both call it from outside the
+  # VPC; set eks_public_access_cidrs to your office/VPN ranges where you can.
+  # Nodes and in-VPC callers use the private endpoint either way.
+  cluster_endpoint_public_access_cidrs = var.eks_public_access_cidrs
 
   # Enable IRSA (IAM Roles for Service Accounts)
   enable_irsa = true
 
-  # Disable control plane logging — audit/API logs ingest at $0.50/GB and accumulate fast.
-  # Enable selectively for production: ["api", "audit", "authenticator"]
-  cluster_enabled_log_types = []
+  # Control-plane logs ingest at $0.50/GB, so they follow the profile: off by
+  # default, and api/audit/authenticator on medium/large (profiles/*.tfvars).
+  # Without the audit log there is no record of who did what with the
+  # cluster-admin paths (CI role, cluster creator), during or after an incident.
+  cluster_enabled_log_types = var.eks_control_plane_log_types
 
   # We manage the log group ourselves (aws_cloudwatch_log_group.eks_cluster below) to
   # control retention/tags — without this, the module creates its own with different
@@ -247,8 +254,10 @@ resource "helm_release" "aws_load_balancer_controller" {
 # Retention policy for the EKS control plane log group.
 # Without this, logs never expire (AWS default) and cost $0.03/GB/month indefinitely.
 resource "aws_cloudwatch_log_group" "eks_cluster" {
-  name              = "/aws/eks/${var.cluster_name}/cluster"
-  retention_in_days = 7
+  name = "/aws/eks/${var.cluster_name}/cluster"
+  # 7 days is enough for debugging, not for an audit trail; profiles that turn
+  # the audit log on raise it (eks_control_plane_log_retention_days).
+  retention_in_days = var.eks_control_plane_log_retention_days
 
   tags = {
     "idp:component" = "eks-control-plane"
