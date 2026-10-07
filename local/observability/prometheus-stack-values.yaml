@@ -168,8 +168,11 @@ grafana:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-      # Retry on error, timeout, AND 503 so a restarting pod never shows to the user
-      nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout http_503"
+      # Retry on connection error and 503 so a restarting pod never shows to the
+      # user. Not on `timeout`: there is a single Grafana replica, so a timed-out
+      # request is just re-sent to the same busy pod, multiplying the load that
+      # made it slow (observed 2026-10-07: /apis/* averaging 7.4s under throttling).
+      nginx.ingress.kubernetes.io/proxy-next-upstream: "error http_503"
       nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "5"
       nginx.ingress.kubernetes.io/proxy-next-upstream-timeout: "10"
       nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
@@ -189,13 +192,25 @@ grafana:
   # 503 until it came back. Limit raised to 1500m — same ceiling Prometheus gets
   # above — while the request stays at 50m, so this costs nothing at scheduling
   # time on a capacity-constrained Kind node; it only stops the throttling.
+  #
+  # Request raised 50m -> 250m and memory limit 512 -> 768 Mi (2026-10-07): with a
+  # 50m request Grafana got almost no CPU share under node contention (e.g. after
+  # the Docker VM resumes from sleep), spiked to 73% throttled, failed its probes,
+  # and dashboard loads took 10-18s. Memory peaked at 481/512 Mi with the chart's
+  # derived GOMEMLIMIT just below it.
   resources:
     requests:
-      cpu: 50m
+      cpu: 250m
       memory: 256Mi
     limits:
       cpu: 1500m
-      memory: 512Mi
+      memory: 768Mi
+  # Most bundled dashboards default to a 10s auto-refresh with up to 44 queries
+  # each; every open tab hammers Grafana. Enforce a floor server-side instead of
+  # editing every dashboard JSON.
+  grafana.ini:
+    dashboards:
+      min_refresh_interval: 1m
   # Lenient probes — Grafana can be slow to start when loading dashboard
   # ConfigMaps. The previous grace window (60s initial delay + 10*10s = 160s
   # total) was still too short under local CPU contention: observed startup
