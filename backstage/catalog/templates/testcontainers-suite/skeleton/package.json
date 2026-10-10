@@ -15,6 +15,9 @@
     "typescript": "^5.4.0"
   },
   "overrides": {
-    "js-yaml": "^3.15.2"
+    "js-yaml": {
+      ".": "^3.15.2",
+      "argparse": "^2.0.1"
+    }
   }
 }

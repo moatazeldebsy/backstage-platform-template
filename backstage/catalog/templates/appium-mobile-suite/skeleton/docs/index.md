@@ -12,6 +12,7 @@ Appium + WebdriverIO mobile test suite for **${{ values.targetService }}** on **
 
 ```bash
 npm install
+npm run appium:drivers   # once per machine
 APP_PATH=/path/to/app npm test
 ```
 

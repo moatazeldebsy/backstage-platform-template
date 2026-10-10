@@ -56,6 +56,13 @@ jobs:
           fi
 {%- if values.deviceFarm === 'local-emulator' %}
 
+      # Drivers are installed through Appium's own extension CLI rather than as
+      # npm devDependencies: the driver packages bundle their dependencies, so
+      # npm overrides can't patch them and they pin known-vulnerable versions.
+      - name: Install Appium drivers
+        if: steps.app.outputs.configured == 'true'
+        run: npm run appium:drivers
+
       - name: Start Appium server
         if: steps.app.outputs.configured == 'true'
         run: npx appium &
