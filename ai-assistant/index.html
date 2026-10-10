@@ -5165,9 +5165,9 @@ with an amber banner when <code>aiStack.enabled</code> is false (nothing is depl
 request is made at all); live tables when the API answers; and a red banner
 carrying the failing endpoint and HTTP status when MLflow is deployed but
 unreachable. A crashed pod therefore reads as an outage, not as "not installed".</p>
-<p>Page and nav item are gated by <code>page:custom-pages/mlflow-platform</code> /
-<code>nav-item:custom-pages/mlflow-platform</code>, disabled by default and flipped on by
-<code>bootstrap-ai.sh</code>. That list is <strong>replaced, not merged</strong>, per config layer, so all
+<p>Page and nav item are gated by <code>page:custom-pages/mlflow-platform</code> (the sidebar
+entry comes from the page itself, so disabling the page removes both), disabled
+by default and flipped on by <code>bootstrap-ai.sh</code>. That list is <strong>replaced, not merged</strong>, per config layer, so all
 four copies must agree: <code>backstage/app-config.yaml</code>, <code>app-config.local.yaml</code>,
 <code>app-config.aws.yaml</code>, and the heredoc in <code>write_backstage_ai_overlay()</code>
 (<code>scripts/lib.sh</code>).</p>
