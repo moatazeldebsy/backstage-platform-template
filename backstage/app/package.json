@@ -123,7 +123,13 @@
     "compression": "^1.8.2",
     "source-map-js": "^1.2.2",
     "fast-copy": "^3.1.0",
-    "postcss-selector-parser@npm:^7.0.0": "^7.1.6"
+    "postcss-selector-parser@npm:^7.0.0": "^7.1.6",
+    "argparse@npm:^1.0.10": "^2.0.1",
+    "http-cache-semantics@npm:^4.0.0": "^4.3.0",
+    "http-cache-semantics@npm:^4.1.1": "^4.3.0",
+    "postcss-selector-parser@npm:^6.0.4": "^7.1.6",
+    "postcss-selector-parser@npm:^6.0.5": "^7.1.6",
+    "postcss-selector-parser@npm:^6.0.9": "^7.1.6"
   },
   "jest": {
     "coverageProvider": "v8",
