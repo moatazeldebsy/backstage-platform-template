@@ -493,18 +493,20 @@ jobs:
       - name: Validate RBAC manifests
         run: kubeconform -strict -summary kubernetes/rbac/
 
+      # The CRDs-catalog URL below (and in the steps after it) is pinned to a
+      # commit, not main — see CRD_CATALOG in scripts/validate-platform-outputs.py.
       - name: Validate monitoring manifests
         run: |
           kubeconform -strict -summary \
             -schema-location default \
-            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/f1e7f6bc0537bf0622ffe6e47dbaa85914fabbec/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             kubernetes/monitoring/
 
       - name: Validate kagent manifests
         run: |
           kubeconform -strict -summary \
             -schema-location default \
-            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/f1e7f6bc0537bf0622ffe6e47dbaa85914fabbec/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             -ignore-missing-schemas \
             -ignore-filename-pattern 'values-.*\.yaml' \
             kubernetes/kagent/
@@ -518,7 +520,7 @@ jobs:
         run: |
           kubeconform -strict -summary \
             -schema-location default \
-            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/f1e7f6bc0537bf0622ffe6e47dbaa85914fabbec/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             -ignore-missing-schemas \
             -ignore-filename-pattern '.*values\.yaml' \
             kubernetes/argo-rollouts/ kubernetes/argo-workflows/ aws/argo-workflows/
@@ -527,7 +529,7 @@ jobs:
         run: |
           kubeconform -strict -summary \
             -schema-location default \
-            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/f1e7f6bc0537bf0622ffe6e47dbaa85914fabbec/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             -ignore-missing-schemas \
             -ignore-filename-pattern '.*values\.yaml' \
             kubernetes/ml-platform/
@@ -536,7 +538,7 @@ jobs:
         run: |
           kubeconform -strict -summary \
             -schema-location default \
-            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/f1e7f6bc0537bf0622ffe6e47dbaa85914fabbec/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             -ignore-missing-schemas \
             observability/alertmanager/
 

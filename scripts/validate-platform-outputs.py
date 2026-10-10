@@ -48,7 +48,11 @@ ALL_TEMPLATES = REPO / "backstage/catalog/all-templates.yaml"
 PLATFORM_REPO = "backstage-platform-template"
 CHART = REPO / "helm/service-template"
 POLICIES = sorted((REPO / "kubernetes/policies").glob("*.yaml"))  # not kyverno/
-CRD_CATALOG = "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+# Pinned, not main: upstream regenerates schemas in place, and the 2026-10-08
+# external-secrets.io refresh (#988) produced a SecretStore schema kubeconform
+# can't load, failing every run with "could not find schema". Keep in sync with
+# the same URL in .github/workflows/ci.yml; bump deliberately and re-run CI.
+CRD_CATALOG = "https://raw.githubusercontent.com/datreeio/CRDs-catalog/f1e7f6bc0537bf0622ffe6e47dbaa85914fabbec/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
 
 # Form overrides where a template's defaults skip the step that writes to the
 # platform repo (flutter-app only opens its GitOps PR when web deploy is on).
@@ -226,7 +230,7 @@ def check_manifests(scope: str, root: Path) -> None:
              for f in sorted(root.glob(pat))]
     out = kubeconform(files)
     if out:
-        fail(scope, "kubeconform:\n      " + "\n      ".join(l for l in out.splitlines() if "invalid" in l.lower() or "error" in l.lower()))
+        fail(scope, "kubeconform:\n      " + "\n      ".join(l for l in out.splitlines() if any(w in l.lower() for w in ("invalid", "error", "failed"))))
 
 
 SERVICES_DEV_NS = next(d for d in yaml.safe_load_all((REPO / "kubernetes/namespaces/namespaces.yaml").read_text())
