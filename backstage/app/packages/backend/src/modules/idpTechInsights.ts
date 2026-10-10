@@ -3,7 +3,7 @@ import {
   techInsightsFactRetrieversExtensionPoint,
   type TechInsightFact,
   type FactRetriever,
-} from '@backstage/plugin-tech-insights-node';
+} from '@backstage-community/plugin-tech-insights-node';
 import { CatalogClient } from '@backstage/catalog-client';
 import { computeFacts, ScorecardFactKey } from '@internal/scorecard-core';
 

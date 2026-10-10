@@ -17,6 +17,6 @@
     "dist"
   ],
   "devDependencies": {
-    "@backstage/cli": "^0.36.1"
+    "@backstage/cli": "^0.36.6"
   }
 }

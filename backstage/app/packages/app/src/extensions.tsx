@@ -21,7 +21,7 @@ import {
   findFailedTurn,
   isHumanInputCall,
 } from './aiAgentErrors';
-import { createFrontendPlugin, PageBlueprint, NavItemBlueprint, createRouteRef, FrontendPlugin } from '@backstage/frontend-plugin-api';
+import { createFrontendPlugin, PageBlueprint, createRouteRef, FrontendPlugin } from '@backstage/frontend-plugin-api';
 import { EntityContentBlueprint } from '@backstage/plugin-catalog-react/alpha';
 import { useEntity, catalogApiRef } from '@backstage/plugin-catalog-react';
 import { CATALOG_FILTER_EXISTS } from '@backstage/catalog-client';
@@ -350,18 +350,11 @@ const finOpsRouteRef = createRouteRef();
 const finOpsPage = PageBlueprint.make({
   name: 'finops',
   params: {
+    title: 'Cost Overview',
+    icon: <AttachMoneyIcon fontSize="inherit" />,
     path: '/finops',
     routeRef: finOpsRouteRef,
     loader: async () => <FinOpsPage />,
-  },
-});
-
-const finOpsNavItem = NavItemBlueprint.make({
-  name: 'finops',
-  params: {
-    title: 'Cost Overview',
-    icon: AttachMoneyIcon as any,
-    routeRef: finOpsRouteRef,
   },
 });
 
@@ -1187,18 +1180,11 @@ const semanticSearchRouteRef = createRouteRef();
 const semanticSearchPage = PageBlueprint.make({
   name: 'ai-search',
   params: {
+    title: 'AI Search',
+    icon: <SearchIcon fontSize="inherit" />,
     path: '/ai-search',
     routeRef: semanticSearchRouteRef,
     loader: async () => <SemanticSearchPage />,
-  },
-});
-
-const semanticSearchNavItem = NavItemBlueprint.make({
-  name: 'ai-search',
-  params: {
-    title: 'AI Search',
-    icon: SearchIcon as any,
-    routeRef: semanticSearchRouteRef,
   },
 });
 
@@ -1207,18 +1193,11 @@ const aiAssistantRouteRef = createRouteRef();
 const aiAssistantPage = PageBlueprint.make({
   name: 'ai-assistant',
   params: {
+    title: 'AI Assistant',
+    icon: <ChatIcon fontSize="inherit" />,
     path: '/ai-assistant',
     routeRef: aiAssistantRouteRef,
     loader: async () => <AiAssistantPage />,
-  },
-});
-
-const aiAssistantNavItem = NavItemBlueprint.make({
-  name: 'ai-assistant',
-  params: {
-    title: 'AI Assistant',
-    icon: ChatIcon as any,
-    routeRef: aiAssistantRouteRef,
   },
 });
 
@@ -1399,18 +1378,11 @@ const approvalsRouteRef = createRouteRef();
 const approvalsPage = PageBlueprint.make({
   name: 'approvals',
   params: {
+    title: 'Agent Approvals',
+    icon: <GavelIcon fontSize="inherit" />,
     path: '/approvals',
     routeRef: approvalsRouteRef,
     loader: async () => <ApprovalsPage />,
-  },
-});
-
-const approvalsNavItem = NavItemBlueprint.make({
-  name: 'approvals',
-  params: {
-    title: 'Agent Approvals',
-    icon: GavelIcon as any,
-    routeRef: approvalsRouteRef,
   },
 });
 
@@ -2908,11 +2880,7 @@ function IncidentsPage() {
 const incidentsRouteRef = createRouteRef();
 const incidentsPage = PageBlueprint.make({
   name: 'incidents',
-  params: { path: '/incidents', routeRef: incidentsRouteRef, loader: async () => <IncidentsPage /> },
-});
-const incidentsNavItem = NavItemBlueprint.make({
-  name: 'incidents',
-  params: { title: 'Incidents', icon: WarningIcon as any, routeRef: incidentsRouteRef },
+  params: { title: 'Incidents', icon: <WarningIcon fontSize="inherit" />, path: '/incidents', routeRef: incidentsRouteRef, loader: async () => <IncidentsPage /> },
 });
 
 // ── Grafana Alerts tab ─────────────────────────────────────────────────────────
@@ -4019,18 +3987,11 @@ function CopilotMetricsPage() {
 const copilotPage = PageBlueprint.make({
   name: 'copilot-metrics',
   params: {
+    title: 'Copilot Metrics',
+    icon: <AttachMoneyIcon fontSize="inherit" />,
     path: '/copilot',
     loader: async () => <CopilotMetricsPage />,
     routeRef: copilotRouteRef,
-  },
-});
-
-const copilotNavItem = NavItemBlueprint.make({
-  name: 'copilot-metrics',
-  params: {
-    title: 'Copilot Metrics',
-    routeRef: copilotRouteRef,
-    icon: AttachMoneyIcon as any,
   },
 });
 
@@ -4855,11 +4816,7 @@ function HomePage() {
 const homeRouteRef = createRouteRef();  // was id: 'platform-home'
 const homePage = PageBlueprint.make({
   name: 'platform-home',
-  params: { path: '/', routeRef: homeRouteRef, loader: async () => <HomePage /> },
-});
-const homeNavItem = NavItemBlueprint.make({
-  name: 'platform-home',
-  params: { title: 'Home', icon: DashboardIcon as any, routeRef: homeRouteRef },
+  params: { title: 'Home', icon: <DashboardIcon fontSize="inherit" />, path: '/', routeRef: homeRouteRef, loader: async () => <HomePage /> },
 });
 
 // ── Standalone DORA page ───────────────────────────────────────────────────────
@@ -5031,11 +4988,7 @@ function DoraPage() {
 const doraPageRouteRef = createRouteRef();  // was id: 'dora-platform'
 const doraPage = PageBlueprint.make({
   name: 'dora-platform',
-  params: { path: '/dora', routeRef: doraPageRouteRef, loader: async () => <DoraPage /> },
-});
-const doraNavItem = NavItemBlueprint.make({
-  name: 'dora-platform',
-  params: { title: 'DORA', icon: TrendingUpIcon as any, routeRef: doraPageRouteRef },
+  params: { title: 'DORA', icon: <TrendingUpIcon fontSize="inherit" />, path: '/dora', routeRef: doraPageRouteRef, loader: async () => <DoraPage /> },
 });
 
 // ── Standalone Scorecard overview ──────────────────────────────────────────────
@@ -5172,11 +5125,7 @@ function ScorecardPage() {
 const scorecardPageRouteRef = createRouteRef();  // was id: 'scorecard-platform'
 const scorecardPage = PageBlueprint.make({
   name: 'scorecard-platform',
-  params: { path: '/scorecard', routeRef: scorecardPageRouteRef, loader: async () => <ScorecardPage /> },
-});
-const scorecardNavItem = NavItemBlueprint.make({
-  name: 'scorecard-platform',
-  params: { title: 'Scorecard', icon: EmojiEventsIcon as any, routeRef: scorecardPageRouteRef },
+  params: { title: 'Scorecard', icon: <EmojiEventsIcon fontSize="inherit" />, path: '/scorecard', routeRef: scorecardPageRouteRef, loader: async () => <ScorecardPage /> },
 });
 
 // ── Standalone SLO page ────────────────────────────────────────────────────────
@@ -5314,11 +5263,7 @@ function SloPage() {
 const sloPageRouteRef = createRouteRef();  // was id: 'slo-platform'
 const sloPage = PageBlueprint.make({
   name: 'slo-platform',
-  params: { path: '/slo', routeRef: sloPageRouteRef, loader: async () => <SloPage /> },
-});
-const sloNavItem = NavItemBlueprint.make({
-  name: 'slo-platform',
-  params: { title: 'SLOs', icon: TrackChangesIcon as any, routeRef: sloPageRouteRef },
+  params: { title: 'SLOs', icon: <TrackChangesIcon fontSize="inherit" />, path: '/slo', routeRef: sloPageRouteRef, loader: async () => <SloPage /> },
 });
 
 // ── ArgoCD Applications page ───────────────────────────────────────────────────
@@ -5502,11 +5447,7 @@ function ArgocdPage() {
 const argocdPageRouteRef = createRouteRef();  // was id: 'argocd-platform'
 const argocdPage = PageBlueprint.make({
   name: 'argocd-platform',
-  params: { path: '/argocd', routeRef: argocdPageRouteRef, loader: async () => <ArgocdPage /> },
-});
-const argocdNavItem = NavItemBlueprint.make({
-  name: 'argocd-platform',
-  params: { title: 'ArgoCD', icon: AccountTreeIcon as any, routeRef: argocdPageRouteRef },
+  params: { title: 'ArgoCD', icon: <AccountTreeIcon fontSize="inherit" />, path: '/argocd', routeRef: argocdPageRouteRef, loader: async () => <ArgocdPage /> },
 });
 
 // ── Activity Feed ─────────────────────────────────────────────────────────────
@@ -5690,11 +5631,7 @@ function ActivityPage() {
 const activityRouteRef = createRouteRef();  // was id: 'activity-feed'
 const activityPage = PageBlueprint.make({
   name: 'activity-feed',
-  params: { path: '/activity', routeRef: activityRouteRef, loader: async () => <ActivityPage /> },
-});
-const activityNavItem = NavItemBlueprint.make({
-  name: 'activity-feed',
-  params: { title: 'Activity', icon: DynamicFeedIcon as any, routeRef: activityRouteRef },
+  params: { title: 'Activity', icon: <DynamicFeedIcon fontSize="inherit" />, path: '/activity', routeRef: activityRouteRef, loader: async () => <ActivityPage /> },
 });
 
 // ── API Explorer ───────────────────────────────────────────────────────────────
@@ -5883,7 +5820,7 @@ function ApiExplorerPage() {
 const apiExplorerRouteRef = createRouteRef();  // was id: 'api-explorer'
 const apiExplorerPage = PageBlueprint.make({
   name: 'api-explorer',
-  params: { path: '/apis', routeRef: apiExplorerRouteRef, loader: async () => <ApiExplorerPage /> },
+  params: { title: 'API Explorer', icon: <AccountTreeIcon fontSize="inherit" />, path: '/apis', routeRef: apiExplorerRouteRef, loader: async () => <ApiExplorerPage /> },
 });
 // This DOES get a nav item, despite the earlier note here claiming a second entry
 // would point "at the same place". It does not: apiDocsPlugin's "APIs" item routes
@@ -5896,14 +5833,6 @@ const apiExplorerPage = PageBlueprint.make({
 // apart in the sidebar. The plugin's own item is left alone: it is registered
 // without an explicit name, so disabling it would mean guessing the generated
 // extension id, and a wrong guess silently disables nothing.
-const apiExplorerNavItem = NavItemBlueprint.make({
-  name: 'api-explorer',
-  params: {
-    title: 'API Explorer',
-    icon: AccountTreeIcon as any,
-    routeRef: apiExplorerRouteRef,
-  },
-});
 
 // ── Onboarding Wizard ──────────────────────────────────────────────────────────
 // 4-step guide for new platform users. Progress persisted in localStorage.
@@ -6133,11 +6062,7 @@ function OnboardingPage() {
 const onboardingRouteRef = createRouteRef();  // was id: 'onboarding'
 const onboardingPage = PageBlueprint.make({
   name: 'onboarding',
-  params: { path: '/onboarding', routeRef: onboardingRouteRef, loader: async () => <OnboardingPage /> },
-});
-const onboardingNavItem = NavItemBlueprint.make({
-  name: 'onboarding',
-  params: { title: 'Onboarding', icon: EmojiPeopleIcon as any, routeRef: onboardingRouteRef },
+  params: { title: 'Onboarding', icon: <EmojiPeopleIcon fontSize="inherit" />, path: '/onboarding', routeRef: onboardingRouteRef, loader: async () => <OnboardingPage /> },
 });
 
 // ── Learning Center ────────────────────────────────────────────────────────────
@@ -6358,11 +6283,7 @@ function LearningCenterPage() {
 const learningCenterRouteRef = createRouteRef();  // was id: 'learning-center'
 const learningCenterPage = PageBlueprint.make({
   name: 'learning-center',
-  params: { path: '/learning-center', routeRef: learningCenterRouteRef, loader: async () => <LearningCenterPage /> },
-});
-const learningCenterNavItem = NavItemBlueprint.make({
-  name: 'learning-center',
-  params: { title: 'Learning Center', icon: SchoolIcon as any, routeRef: learningCenterRouteRef },
+  params: { title: 'Learning Center', icon: <SchoolIcon fontSize="inherit" />, path: '/learning-center', routeRef: learningCenterRouteRef, loader: async () => <LearningCenterPage /> },
 });
 
 // ── Cost Calculator ────────────────────────────────────────────────────────────
@@ -6571,11 +6492,7 @@ function CostCalculatorPage() {
 const calculatorRouteRef = createRouteRef();  // was id: 'cost-calculator'
 const calculatorPage = PageBlueprint.make({
   name: 'cost-calculator',
-  params: { path: '/calculator', routeRef: calculatorRouteRef, loader: async () => <CostCalculatorPage /> },
-});
-const calculatorNavItem = NavItemBlueprint.make({
-  name: 'cost-calculator',
-  params: { title: 'Cost Calc', icon: CalculateIcon as any, routeRef: calculatorRouteRef },
+  params: { title: 'Cost Calc', icon: <CalculateIcon fontSize="inherit" />, path: '/calculator', routeRef: calculatorRouteRef, loader: async () => <CostCalculatorPage /> },
 });
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -6920,9 +6837,10 @@ const settingsPage = PageBlueprint.make({
   name: 'idp-settings',
   params: { path: '/idp-settings', routeRef: settingsPageRouteRef, loader: async () => <SettingsPage /> },
 });
-// No NavItemBlueprint here on purpose: the built-in userSettingsPlugin owns
-// the Settings group pinned at the bottom of the sidebar, so a second entry
-// would duplicate it. The page extension below is still registered.
+// No `title`/`icon` on this page on purpose: those are what put a page in the
+// sidebar, and the built-in userSettingsPlugin already owns the Settings group
+// pinned at the bottom, so a second entry would duplicate it. The page itself
+// is still registered.
 
 // ── User Profile ───────────────────────────────────────────────────────────────
 // Shows the current user's identity, owned entities from the catalog,
@@ -7165,11 +7083,7 @@ function UserProfilePage() {
 const profilePageRouteRef = createRouteRef();  // was id: 'user-profile'
 const profilePage = PageBlueprint.make({
   name: 'user-profile',
-  params: { path: '/profile', routeRef: profilePageRouteRef, loader: async () => <UserProfilePage /> },
-});
-const profileNavItem = NavItemBlueprint.make({
-  name: 'user-profile',
-  params: { title: 'My Profile', icon: PersonIcon as any, routeRef: profilePageRouteRef },
+  params: { title: 'My Profile', icon: <PersonIcon fontSize="inherit" />, path: '/profile', routeRef: profilePageRouteRef, loader: async () => <UserProfilePage /> },
 });
 
 // ── Global Search ──────────────────────────────────────────────────────────────
@@ -7362,11 +7276,7 @@ function GlobalSearchPage() {
 const searchPageRouteRef = createRouteRef();  // was id: 'global-search'
 const searchPage = PageBlueprint.make({
   name: 'global-search',
-  params: { path: '/search-page', routeRef: searchPageRouteRef, loader: async () => <GlobalSearchPage /> },
-});
-const searchNavItem = NavItemBlueprint.make({
-  name: 'global-search',
-  params: { title: 'Search', icon: SearchOutlinedIcon as any, routeRef: searchPageRouteRef },
+  params: { title: 'Search', icon: <SearchOutlinedIcon fontSize="inherit" />, path: '/search-page', routeRef: searchPageRouteRef, loader: async () => <GlobalSearchPage /> },
 });
 
 // ── Admin Panel ────────────────────────────────────────────────────────────────
@@ -7597,11 +7507,7 @@ function AdminPage() {
 const adminPageRouteRef = createRouteRef();  // was id: 'admin-panel'
 const adminPage = PageBlueprint.make({
   name: 'admin-panel',
-  params: { path: '/admin', routeRef: adminPageRouteRef, loader: async () => <AdminPage /> },
-});
-const adminNavItem = NavItemBlueprint.make({
-  name: 'admin-panel',
-  params: { title: 'Admin', icon: SupervisorAccountIcon as any, routeRef: adminPageRouteRef },
+  params: { title: 'Admin', icon: <SupervisorAccountIcon fontSize="inherit" />, path: '/admin', routeRef: adminPageRouteRef, loader: async () => <AdminPage /> },
 });
 
 // ── KAgent AI Agents ──────────────────────────────────────────────────────────
@@ -7892,11 +7798,7 @@ function KAgentPage() {
 const kagentPageRouteRef = createRouteRef();  // was id: 'kagent-platform'
 const kagentPage = PageBlueprint.make({
   name: 'kagent-platform',
-  params: { path: '/kagent', routeRef: kagentPageRouteRef, loader: async () => <KAgentPage /> },
-});
-const kagentNavItem = NavItemBlueprint.make({
-  name: 'kagent-platform',
-  params: { title: 'KAgent', icon: SmartToyIcon as any, routeRef: kagentPageRouteRef },
+  params: { title: 'KAgent', icon: <SmartToyIcon fontSize="inherit" />, path: '/kagent', routeRef: kagentPageRouteRef, loader: async () => <KAgentPage /> },
 });
 
 // ── AI Observability (Langfuse) ────────────────────────────────────────────────
@@ -8186,11 +8088,7 @@ function LangfusePage() {
 const langfusePageRouteRef = createRouteRef();
 const langfusePage = PageBlueprint.make({
   name: 'langfuse-platform',
-  params: { path: '/langfuse', routeRef: langfusePageRouteRef, loader: async () => <LangfusePage /> },
-});
-const langfuseNavItem = NavItemBlueprint.make({
-  name: 'langfuse-platform',
-  params: { title: 'AI Observability', icon: TimelineIcon as any, routeRef: langfusePageRouteRef },
+  params: { title: 'AI Observability', icon: <TimelineIcon fontSize="inherit" />, path: '/langfuse', routeRef: langfusePageRouteRef, loader: async () => <LangfusePage /> },
 });
 
 // ── LiteLLM Spend page — ADR-0008 ──────────────────────────────────────────────
@@ -8358,11 +8256,7 @@ function LitellmSpendPage() {
 const litellmSpendPageRouteRef = createRouteRef();
 const litellmSpendPage = PageBlueprint.make({
   name: 'litellm-spend',
-  params: { path: '/litellm-spend', routeRef: litellmSpendPageRouteRef, loader: async () => <LitellmSpendPage /> },
-});
-const litellmSpendNavItem = NavItemBlueprint.make({
-  name: 'litellm-spend',
-  params: { title: 'LiteLLM Spend', icon: VpnKeyIcon as any, routeRef: litellmSpendPageRouteRef },
+  params: { title: 'LiteLLM Spend', icon: <VpnKeyIcon fontSize="inherit" />, path: '/litellm-spend', routeRef: litellmSpendPageRouteRef, loader: async () => <LitellmSpendPage /> },
 });
 
 // ── Langfuse entity tab — one service's traces ────────────────────────────────
@@ -8925,11 +8819,7 @@ function MlflowPage() {
 const mlflowPageRouteRef = createRouteRef();
 const mlflowPage = PageBlueprint.make({
   name: 'mlflow-platform',
-  params: { path: '/mlflow', routeRef: mlflowPageRouteRef, loader: async () => <MlflowPage /> },
-});
-const mlflowNavItem = NavItemBlueprint.make({
-  name: 'mlflow-platform',
-  params: { title: 'MLflow', icon: ScienceIcon as any, routeRef: mlflowPageRouteRef },
+  params: { title: 'MLflow', icon: <ScienceIcon fontSize="inherit" />, path: '/mlflow', routeRef: mlflowPageRouteRef, loader: async () => <MlflowPage /> },
 });
 
 // ── Support / Help Center ──────────────────────────────────────────────────────
@@ -9102,11 +8992,7 @@ function SupportPage() {
 const supportPageRouteRef = createRouteRef();  // was id: 'support'
 const supportPage = PageBlueprint.make({
   name: 'support',
-  params: { path: '/support', routeRef: supportPageRouteRef, loader: async () => <SupportPage /> },
-});
-const supportNavItem = NavItemBlueprint.make({
-  name: 'support',
-  params: { title: 'Support', icon: HelpOutlineIcon as any, routeRef: supportPageRouteRef },
+  params: { title: 'Support', icon: <HelpOutlineIcon fontSize="inherit" />, path: '/support', routeRef: supportPageRouteRef, loader: async () => <SupportPage /> },
 });
 
 // ── Plugin registration ────────────────────────────────────────────────────────
@@ -9126,57 +9012,33 @@ export const customPagesPlugin: FrontendPlugin = createFrontendPlugin({
   extensions: [
     // Platform-wide standalone pages
     homePage,
-    homeNavItem,
     doraPage,
-    doraNavItem,
     scorecardPage,
-    scorecardNavItem,
     sloPage,
-    sloNavItem,
     argocdPage,
-    argocdNavItem,
     activityPage,
     incidentsPage,
-    incidentsNavItem,
-    activityNavItem,
     apiExplorerPage,
-    apiExplorerNavItem,
     onboardingPage,
-    onboardingNavItem,
     learningCenterPage,
-    learningCenterNavItem,
     calculatorPage,
-    calculatorNavItem,
     settingsPage,
     // (no settingsNavItem — see the note at its page definition)
     profilePage,
-    profileNavItem,
     searchPage,
-    searchNavItem,
     adminPage,
-    adminNavItem,
     kagentPage,
-    kagentNavItem,
     langfusePage,
-    langfuseNavItem,
     litellmSpendPage,
-    litellmSpendNavItem,
     langfuseEntityContent,
     mlflowPage,
-    mlflowNavItem,
     supportPage,
-    supportNavItem,
     // Existing pages
     finOpsPage,
-    finOpsNavItem,
     aiAssistantPage,
-    aiAssistantNavItem,
     semanticSearchPage,
-    semanticSearchNavItem,
     approvalsPage,
-    approvalsNavItem,
     copilotPage,
-    copilotNavItem,
     // Entity tabs
     doraEntityContent,
     scorecardEntityContent,

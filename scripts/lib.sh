@@ -1694,31 +1694,17 @@ app:
         disabled: true
     - page:custom-pages/ai-assistant:
         disabled: ${kagent_disabled}
-    - nav-item:custom-pages/ai-assistant:
-        disabled: ${kagent_disabled}
     - page:custom-pages/ai-search:
-        disabled: ${kagent_disabled}
-    - nav-item:custom-pages/ai-search:
         disabled: ${kagent_disabled}
     - page:custom-pages/approvals:
         disabled: ${kagent_disabled}
-    - nav-item:custom-pages/approvals:
-        disabled: ${kagent_disabled}
     - page:custom-pages/kagent-platform:
-        disabled: ${kagent_disabled}
-    - nav-item:custom-pages/kagent-platform:
         disabled: ${kagent_disabled}
     - page:custom-pages/mlflow-platform:
         disabled: ${mlflow_disabled}
-    - nav-item:custom-pages/mlflow-platform:
-        disabled: ${mlflow_disabled}
     - page:custom-pages/langfuse-platform:
         disabled: ${lf_disabled}
-    - nav-item:custom-pages/langfuse-platform:
-        disabled: ${lf_disabled}
     - page:custom-pages/litellm-spend:
-        disabled: ${litellm_disabled}
-    - nav-item:custom-pages/litellm-spend:
         disabled: ${litellm_disabled}
 
 aiStack:

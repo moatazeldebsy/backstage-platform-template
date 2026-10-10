@@ -36,8 +36,8 @@
     "plugins/*"
   ],
   "devDependencies": {
-    "@backstage/cli": "^0.36.1",
-    "@backstage/cli-defaults": "^0.1.1",
+    "@backstage/cli": "^0.36.6",
+    "@backstage/cli-defaults": "^0.1.6",
     "@backstage/e2e-test-utils": "^0.1.2",
     "@jest/environment-jsdom-abstract": "^30.0.0",
     "@playwright/test": "^1.32.3",
@@ -53,7 +53,7 @@
     "react-router": "^6.30.4",
     "react-router-dom": "^6.30.6",
     "@grpc/grpc-js": "^1.14.5",
-    "shell-quote": "^1.9.0",
+    "shell-quote": "^1.11.0",
     "brace-expansion": "^5.0.12",
     "body-parser": "^1.20.6",
     "@types/react": "^18",
@@ -69,10 +69,17 @@
     "form-data": "^4.0.6",
     "tar": "^7.5.21",
     "postcss": "^8.5.18",
-    "js-yaml": "^4.3.2",
     "@babel/core": "^7.29.6",
     "launch-editor": "^2.14.1",
     "markdown-it": "^14.3.1",
+    "js-yaml@npm:=4.1.1": "^4.3.2",
+    "js-yaml@npm:^3.6.1": "^4.3.2",
+    "js-yaml@npm:^3.8.3": "^4.3.2",
+    "js-yaml@npm:^3.10.0": "^4.3.2",
+    "js-yaml@npm:^3.13.1": "^4.3.2",
+    "js-yaml@npm:^4.1.0": "^4.3.2",
+    "js-yaml@npm:^4.1.1": "^4.3.2",
+    "js-yaml@npm:^4.3.0": "^4.3.2",
     "undici": "^7.29.1",
     "minimatch": "^10.2.6",
     "ip-address": "^10.5.1",
@@ -109,7 +116,14 @@
     "mysql2": "^3.24.3",
     "urllib": "^4.9.1",
     "browserslist": "^4.28.7",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "@yarnpkg/core": "4.9.1",
+    "handlebars": "^4.7.10",
+    "proxy-addr": "^2.0.8",
+    "compression": "^1.8.2",
+    "source-map-js": "^1.2.2",
+    "fast-copy": "^3.1.0",
+    "postcss-selector-parser@npm:^7.0.0": "^7.1.6"
   },
   "jest": {
     "coverageProvider": "v8",
@@ -134,7 +148,7 @@
   },
   "packageManager": "yarn@4.4.1",
   "dependencies": {
-    "@backstage-community/plugin-tech-insights": "^1.2.0",
+    "@backstage-community/plugin-tech-insights": "^1.5.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   }

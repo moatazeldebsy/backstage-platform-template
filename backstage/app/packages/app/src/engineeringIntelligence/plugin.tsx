@@ -1,6 +1,5 @@
 import {
   FrontendPlugin,
-  NavItemBlueprint,
   PageBlueprint,
   createFrontendPlugin,
   createRouteRef,
@@ -17,14 +16,16 @@ import InsightsIcon from '@material-ui/icons/Assessment';
 //
 // Registered in App.tsx's `features` array alongside customPagesPlugin. The nav
 // sidebar needs no change: Sidebar.tsx renders `nav.rest({ sortBy: 'title' })`,
-// so a NavItemBlueprint from any plugin lands in the alphabetical scroll area on
-// its own.
+// so any PageBlueprint with a `title` and `icon` lands in the alphabetical
+// scroll area on its own.
 
 export const engineeringIntelligenceRouteRef = createRouteRef();
 
 const engineeringIntelligencePage = PageBlueprint.make({
   name: 'engineering-intelligence',
   params: {
+    title: 'Engineering Intelligence',
+    icon: <InsightsIcon fontSize="inherit" />,
     path: '/engineering-intelligence',
     routeRef: engineeringIntelligenceRouteRef,
     loader: () =>
@@ -34,20 +35,11 @@ const engineeringIntelligencePage = PageBlueprint.make({
   },
 });
 
-const engineeringIntelligenceNavItem = NavItemBlueprint.make({
-  name: 'engineering-intelligence',
-  params: {
-    title: 'Engineering Intelligence',
-    icon: InsightsIcon as any,
-    routeRef: engineeringIntelligenceRouteRef,
-  },
-});
-
 // The explicit FrontendPlugin annotation mirrors customPagesPlugin's, and for
 // the same reason: without it TypeScript emits a nondeterministic TS2742 from a
 // hoisted nested @backstage/catalog-model.
 export const engineeringIntelligencePlugin: FrontendPlugin = createFrontendPlugin({
   pluginId: 'engineering-intelligence',
   routes: { root: engineeringIntelligenceRouteRef },
-  extensions: [engineeringIntelligencePage, engineeringIntelligenceNavItem],
+  extensions: [engineeringIntelligencePage],
 });
