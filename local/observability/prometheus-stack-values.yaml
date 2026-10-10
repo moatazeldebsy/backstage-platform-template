@@ -276,6 +276,21 @@ grafana:
     finops: grafana-dashboards-finops
     sre: grafana-dashboards-sre
 
+# Kind binds etcd, the scheduler and the controller-manager to 127.0.0.1
+# inside the control-plane node, and kube-proxy's metrics port likewise, so
+# Prometheus can never scrape them. Leaving these on produces permanent
+# critical KubeSchedulerDown / KubeControllerManagerDown / KubeProxyDown /
+# etcdInsufficientMembers alerts that are pure noise. Disabling the component
+# drops both the scrape target and its alert rules.
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+
 kubeStateMetrics:
   resources:
     requests:

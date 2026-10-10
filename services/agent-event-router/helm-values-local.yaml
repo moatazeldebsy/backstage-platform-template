@@ -85,8 +85,12 @@ env:
         key: github-token
         optional: true
   # INCIDENT_REPO — owner/repo where auto-created incident issues are filed.
+  # Empty locally on purpose: a laptop Kind cluster flaps critical alerts on
+  # every sleep/Docker restart, and each one became a GitHub issue plus an
+  # auto-drafted postmortem PR on the template repo. Set it to a scratch repo
+  # if you want to exercise the incident → postmortem flow end to end.
   - name: INCIDENT_REPO
-    value: "moatazeldebsy/backstage-platform-template"
+    value: ""
   # Which severities get a tracked issue. Critical only by default — set to
   # "critical,warning" to also file P2s, but be sure the alert volume warrants it.
   - name: INCIDENT_SEVERITIES
