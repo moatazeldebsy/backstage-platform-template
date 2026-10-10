@@ -18,34 +18,20 @@ app:
     # the AI layer actually exists. Kept in step with aiStack.enabled below.
     - page:custom-pages/ai-assistant:
         disabled: true
-    - nav-item:custom-pages/ai-assistant:
-        disabled: true
     - page:custom-pages/ai-search:
-        disabled: true
-    - nav-item:custom-pages/ai-search:
         disabled: true
     - page:custom-pages/approvals:
         disabled: true
-    - nav-item:custom-pages/approvals:
-        disabled: true
     - page:custom-pages/kagent-platform:
-        disabled: true
-    - nav-item:custom-pages/kagent-platform:
         disabled: true
     - page:custom-pages/mlflow-platform:
         disabled: true
-    - nav-item:custom-pages/mlflow-platform:
-        disabled: true
     - page:custom-pages/langfuse-platform:
-        disabled: true
-    - nav-item:custom-pages/langfuse-platform:
         disabled: true
     # LiteLLM is opt-in even when the rest of the AI stack is up (ADR-0008:
     # on by default on --aws, off by default locally), so this page dead-ends
     # the same way the others above do until bootstrap-ai.sh --litellm runs.
     - page:custom-pages/litellm-spend:
-        disabled: true
-    - nav-item:custom-pages/litellm-spend:
         disabled: true
     # The per-entity Langfuse tab was never in this list, so it rendered on every
     # component even with the AI stack switched off. Its filter now also matches

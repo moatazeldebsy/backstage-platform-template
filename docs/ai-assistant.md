@@ -539,9 +539,9 @@ request is made at all); live tables when the API answers; and a red banner
 carrying the failing endpoint and HTTP status when MLflow is deployed but
 unreachable. A crashed pod therefore reads as an outage, not as "not installed".
 
-Page and nav item are gated by `page:custom-pages/mlflow-platform` /
-`nav-item:custom-pages/mlflow-platform`, disabled by default and flipped on by
-`bootstrap-ai.sh`. That list is **replaced, not merged**, per config layer, so all
+Page and nav item are gated by `page:custom-pages/mlflow-platform` (the sidebar
+entry comes from the page itself, so disabling the page removes both), disabled
+by default and flipped on by `bootstrap-ai.sh`. That list is **replaced, not merged**, per config layer, so all
 four copies must agree: `backstage/app-config.yaml`, `app-config.local.yaml`,
 `app-config.aws.yaml`, and the heredoc in `write_backstage_ai_overlay()`
 (`scripts/lib.sh`).

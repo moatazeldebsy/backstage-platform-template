@@ -41,7 +41,7 @@ export const SidebarContent = NavContentBlueprint.make({
 
           <SidebarGroup label="Menu" icon={<MenuIcon />}>
             {/* Home pinned at top */}
-            {nav.take('nav:custom-pages/platform-home')}
+            {nav.take('page:custom-pages/platform-home')}
             <SidebarDivider />
             {/* Core IDP — always visible */}
             {nav.take('page:catalog')}
