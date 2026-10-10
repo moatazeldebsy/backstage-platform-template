@@ -129,7 +129,9 @@
     "http-cache-semantics@npm:^4.1.1": "^4.3.0",
     "postcss-selector-parser@npm:^6.0.4": "^7.1.6",
     "postcss-selector-parser@npm:^6.0.5": "^7.1.6",
-    "postcss-selector-parser@npm:^6.0.9": "^7.1.6"
+    "postcss-selector-parser@npm:^6.0.9": "^7.1.6",
+    "@graphql-tools/schema@npm:^8.5.0": "^10.1.3",
+    "@graphql-tools/utils@npm:^8.8.0": "^12.0.3"
   },
   "jest": {
     "coverageProvider": "v8",
