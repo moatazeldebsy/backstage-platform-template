@@ -3133,24 +3133,7 @@
 <p>A mutating tool call fails unless it carries an <code>approval_id</code> whose recorded status is <code>approved</code>. The check lives in the tool server's own code path, not in the prompt, so an agent cannot talk its way past it. Which actions need a human is data (a ConfigMap), not code — and every request, auto-approval, and human decision lands in an audit log.</p>
 <hr />
 <h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a> agent (release-agent, qa-agent)
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>   │
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>   │ 1. check_policy(action, target)              ─┐
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>   │ 2. request_approval(action, target, context)  ├─ idp-mcp-server → approval-service
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>   │ 3. get_approval_status(approval_id)          ─┘
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>   │
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>   │ 4. sync_app(app_name, dry_run:false, approval_id)
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>   ▼
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a> argocd-mcp-server / github-mcp-server
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>   │  requireApproval() → GET /approvals/:id on approval-service
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>   │  rejects unless status == "approved" AND action+target match
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>   ▼
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a> real ArgoCD sync / GitHub review
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a> human
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>   │  Backstage → Agent Approvals (/approvals)
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>   └─ approve / deny → POST /approvals/:id/decide
-</code></pre></div>
+<p><img alt="Agent approval gate: the agent checks policy, requests approval and polls status, then calls the MCP server, which rejects the real action unless approval-service reports it approved; a human approves or denies in Backstage" src="../assets/agent-approvals-flow.png" /></p>
 <table>
 <thead>
 <tr>
@@ -3239,8 +3222,8 @@
 <p><code>targetPattern</code> supports exact match, a <code>prefix-*</code> glob, and <code>*</code>. <strong>An action with no matching rule fails safe</strong> — it requires approval (<code>matchedRule: "default-fallback"</code>). Adding a new mutating tool therefore defaults to gated, not open.</p>
 <p><code>src/policy.ts</code> also carries a <code>DEFAULT_POLICY</code> used only when the ConfigMap isn't mounted (local <code>npm run dev</code>, unit tests). It is stricter than the shipped policy — every <code>sync_app</code> requires approval. Don't read it as the deployed behaviour.</p>
 <p>Policy is cached at first read. <strong>Editing the ConfigMap requires a pod restart</strong> to take effect:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/policies/configmap.yaml
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/approval-service<span class="w"> </span>-n<span class="w"> </span>services-dev
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/policies/configmap.yaml
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/approval-service<span class="w"> </span>-n<span class="w"> </span>services-dev
 </code></pre></div>
 <hr />
 <h2 id="using-it-from-backstage">Using it from Backstage<a class="headerlink" href="#using-it-from-backstage" title="Permanent link">&para;</a></h2>
@@ -3301,37 +3284,37 @@
 <p><code>decide</code> is guarded by <code>WHERE status = 'pending'</code>, so a second decision on the same approval returns <strong>409</strong> rather than overwriting the first — decisions are immutable once made.</p>
 <h3 id="audit-log">Audit log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h3>
 <p><code>approval-service</code> emits <code>[AUDIT]</code> JSON lines for <code>approval_requested</code>, <code>approval_auto_approved</code>, and <code>approval_decided</code>, each carrying <code>approval_id</code>; gated tools' own <code>[AUDIT]</code> entries carry the <code>approval_id</code> they were given. Together they reconstruct who authorised what, when, and on whose behalf.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/approval-service<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>AUDIT
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>deployment/approval-service<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>AUDIT
 </code></pre></div>
 <p>See <a href="../ai-assistant/">AI Assistant § Structured audit log</a>.</p>
 <hr />
 <h2 id="testing-the-gate">Testing the gate<a class="headerlink" href="#testing-the-gate" title="Permanent link">&para;</a></h2>
 <h3 id="unit-tests">Unit tests<a class="headerlink" href="#unit-tests" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">cd</span><span class="w"> </span>services/approval-service<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>ci<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w">   </span><span class="c1"># policy rules + all five endpoints (store mocked)</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">cd</span><span class="w"> </span>services/argocd-mcp-server<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>ci<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w">  </span><span class="c1"># approval-gate.test.ts</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">cd</span><span class="w"> </span>services/approval-service<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>ci<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w">   </span><span class="c1"># policy rules + all five endpoints (store mocked)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>services/argocd-mcp-server<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>ci<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w">  </span><span class="c1"># approval-gate.test.ts</span>
 </code></pre></div>
 <h3 id="end-to-end-local">End-to-end, local<a class="headerlink" href="#end-to-end-local" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--adp
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">        </span><span class="c1"># reveal /approvals</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># 0. the gate is actually wired in</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>deploy<span class="w"> </span>argocd-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{..env}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">','</span><span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>APPROVAL
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># 1. policy says prod needs a human</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/policy/check<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"action":"sync_app","target":"prod-payments-api"}'</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="c1"># 2. agent requests approval → pending</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="nv">ID</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/approvals<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"action":"sync_app","agent":"release-agent","target":"prod-payments-api",</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="s1">       "context":{"reason":"deploy v1.4.2 after green CI"}}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>.id<span class="k">)</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="c1"># 3. approve it (or use the Backstage UI)</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/approvals/<span class="nv">$ID</span>/decide<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"decision":"approved","decided_by":"your.name"}'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--adp
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">        </span><span class="c1"># reveal /approvals</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># 0. the gate is actually wired in</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>deploy<span class="w"> </span>argocd-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{..env}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">','</span><span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>APPROVAL
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># 1. policy says prod needs a human</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/policy/check<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"action":"sync_app","target":"prod-payments-api"}'</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="c1"># 2. agent requests approval → pending</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="nv">ID</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/approvals<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"action":"sync_app","agent":"release-agent","target":"prod-payments-api",</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="s1">       "context":{"reason":"deploy v1.4.2 after green CI"}}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span>.id<span class="k">)</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="c1"># 3. approve it (or use the Backstage UI)</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://approval-service.idp.local/approvals/<span class="nv">$ID</span>/decide<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"decision":"approved","decided_by":"your.name"}'</span>
 </code></pre></div>
 <p>Cases worth asserting, because each is a different failure mode:</p>
 <table>
@@ -3375,7 +3358,7 @@
 <p><code>backstage/app/packages/backend/src/modules/idpAiIdentityProxy.ts</code> replaces that path. The AI Assistant chat page now POSTs to <code>POST /api/idp-ai-identity/a2a/kagent/:agent</code> instead of <code>/api/proxy/kagent/a2a/kagent/:agent</code>. The new route resolves the caller's identity server-side via <code>httpAuth.credentials(req, { allow: ['user'] })</code> — the same pattern <code>idpLearningCenter.ts</code> uses — ignores any client-supplied <code>X-Backstage-User</code>, and sets the header itself before forwarding to KAgent (<code>KAGENT_EXTERNAL_URL</code>, same env var <code>idpDeployAgent.ts</code> / <code>idpSetupContractTesting.ts</code> already use). A forged header in the incoming browser request never reaches KAgent.</p>
 <h3 id="consent-grants">Consent grants<a class="headerlink" href="#consent-grants" title="Permanent link">&para;</a></h3>
 <p>A new <code>consent_grants</code> table on the same approval-service Postgres records standing authorizations: <em>user X allows agent Y to use tool Z</em>, with an optional expiry.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">consent_grants</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">user_ref</span><span class="p">,</span><span class="w"> </span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="k">scope</span><span class="p">,</span><span class="w"> </span><span class="n">granted_at</span><span class="p">,</span><span class="w"> </span><span class="n">expires_at</span><span class="p">,</span><span class="w"> </span><span class="n">revoked_at</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">consent_grants</span><span class="w"> </span><span class="p">(</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">user_ref</span><span class="p">,</span><span class="w"> </span><span class="n">agent</span><span class="p">,</span><span class="w"> </span><span class="k">scope</span><span class="p">,</span><span class="w"> </span><span class="n">granted_at</span><span class="p">,</span><span class="w"> </span><span class="n">expires_at</span><span class="p">,</span><span class="w"> </span><span class="n">revoked_at</span><span class="p">)</span>
 </code></pre></div>
 <table>
 <thead>

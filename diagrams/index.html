@@ -2683,6 +2683,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#flow-diagrams-replace-hand-typed-ascii" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow diagrams (replace hand-typed ASCII)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2793,6 +2804,20 @@ rendered blank before the build started namespacing them per logo.</p>
 dark cards. They carry <code>lg-dark</code> and the stylesheet inverts them.</p>
 <p>The renderer checks for both: any mark with zero width after layout is reported
 as blank rather than silently shipped.</p>
+<h2 id="flow-diagrams-replace-hand-typed-ascii">Flow diagrams (replace hand-typed ASCII)<a class="headerlink" href="#flow-diagrams-replace-hand-typed-ascii" title="Permanent link">&para;</a></h2>
+<p>Box-and-arrow diagrams in the docs pages are HTML pages that share <code>flow.css</code>
+and render to <code>docs/assets/&lt;name&gt;.png</code>. Never draw them as ASCII in a fenced
+block: <code>scripts/check-docs-diagrams.py</code> (run in CI) fails on ragged borders.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">cd</span><span class="w"> </span>backstage/app
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>node<span class="w"> </span>../../docs/diagrams/render.mjs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>../../docs/diagrams/contract-testing-architecture.html<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>../../docs/assets/contract-testing-architecture.png
+</code></pre></div>
+<p>Sources: <code>contract-testing-architecture</code>, <code>platform-overview</code>,
+<code>aws-network-topology</code>, <code>secrets-flow</code>, <code>bootstrap-sequence</code>,
+<code>agent-approvals-flow</code>, <code>agentic-platform-architecture</code>,
+<code>ai-assistant-architecture</code>, <code>crossplane-provisioning-flow</code>,
+<code>scripts-setup-flow</code>, <code>ei-target-architecture</code>.</p>
 
 
 

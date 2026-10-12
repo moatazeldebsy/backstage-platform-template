@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>AI Assistant architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas" style="width:1400px">
+  <h1>AI Assistant — Architecture</h1>
+
+  <div class="box wide"><h2>Backstage <span class="sub">(Docker Compose / EKS pod)</span></h2>
+    <code>extensions.tsx</code> — AiAssistantPage<br>
+    <code>POST /api/proxy/kagent/a2a/kagent/platform-assistant</code><br>
+    <code>GET /api/proxy/kagent/api/sessions/&lt;id&gt;</code> (poll) · <code>X-Backstage-User: &lt;userRef&gt;</code> on every request</div>
+  <div class="arrow"><span style="padding-bottom:9px">Backstage proxy</span></div>
+
+  <div class="box wide blue"><h2>KAgent <span class="sub">(namespace: kagent)</span></h2>
+    <code>kagent-ui.kagent.svc.cluster.local:8080</code> (in-cluster) · <code>http://kagent.idp.local</code> (local ingress)
+    <hr>
+    <div class="row" style="gap:40px;align-items:flex-start">
+      <ul style="flex:1;margin:0">
+        <li><b>platform-assistant</b> — unified entry point (claude-sonnet)</li>
+        <li><b>idp-assistant</b> — platform / scaffolding (claude-haiku)</li>
+        <li><b>qa-assistant</b> — test suites + PR review (claude-sonnet)</li>
+        <li><b>contract-assistant</b> — API contracts (claude-sonnet)</li>
+        <li><b>cost-agent</b> — cost / budget analysis (claude-sonnet)</li>
+      </ul>
+      <ul style="flex:1;margin:0">
+        <li><b>release-agent</b> — ArgoCD sync / rollback (claude-sonnet)</li>
+        <li><b>incident-agent</b> — alert triage (claude-sonnet)</li>
+        <li><b>security-agent</b> <span class="sub">(ADP)</span> — vulnerable deps, secret rotation, policy violations (claude-sonnet)</li>
+        <li><b>onboarding-agent</b> <span class="sub">(ADP)</span> — templates, docs, ownership for new engineers (claude-haiku)</li>
+      </ul>
+    </div></div>
+  <div class="arrow"><span style="padding-bottom:9px">one RemoteMCPServer (<code>ai-gateway</code>) + every ModelConfig’s <code>anthropic.baseUrl</code></span></div>
+
+  <div class="row" style="align-items:center;width:100%">
+    <div class="box blue" style="flex:2"><h2>AI Gateway — agentgateway <span class="sub">:3000 · ml-platform</span></h2>
+      <code>/mcp</code> — all 8 servers, tool names unprefixed<br><code>/v1/messages</code> — Anthropic, native</div>
+    <div class="ai-model" style="flex:1">──▶ <b style="color:var(--ink)">LiteLLM</b> ──▶ Anthropic / Bedrock</div>
+  </div>
+  <div class="arrow"><span style="padding-bottom:9px">streamable-HTTP</span></div>
+
+  <div class="row" style="gap:14px">
+    <div class="box green ai-mcp"><h2>idp-mcp</h2>:3001<div class="ai-tools">12 tools</div></div>
+    <div class="box green ai-mcp"><h2>qa-mcp</h2>:3002<div class="ai-tools">4 tools</div></div>
+    <div class="box green ai-mcp"><h2>contract-mcp</h2>:3003<div class="ai-tools">13 tools</div></div>
+    <div class="box green ai-mcp"><h2>github-mcp</h2>:3005<div class="ai-tools">5 tools</div></div>
+    <div class="box green ai-mcp"><h2>argocd-mcp</h2>:3006<div class="ai-tools">5 tools</div></div>
+    <div class="box green ai-mcp"><h2>cost-mcp</h2>:3007<div class="ai-tools">5 tools</div></div>
+    <div class="box green ai-mcp"><h2>incident-mcp</h2>:3008<div class="ai-tools">7 tools</div></div>
+    <div class="box plain ai-mcp"><h2>security-mcp</h2>:3010<div class="ai-tools">3 tools · ADP only</div></div>
+  </div>
+  <div class="ag-foot" style="text-align:center">54 tools total, all names unique — which is what lets the gateway federate them unprefixed. Each agent still receives only its own <code>toolNames</code> allowlist.</div>
+
+  <div class="box wide plain" style="margin-top:22px"><h2>Event bus <span class="sub">agent-event-router :3004</span></h2>
+    <ul>
+      <li>GitHub webhooks: PR open / update → qa-assistant</li>
+      <li>AlertManager webhooks: budget alerts → cost-agent · critical non-budget alerts → incident-agent (+ opens / resolves a GitHub incident issue) · other firing alerts → idp-assistant</li>
+      <li>ArgoCD webhooks: OutOfSync / Degraded → release-agent</li>
+    </ul></div>
+</div>
+<script>window.redrawWires = () => {};</script></body></html>

@@ -3638,69 +3638,20 @@ grant.</p>
 <tr>
 <td>2</td>
 <td><strong>Backstage Portal</strong></td>
-<td>Software Catalog, 21 software templates, 18 QA templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights</td>
+<td>Software Catalog, 59 scaffolder templates (18 of them QA suites), TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights</td>
 <td>Scaffolder Backend → Catalog API → ArgoCD</td>
 </tr>
 <tr>
 <td>3</td>
 <td><strong>AI Agent / MCP</strong></td>
 <td>KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o</td>
-<td>IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs</td>
+<td>IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (13 tools) → Platform APIs</td>
 </tr>
 </tbody>
 </table>
 <p>All three channels converge on the <strong>Platform Control Plane</strong>: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.35 in production.</p>
 <hr />
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────────────────────────────────────────────────────┐
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│                       Developer Experience                           │
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│  ┌────────────────── ┐  ┌──────────────┐  ┌────────────────────────┐ │
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│  │  Backstage        │  │  GitHub      │  │  create-service.sh     │ │
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│  │  Portal           │  │  (source)    │  │  (CLI scaffold)        │ │
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│  │  + AI Assistant   │  └──────┬───────┘  └────────────────────────┘ │
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│  │  + custom actions │         │ push                                │
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│  └──────┬───────┬────┘         │                                     │
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>└─────────┼───────┼──────────────┼─────────────────────────────────────┘
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>          │       │              │
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  scaffold│  deploy              │ push
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>          │  (idp:deploy-local)  ▼
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>          │       │   ┌──────────────────────────────────────────┐
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>          │       │   │           CI/CD Layer                    │
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>          │       │   │  GitHub Actions (ubuntu-latest)          │
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>          │       │   │  install → test → docker build → /healthz│
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>          │       │   └────────────────┬─────────────────────────┘
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>          │       │                    │ (AWS CD — planned)
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>          ▼       ▼                    ▼
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>┌───────────────────────────────────────────────────────────────────── ┐
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│               Local: Kind cluster  /  AWS: EKS                       │
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│                                                                      │
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│  namespace: services              namespace: monitoring              │
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│  │ Services             │         │ (Prometheus + Grafana +        │ │
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│  └──────────────────────┘         └────────────────────────────────┘ │
-<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│                                                                      │
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>│  namespace: kagent                namespace: ml-platform             │
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>│  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>│  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│  │ contract-assistant   │         │                                │ │
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│  │ IDP MCP Server       │         └────────────────────────────────┘ │
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│  │ QA MCP Server        │                                            │
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>│  │ Contract MCP Server  │         namespace: services-dev            │
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│  └──────────────────────┘         ┌────────────────────────────────┐ │
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│                                   │ contract-mcp-server (port 3003)│ │
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│                                   │ idp-mcp-server (port 3001)     │ │
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│                                   │ qa-mcp-server  (port 3002)     │ │
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>│                                   └────────────────────────────────┘ │
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>└───────────────────────────────────────────────────────────────────── ┘
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>                    │ (AWS only)
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>                    ▼
-<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>┌─────────────────────────────────────────────────────────────────────┐
-<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│                 AWS Infrastructure (Terraform)                      │
-<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│   VPC → Private/Public Subnets → EKS → ECR → IAM (OIDC/IRSA)        │
-<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>└─────────────────────────────────────────────────────────────────────┘
-</code></pre></div>
+<p><img alt="Platform overview: developer experience layer, CI/CD, Kind or EKS cluster namespaces, and AWS infrastructure" src="../assets/platform-overview.png" /></p>
 <h2 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h2>
 <h3 id="convention-over-configuration">Convention over configuration<a class="headerlink" href="#convention-over-configuration" title="Permanent link">&para;</a></h3>
 <p>Every service gets the same: container registry, CI workflow, Helm chart structure, health check paths, namespace, and monitoring. Developers don't configure these — they inherit them from the golden path.</p>
@@ -3725,9 +3676,9 @@ grant.</p>
 <p>Both tools coexist by <strong>lifecycle</strong>, not by resource type. Terraform owns one-shot foundation (VPC, EKS, IAM, ECR, Secrets Manager scaffolding, <strong>and</strong> the IRSA role Crossplane providers assume). Crossplane owns day-2 per-service resources (S3, RDS, MSK topics, DynamoDB, SQS) requested via Backstage scaffolder templates and reconciled in-cluster by ArgoCD — no manual <code>terraform apply</code> step. See <a href="../crossplane-vs-terraform/">crossplane-vs-terraform.md</a> for the decision matrix and <a href="../crossplane/">crossplane.md</a> for the end-to-end flow.</p>
 <h2 id="repository-layout">Repository Layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
 <p>The repository is split into three top-level directories based on deployment target:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>local/          → 100% local-only (Kind / Rancher Desktop)
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>aws/            → 100% AWS-only  (EKS / Terraform / Secrets Manager)
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubernetes/     → 100% shared    (applied by both bootstrap scripts)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>local/          → 100% local-only (Kind / Rancher Desktop)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>aws/            → 100% AWS-only  (EKS / Terraform / Secrets Manager)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>kubernetes/     → 100% shared    (applied by both bootstrap scripts)
 </code></pre></div>
 <table>
 <thead>
@@ -3820,29 +3771,29 @@ grant.</p>
 - <code>bootstrap.sh</code> reads from <code>aws/</code> + <code>kubernetes/</code> only — never touches <code>local/</code></p>
 <h2 id="aiml-platform">AI/ML Platform<a class="headerlink" href="#aiml-platform" title="Permanent link">&para;</a></h2>
 <h3 id="how-the-ai-assistant-works-end-to-end">How the AI Assistant works end-to-end<a class="headerlink" href="#how-the-ai-assistant-works-end-to-end" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Backstage UI (extensions.tsx)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  AiAssistantPage — React chat component at /ai-assistant
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    │
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    │  POST /api/proxy/kagent/a2a/kagent/idp-assistant  (A2A JSON-RPC)
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    │  GET  /api/proxy/kagent/api/sessions/&lt;id&gt;          (poll for response)
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    ▼
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Backstage proxy  →  KAgent UI (kagent-ui.kagent.svc.cluster.local:8080)
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                     A2A server routes to the idp-assistant Agent CRD
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                                │
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                                │  MCP over Streamable HTTP
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                                ▼
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                     IDP MCP Server  (idp-mcp-server:3001/mcp)
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                       catalog_search    → Backstage catalog API
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                       get_service_metrics → Prometheus
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                       list_templates    → Backstage catalog (Templates)
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                       get_template_params → Backstage catalog entity
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                       scaffold_service  → Backstage scaffolder v2
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>                       list_deployments  → Kubernetes apps/v1 API
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Backstage UI (extensions.tsx)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  AiAssistantPage — React chat component at /ai-assistant
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    │
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    │  POST /api/proxy/kagent/a2a/kagent/idp-assistant  (A2A JSON-RPC)
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    │  GET  /api/proxy/kagent/api/sessions/&lt;id&gt;          (poll for response)
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    ▼
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>Backstage proxy  →  KAgent UI (kagent-ui.kagent.svc.cluster.local:8080)
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>                     A2A server routes to the idp-assistant Agent CRD
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                                │
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                                │  MCP over Streamable HTTP
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                                ▼
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>                     IDP MCP Server  (idp-mcp-server:3001/mcp)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>                       catalog_search    → Backstage catalog API
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>                       get_service_metrics → Prometheus
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>                       list_templates    → Backstage catalog (Templates)
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>                       get_template_params → Backstage catalog entity
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>                       scaffold_service  → Backstage scaffolder v2
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>                       list_deployments  → Kubernetes apps/v1 API
 </code></pre></div>
 <h3 id="scaffolding-flow-single-agent-turn">Scaffolding flow (single agent turn)<a class="headerlink" href="#scaffolding-flow-single-agent-turn" title="Permanent link">&para;</a></h3>
 <p>When the user provides <code>name</code>, <code>description</code>, and <code>owner</code> in one message, the agent
 completes the entire scaffold in one response turn without asking for confirmation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>list_templates → get_template_params → scaffold_service (immediate)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>list_templates → get_template_params → scaffold_service (immediate)
 </code></pre></div>
 <p>The agent manifest (<code>kubernetes/kagent/idp-agent.yaml</code>) enforces this via the
 system message: Rule 4 requires <code>scaffold_service</code> to be called immediately once
@@ -4070,31 +4021,31 @@ all required fields are known, and Rule 5 defines those fields as <code>name</co
 </tbody>
 </table>
 <h2 id="backstage-custom-action-idpdeploy-local">Backstage Custom Action: <code>idp:deploy-local</code><a class="headerlink" href="#backstage-custom-action-idpdeploy-local" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Backstage UI
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  → "Deploy Service to local Kind cluster" template
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    → idp:deploy-local action
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>      → kubectl cluster-info  (verify Kind reachable)
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>      → helm upgrade --install &lt;name&gt; /helm/service-template \
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>            --set image.repository=localhost:5003/&lt;name&gt; \
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>            --set image.tag=&lt;tag&gt; \
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            --set ingress.className=nginx \
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>            --set ingress.hosts[0].host=&lt;name&gt;.idp.local \
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>            ...
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>      → kubectl get pods  (log status)
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>      → output: serviceUrl = http://&lt;name&gt;.idp.local
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Backstage UI
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  → "Deploy Service to local Kind cluster" template
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    → idp:deploy-local action
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>      → kubectl cluster-info  (verify Kind reachable)
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>      → helm upgrade --install &lt;name&gt; /helm/service-template \
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>            --set image.repository=localhost:5003/&lt;name&gt; \
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>            --set image.tag=&lt;tag&gt; \
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>            --set ingress.className=nginx \
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>            --set ingress.hosts[0].host=&lt;name&gt;.idp.local \
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>            ...
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>      → kubectl get pods  (log status)
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>      → output: serviceUrl = http://&lt;name&gt;.idp.local
 </code></pre></div>
 <p><strong>Kubeconfig bridge (macOS + Docker Desktop):</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Host ~/.kube/config         docker-compose mounts as read-only
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  (server: 127.0.0.1:PORT)  ───────────────────────────────────&gt;  /home/node/.kube/config
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>                                                                          │
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>                                                          startup sed rewrites:
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>                                                          127.0.0.1 → host.docker.internal
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>                                                          strips certificate-authority-data
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>                                                          adds insecure-skip-tls-verify: true
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>                                                                          │
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>                                                                          ▼
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>                                                                   /tmp/kubeconfig
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>                                                          KUBECONFIG=/tmp/kubeconfig (env)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Host ~/.kube/config         docker-compose mounts as read-only
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  (server: 127.0.0.1:PORT)  ───────────────────────────────────&gt;  /home/node/.kube/config
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                                                                          │
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>                                                          startup sed rewrites:
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                                                          127.0.0.1 → host.docker.internal
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                                                          strips certificate-authority-data
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                                                          adds insecure-skip-tls-verify: true
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                                                                          │
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>                                                                          ▼
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>                                                                   /tmp/kubeconfig
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>                                                          KUBECONFIG=/tmp/kubeconfig (env)
 </code></pre></div>
 <hr />
 <h2 id="aws-architecture">AWS Architecture<a class="headerlink" href="#aws-architecture" title="Permanent link">&para;</a></h2>
@@ -4106,34 +4057,7 @@ RDS Multi-AZ on the <code>medium</code>/<code>large</code> profiles. A full regi
 rebuilding from IaC and restoring backups. See
 <a href="../design/adr-0009-single-region-multi-az/">ADR-0009</a> for the reasoning.</p>
 <h3 id="network-topology">Network Topology<a class="headerlink" href="#network-topology" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>AWS Region: us-east-1
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>┌─────────────────────────────────────────────────────────────────────────────┐
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>│  VPC  10.0.0.0/16                                                           │
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>│                                                                             │
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>│  ┌──────────────────────┐  ┌──────────────────────┐  ┌───────────────────┐ │
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>│  │  Public Subnet       │  │  Public Subnet       │  │  Public Subnet    │ │
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>│  │  10.0.64.0/20 (AZ-a) │  │  10.0.80.0/20 (AZ-b) │  │  10.0.96.0/20(AZ-c)│ │
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>│  │  NAT Gateway         │  │  NAT Gateway         │  │  NAT Gateway      │ │
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>│  │  ALB targets         │  │  ALB targets         │  │  ALB targets      │ │
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>│  └──────────┬───────────┘  └──────────┬───────────┘  └────────┬──────────┘ │
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>│             │ private route            │                       │            │
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>│  ┌──────────▼───────────┐  ┌──────────▼───────────┐  ┌────────▼──────────┐ │
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>│  │  Private Subnet      │  │  Private Subnet      │  │  Private Subnet   │ │
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>│  │  10.0.0.0/20  (AZ-a) │  │  10.0.16.0/20 (AZ-b) │  │  10.0.32.0/20(AZ-c)│ │
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>│  │  EKS nodes           │  │  EKS nodes           │  │  EKS nodes        │ │
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>│  │  RDS (primary)       │  │  RDS (standby)       │  │                   │ │
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>│  └──────────────────────┘  └──────────────────────┘  └───────────────────┘ │
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>└─────────────────────────────────────────────────────────────────────────────┘
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>          │
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>          │  Internet-facing ALBs (one per service with ingressClassName: alb)
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>          ▼
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>┌─────────────────────────────────┐
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>│  Internet / Developer Browser   │
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>│  Backstage  · Grafana · ArgoCD  │
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>│  Prometheus · Pushgateway       │
-<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>│  OpenCost   · hello-service     │
-<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>└─────────────────────────────────┘
-</code></pre></div>
+<p><img alt="AWS network topology: VPC with three public and three private subnets across AZs, fronted by internet-facing ALBs" src="../assets/aws-network-topology.png" /></p>
 <h3 id="aws-services-used">AWS Services Used<a class="headerlink" href="#aws-services-used" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4192,113 +4116,80 @@ rebuilding from IaC and restoring backups. See
 </tbody>
 </table>
 <h3 id="eks-namespace-map">EKS Namespace Map<a class="headerlink" href="#eks-namespace-map" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>EKS Cluster: idp-mvp (us-east-1)
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>│
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>├── kube-system
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>│   ├── aws-load-balancer-controller  (creates ALBs from Ingress resources)
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>│   ├── ebs-csi-controller            (persistent volumes)
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>│   └── coredns, kube-proxy
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>│
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>├── backstage                         (developer portal)
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>│   ├── deployment/backstage          (official Backstage image, 1 replica)
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>│   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>│   └── service/backstage             (ALB ingress)
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>│
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>├── kyverno                           (admission controller)
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>│   ├── kyverno-admission-controller  (mutate + validate webhooks)
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>│   ├── ClusterPolicy: crossplane-inject-team-tag   (auto-inject idp:team on Crossplane claims)
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>│   └── ClusterPolicy: crossplane-require-cost-tags (block claims without owner/costCenter)
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>│
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>├── argocd                            (GitOps controller)
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>│   ├── argocd-server                 (UI + API, ALB ingress)
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>│   ├── ApplicationSet: idp-services  (auto-discovers services/*/ — legacy flat services)
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>│   ├── AppProject: team-&lt;name&gt;       (one per team, created by scaffold; scoped to team-&lt;name&gt; ns)
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>│   ├── ApplicationSet: team-&lt;name&gt;   (auto-discovers teams/&lt;name&gt;/services/*/)
-<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>│   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
-<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>│
-<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>├── monitoring                        (observability stack)
-<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>│   ├── prometheus-kube-prometheus-prometheus  (metrics store, no public ALB)
-<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>│   ├── prometheus-grafana                     (dashboards, ALB ingress)
-<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>│   ├── prometheus-pushgateway                 (push endpoint, no public ALB)
-<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>│   ├── cronjob/dora-exporter                  (GitHub → Pushgateway + CloudWatch)
-<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>│   └── cronjob/tech-insights-exporter         (scorecard metrics → Pushgateway)
-<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>│
-<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>├── external-secrets                  (ESO)
-<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>│   ├── external-secrets              (ESO controller, created by Helm)
-<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>│   └── external-secrets-sa           (SA created by bootstrap.sh, annotated with IRSA)
-<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>│
-<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>├── services                          (manually deployed services)
-<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>│   └── deployment/hello-service      (reference Go service)
-<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>│
-<a id="__codelineno-7-39" name="__codelineno-7-39" href="#__codelineno-7-39"></a>├── services-dev                      (ArgoCD-managed dev services; ResourceQuota + LimitRange applied)
-<a id="__codelineno-7-40" name="__codelineno-7-40" href="#__codelineno-7-40"></a>│   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
-<a id="__codelineno-7-41" name="__codelineno-7-41" href="#__codelineno-7-41"></a>│   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
-<a id="__codelineno-7-42" name="__codelineno-7-42" href="#__codelineno-7-42"></a>│   ├── deployment/qa-mcp-server      (QA MCP server)
-<a id="__codelineno-7-43" name="__codelineno-7-43" href="#__codelineno-7-43"></a>│   └── deployment/contract-mcp-server (contract testing tools)
-<a id="__codelineno-7-44" name="__codelineno-7-44" href="#__codelineno-7-44"></a>│
-<a id="__codelineno-7-45" name="__codelineno-7-45" href="#__codelineno-7-45"></a>├── team-&lt;name&gt;                       (one per team; created by Provision Team Namespace scaffold)
-<a id="__codelineno-7-46" name="__codelineno-7-46" href="#__codelineno-7-46"></a>│   ├── ResourceQuota / LimitRange    (tier-based; auto-generated by Kyverno team-quota-policy)
-<a id="__codelineno-7-47" name="__codelineno-7-47" href="#__codelineno-7-47"></a>│   ├── NetworkPolicy                 (deny-all ingress; allow intra-ns + monitoring + ingress-nginx)
-<a id="__codelineno-7-48" name="__codelineno-7-48" href="#__codelineno-7-48"></a>│   ├── RoleBinding: idp-developer    (team members get deploy+observe access)
-<a id="__codelineno-7-49" name="__codelineno-7-49" href="#__codelineno-7-49"></a>│   ├── ServiceAccount: deployer      (CI/CD identity for the team)
-<a id="__codelineno-7-50" name="__codelineno-7-50" href="#__codelineno-7-50"></a>│   ├── SecretStore: team-&lt;name&gt;-secrets  (scoped to /&lt;name&gt;/* in Secrets Manager)
-<a id="__codelineno-7-51" name="__codelineno-7-51" href="#__codelineno-7-51"></a>│   └── ConfigMap: grafana-folder-team-&lt;name&gt;  (→ Grafana sidecar creates team dashboard folder)
-<a id="__codelineno-7-52" name="__codelineno-7-52" href="#__codelineno-7-52"></a>│
-<a id="__codelineno-7-53" name="__codelineno-7-53" href="#__codelineno-7-53"></a>├── kagent                            (AI agents)
-<a id="__codelineno-7-54" name="__codelineno-7-54" href="#__codelineno-7-54"></a>│   ├── deployment/kagent-controller  (KAgent operator)
-<a id="__codelineno-7-55" name="__codelineno-7-55" href="#__codelineno-7-55"></a>│   ├── deployment/kagent-ui          (KAgent web UI, ALB ingress)
-<a id="__codelineno-7-56" name="__codelineno-7-56" href="#__codelineno-7-56"></a>│   ├── Agent/idp-assistant           (IDP assistant A2A agent)
-<a id="__codelineno-7-57" name="__codelineno-7-57" href="#__codelineno-7-57"></a>│   ├── Agent/qa-agent                (QA agent)
-<a id="__codelineno-7-58" name="__codelineno-7-58" href="#__codelineno-7-58"></a>│   └── Agent/contract-assistant      (contract testing agent)
-<a id="__codelineno-7-59" name="__codelineno-7-59" href="#__codelineno-7-59"></a>│
-<a id="__codelineno-7-60" name="__codelineno-7-60" href="#__codelineno-7-60"></a>├── ml-platform                       (MLflow)
-<a id="__codelineno-7-61" name="__codelineno-7-61" href="#__codelineno-7-61"></a>│   └── deployment/mlflow             (tracking server, ALB ingress)
-<a id="__codelineno-7-62" name="__codelineno-7-62" href="#__codelineno-7-62"></a>│
-<a id="__codelineno-7-63" name="__codelineno-7-63" href="#__codelineno-7-63"></a>├── opencost                          (FinOps)
-<a id="__codelineno-7-64" name="__codelineno-7-64" href="#__codelineno-7-64"></a>│   └── deployment/opencost           (cost visibility, cluster-internal only)
-<a id="__codelineno-7-65" name="__codelineno-7-65" href="#__codelineno-7-65"></a>│
-<a id="__codelineno-7-66" name="__codelineno-7-66" href="#__codelineno-7-66"></a>├── crossplane-system                 (Crossplane)
-<a id="__codelineno-7-67" name="__codelineno-7-67" href="#__codelineno-7-67"></a>│   ├── crossplane                    (core controller)
-<a id="__codelineno-7-68" name="__codelineno-7-68" href="#__codelineno-7-68"></a>│   └── provider-aws-*               (AWS provider — S3, RDS, SQS, MSK, DynamoDB)
-<a id="__codelineno-7-69" name="__codelineno-7-69" href="#__codelineno-7-69"></a>│
-<a id="__codelineno-7-70" name="__codelineno-7-70" href="#__codelineno-7-70"></a>└── gatekeeper-system                 (OPA/Gatekeeper policy enforcement)
-<a id="__codelineno-7-71" name="__codelineno-7-71" href="#__codelineno-7-71"></a>    └── gatekeeper-controller-manager
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>EKS Cluster: idp-mvp (us-east-1)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>│
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>├── kube-system
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│   ├── aws-load-balancer-controller  (creates ALBs from Ingress resources)
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>│   ├── ebs-csi-controller            (persistent volumes)
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>│   └── coredns, kube-proxy
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>│
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>├── backstage                         (developer portal)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>│   ├── deployment/backstage          (official Backstage image, 1 replica)
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>│   ├── externalsecret/backstage-secrets → syncs idp-mvp/backstage from Secrets Manager
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>│   └── service/backstage             (ALB ingress)
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>│
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>├── kyverno                           (admission controller)
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>│   ├── kyverno-admission-controller  (mutate + validate webhooks)
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>│   ├── ClusterPolicy: crossplane-inject-team-tag   (auto-inject idp:team on Crossplane claims)
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>│   └── ClusterPolicy: crossplane-require-cost-tags (block claims without owner/costCenter)
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>│
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>├── argocd                            (GitOps controller)
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>│   ├── argocd-server                 (UI + API, ALB ingress)
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>│   ├── ApplicationSet: idp-services  (auto-discovers services/*/ — legacy flat services)
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>│   ├── AppProject: team-&lt;name&gt;       (one per team, created by scaffold; scoped to team-&lt;name&gt; ns)
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>│   ├── ApplicationSet: team-&lt;name&gt;   (auto-discovers teams/&lt;name&gt;/services/*/)
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>│   └── Application: platform-*      (ArgoCD, OPA, Crossplane, observability)
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>│
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>├── monitoring                        (observability stack)
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>│   ├── prometheus-kube-prometheus-prometheus  (metrics store, no public ALB)
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>│   ├── prometheus-grafana                     (dashboards, ALB ingress)
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>│   ├── prometheus-pushgateway                 (push endpoint, no public ALB)
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>│   ├── cronjob/dora-exporter                  (GitHub → Pushgateway + CloudWatch)
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>│   └── cronjob/tech-insights-exporter         (scorecard metrics → Pushgateway)
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>│
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>├── external-secrets                  (ESO)
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>│   ├── external-secrets              (ESO controller, created by Helm)
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>│   └── external-secrets-sa           (SA created by bootstrap.sh, annotated with IRSA)
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>│
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>├── services                          (manually deployed services)
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>│   └── deployment/hello-service      (reference Go service)
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>│
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>├── services-dev                      (ArgoCD-managed dev services; ResourceQuota + LimitRange applied)
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>│   ├── deployment/hello-service-dev  (ArgoCD sync from main branch)
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>│   ├── deployment/idp-mcp-server     (IDP MCP server — catalog/metrics/scaffold tools)
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>│   ├── deployment/qa-mcp-server      (QA MCP server)
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>│   └── deployment/contract-mcp-server (contract testing tools)
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a>│
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>├── team-&lt;name&gt;                       (one per team; created by Provision Team Namespace scaffold)
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>│   ├── ResourceQuota / LimitRange    (tier-based; auto-generated by Kyverno team-quota-policy)
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>│   ├── NetworkPolicy                 (deny-all ingress; allow intra-ns + monitoring + ingress-nginx)
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>│   ├── RoleBinding: idp-developer    (team members get deploy+observe access)
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>│   ├── ServiceAccount: deployer      (CI/CD identity for the team)
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>│   ├── SecretStore: team-&lt;name&gt;-secrets  (scoped to /&lt;name&gt;/* in Secrets Manager)
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>│   └── ConfigMap: grafana-folder-team-&lt;name&gt;  (→ Grafana sidecar creates team dashboard folder)
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>│
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>├── kagent                            (AI agents)
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>│   ├── deployment/kagent-controller  (KAgent operator)
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>│   ├── deployment/kagent-ui          (KAgent web UI, ALB ingress)
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>│   ├── Agent/idp-assistant           (IDP assistant A2A agent)
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>│   ├── Agent/qa-agent                (QA agent)
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>│   └── Agent/contract-assistant      (contract testing agent)
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>│
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>├── ml-platform                       (MLflow)
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>│   └── deployment/mlflow             (tracking server, ALB ingress)
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>│
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a>├── opencost                          (FinOps)
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a>│   └── deployment/opencost           (cost visibility, cluster-internal only)
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a>│
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a>├── crossplane-system                 (Crossplane)
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a>│   ├── crossplane                    (core controller)
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a>│   └── provider-aws-*               (AWS provider — S3, RDS, SQS, MSK, DynamoDB)
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a>│
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a>└── gatekeeper-system                 (OPA/Gatekeeper policy enforcement)
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a>    └── gatekeeper-controller-manager
 </code></pre></div>
 <h3 id="secrets-flow-aws-secrets-manager-pods">Secrets Flow (AWS Secrets Manager → Pods)<a class="headerlink" href="#secrets-flow-aws-secrets-manager-pods" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Terraform
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  └── creates placeholders in AWS Secrets Manager
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET,
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>                               PAGERDUTY_TOKEN, JIRA_TOKEN, JIRA_URL,
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>                               DD_API_KEY, DD_APP_KEY
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        idp-mvp/dora-exporter → GITHUB_TOKEN
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        idp-mvp/kagent      → ANTHROPIC_API_KEY
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>bootstrap.sh
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>  └── injects real values (reads from local/.env and cluster)
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        BACKSTAGE_CATALOG_TOKEN   ← generated random value
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>        GITHUB_TOKEN              ← read from env
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>        GITHUB_APP_ID/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET ← GitHub App (optional; replaces PAT)
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>External Secrets Operator (ESO)
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>  ├── ClusterSecretStore: aws-secretsmanager      (usable from every namespace)
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  │     auth: IRSA via external-secrets-sa (idp-mvp-external-secrets role)
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>  │     → reads only idp-mvp/dora-exporter
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>  ├── SecretStore aws-secrets-manager (namespace: backstage)
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>  │     auth: IRSA via the backstage SA (idp-mvp-backstage role)
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>  ├── SecretStore (namespace: ml-platform, litellm-eso-sa)
-<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a>  │
-<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a>  └── ExternalSecret (per namespace)
-<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a>        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage      [backstage SecretStore]
-<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a>        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter [ClusterSecretStore]
-<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a>        litellm secrets (namespace: ml-platform)    → idp-mvp/kagent, idp-mvp/litellm [ml-platform SecretStore]
-<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a>              │
-<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>              ▼ syncs every 1h (or on force-sync annotation)
-<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>        Kubernetes Secret → mounted as env vars into pods
-</code></pre></div>
+<p><img alt="Secrets flow: Terraform creates placeholders, bootstrap.sh injects values, External Secrets Operator syncs them into Kubernetes Secrets" src="../assets/secrets-flow.png" /></p>
 <h3 id="irsa-roles-iam-roles-for-service-accounts">IRSA Roles (IAM Roles for Service Accounts)<a class="headerlink" href="#irsa-roles-iam-roles-for-service-accounts" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4357,47 +4248,10 @@ rebuilding from IaC and restoring backups. See
 </tbody>
 </table>
 <h3 id="bootstrap-sequence">Bootstrap Sequence<a class="headerlink" href="#bootstrap-sequence" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>./scripts/setup.sh
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>./scripts/bootstrap.sh
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  ├── Phase 1 — Terraform (~20 min)
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  │
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  ├── Phase 2 — Platform base (~5 min)
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>  │     Namespaces · `services-quota.yaml` (ResourceQuota+LimitRange for services-dev/staging/prod)
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>  │     RBAC · AWS Load Balancer Controller
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>  │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>  │
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>  ├── Phase 3 — GitOps (~8 min)
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  │     ArgoCD · OPA/Gatekeeper · Crossplane
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>  │     idp-services ApplicationSet (auto-discovers services/*/)
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>  │     Kyverno 3.2.7 + team policies (crossplane-team-label-policy, team-quota-policy)
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>  │     Secrets Manager updated: GITHUB_APP_* + TEAM_MAP (if env vars set)
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  │
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>  ├── Phase 4 — Observability (~10 min)
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>  │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>  │     Pushgateway (cluster-internal)
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>  │     OpenCost (cluster-internal)
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>  │     DORA exporter CronJob
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>  │
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>  ├── Phase 5 — hello-service (~5 min)
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>  │     docker buildx build --platform linux/amd64 → ECR push
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>  │     ArgoCD syncs hello-service-dev
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>  │
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>  └── Phase 6 — Backstage (~5 min)
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>        Build + push Backstage image to ECR
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>        kubectl apply -f kubernetes/backstage/rbac.yaml  (shared RBAC)
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>        kubectl apply -f aws/backstage/external-secret.yaml
-<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>        kubectl apply -f aws/backstage/deployment.yaml
-<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>        ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
-<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>
-<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)
-<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>  └── KAgent · idp-assistant · MLflow · MCP servers (idp, qa, contract)
-</code></pre></div>
+<p><img alt="AWS bootstrap sequence: Terraform, platform base, observability, GitOps, Backstage and optional AI/ML phases" src="../assets/bootstrap-sequence.png" /></p>
 <h3 id="alb-ingress-map">ALB Ingress Map<a class="headerlink" href="#alb-ingress-map" title="Permanent link">&para;</a></h3>
 <p>All ingresses use <code>ingressClassName: alb</code> with <code>alb.ingress.kubernetes.io/scheme: internet-facing</code> and <code>target-type: ip</code>. Get the hostname for any service:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{printf "%-30s %-20s %s\n", $1, $2, $4}'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-A<span class="w"> </span>--no-headers<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{printf "%-30s %-20s %s\n", $1, $2, $4}'</span>
 </code></pre></div>
 <table>
 <thead>

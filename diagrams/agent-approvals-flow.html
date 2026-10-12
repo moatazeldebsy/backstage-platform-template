@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Agent approval gate</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas">
+  <h1>Agent Approval Gate — How It Works</h1>
+
+  <div class="box narrow"><h2>Agent <span class="sub">release-agent · qa-agent</span></h2>
+    <ol class="aa-steps">
+      <li><code>check_policy(action, target)</code></li>
+      <li><code>request_approval(action, target, context)</code></li>
+      <li><code>get_approval_status(approval_id)</code></li>
+    </ol>
+    <div class="sub" style="margin-top:8px">steps 1–3 run through idp-mcp-server → approval-service</div>
+  </div>
+  <div class="arrow"><span style="padding-bottom:9px">4. <code>sync_app(app_name, dry_run:false, approval_id)</code></span></div>
+
+  <div class="box narrow blue"><h2>argocd-mcp-server / github-mcp-server</h2>
+    <code>requireApproval()</code> → <code>GET /approvals/:id</code> on approval-service<br>
+    rejects unless status is <b>approved</b> AND action + target match</div>
+  <div class="arrow"></div>
+
+  <div class="box narrow green"><h2>Real ArgoCD sync / GitHub review</h2></div>
+
+  <div class="row" style="margin-top:34px">
+    <div class="box red narrow" style="max-width:none"><h2>Human</h2>
+      Backstage → Agent Approvals <code>/approvals</code><br>
+      approve / deny → <code>POST /approvals/:id/decide</code></div>
+  </div>
+</div>
+<script>window.redrawWires = () => {};</script></body></html>

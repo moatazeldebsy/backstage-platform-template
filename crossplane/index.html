@@ -3058,30 +3058,7 @@ merge, Crossplane reconciles continuously, and drift is corrected without a
 human running <code>terraform apply</code>. No manual step between "PR merged" and
 "resource exists".</p>
 <h2 id="end-to-end-example-provisioning-an-s3-bucket">End-to-end example: provisioning an S3 bucket<a class="headerlink" href="#end-to-end-example-provisioning-an-s3-bucket" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌──────────────┐    PR      ┌────────────┐   sync   ┌──────────────┐
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│  Backstage   │──────────▶ │   GitHub   │ ───────▶ │   ArgoCD     │
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│  scaffolder  │            │ (platform  │          │ (in-cluster) │
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│ s3-bucket-   │            │   repo)    │          │              │
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│ crossplane   │            └────────────┘          └──────┬───────┘
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└──────────────┘                                           │ apply
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>                                                           ▼
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>                                                  ┌─────────────────┐
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>                                                  │  S3Bucket Claim │
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>                                                  │      (CR)       │
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                                                  └────────┬────────┘
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>                                                           │ reconcile
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                                                           ▼
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                                  ┌─────────────────┐
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                                                  │  Crossplane +   │
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                                                  │ provider-aws-s3 │
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                                                  └────────┬────────┘
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                                                           │ IRSA
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                                                           ▼
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>                                                  ┌─────────────────┐
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>                                                  │  Real S3 bucket │
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>                                                  │      in AWS     │
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>                                                  └─────────────────┘
-</code></pre></div>
+<p><img alt="Flow: Backstage scaffolder opens a PR to GitHub, ArgoCD syncs it and applies an S3Bucket Claim, Crossplane with provider-aws-s3 reconciles it, and IRSA creates the real S3 bucket in AWS" src="../assets/crossplane-provisioning-flow.png" /></p>
 <ol>
 <li>Engineer opens the Backstage portal, picks the <strong>S3 Object Bucket
    (Crossplane)</strong> template, fills in <code>bucketName</code>, <code>ownerService</code>, region,
@@ -3167,11 +3144,11 @@ enforce cost-attribution discipline on all Crossplane claims:</p>
 Teams never need to set this field manually.</p>
 <p><strong>Validate (Enforce)</strong> — rejects any Claim (in any namespace) that is missing <code>spec.parameters.owner</code>
 or <code>spec.parameters.costCenter</code>. This prevents untagged AWS resources that OpenCost cannot attribute.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Verify the policies are active</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clusterpolicy<span class="w"> </span>crossplane-inject-team-tag<span class="w"> </span>crossplane-require-cost-tags
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># See team tag on a provisioned S3 bucket</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>aws<span class="w"> </span>s3api<span class="w"> </span>get-bucket-tagging<span class="w"> </span>--bucket<span class="w"> </span>my-bucket<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.TagSet[] | select(.Key == "idp:team")'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Verify the policies are active</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clusterpolicy<span class="w"> </span>crossplane-inject-team-tag<span class="w"> </span>crossplane-require-cost-tags
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># See team tag on a provisioned S3 bucket</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>aws<span class="w"> </span>s3api<span class="w"> </span>get-bucket-tagging<span class="w"> </span>--bucket<span class="w"> </span>my-bucket<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.TagSet[] | select(.Key == "idp:team")'</span>
 </code></pre></div>
 <p>Kyverno is installed by <code>bootstrap-local.sh</code> (Step 9b) and <code>bootstrap.sh</code> (Phase 3.8).
 If you see Kyverno admission errors, verify the <code>kyverno-admission-controller</code> deployment
@@ -3291,59 +3268,59 @@ Composition patches both <code>attribute[0]</code> (hash key) and <code>attribut
 <p><strong>Kafka <code>clusterArn</code>:</strong> The template validates the ARN format
 (<code>^arn:aws:kafka:</code>) and shows an in-form help note. To find your MSK
 cluster ARN:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>aws<span class="w"> </span>kafka<span class="w"> </span>list-clusters<span class="w"> </span>--query<span class="w"> </span><span class="s2">"ClusterInfoList[*].ClusterArn"</span><span class="w"> </span>--output<span class="w"> </span>text
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>aws<span class="w"> </span>kafka<span class="w"> </span>list-clusters<span class="w"> </span>--query<span class="w"> </span><span class="s2">"ClusterInfoList[*].ClusterArn"</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Phase 1 — Terraform provisions the IRSA role (validates ARN format before applying)</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>apply
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>terraform<span class="w"> </span>output<span class="w"> </span>crossplane_aws_role_arn<span class="w">   </span><span class="c1"># confirm ARN looks valid</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1"># Phase 2 — bootstrap.sh substitutes the ARN and registers the ArgoCD stack</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># (also validates the ARN starts with arn:aws:iam:: before substitution)</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>./scripts/bootstrap.sh
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Phase 1 — Terraform provisions the IRSA role (validates ARN format before applying)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>terraform<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>terraform<span class="w"> </span>apply
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>terraform<span class="w"> </span>output<span class="w"> </span>crossplane_aws_role_arn<span class="w">   </span><span class="c1"># confirm ARN looks valid</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Phase 2 — bootstrap.sh substitutes the ARN and registers the ArgoCD stack</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># (also validates the ARN starts with arn:aws:iam:: before substitution)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>./scripts/bootstrap.sh
 </code></pre></div>
 <p>The <code>deployment-runtime-config.yaml</code> IRSA substitution is validated at
 bootstrap time — if <code>terraform output</code> returns a non-ARN value, bootstrap
 fails with a clear error rather than silently starting providers with a
 broken annotation.</p>
 <h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># All five providers Healthy</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># XRDs established (5 total)</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>xrds
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># ProviderConfig default present</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>kubectl<span class="w"> </span>get<span class="w"> </span>providerconfigs.aws.upbound.io
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># Provider Pod has the IRSA role annotation</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>crossplane-system<span class="w"> </span>-l<span class="w"> </span>pkg.crossplane.io/provider<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.items[*].spec.serviceAccountName}'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># All five providers Healthy</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>providers.pkg.crossplane.io
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># XRDs established (5 total)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>xrds
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># ProviderConfig default present</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>kubectl<span class="w"> </span>get<span class="w"> </span>providerconfigs.aws.upbound.io
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># Provider Pod has the IRSA role annotation</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>crossplane-system<span class="w"> </span>-l<span class="w"> </span>pkg.crossplane.io/provider<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.items[*].spec.serviceAccountName}'</span>
 </code></pre></div>
 <h2 id="drift-correction">Drift correction<a class="headerlink" href="#drift-correction" title="Permanent link">&para;</a></h2>
 <p>Crossplane reconciles continuously. To prove it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Delete the bucket directly in AWS (or via kubectl)</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># Within ~30s, Crossplane recreates it (because deletionPolicy: Orphan</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># means Crossplane still owns the desired state even if the Claim persists)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-w
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Delete the bucket directly in AWS (or via kubectl)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Within ~30s, Crossplane recreates it (because deletionPolicy: Orphan</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># means Crossplane still owns the desired state even if the Claim persists)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev<span class="w"> </span>-w
 </code></pre></div>
 <h2 id="decommissioning-a-resource">Decommissioning a resource<a class="headerlink" href="#decommissioning-a-resource" title="Permanent link">&para;</a></h2>
 <p>Because <code>deletionPolicy: Orphan</code> is set, deleting the Claim <strong>does not</strong>
 delete the AWS resource. To fully decommission:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># 1. Delete the Claim (removes Crossplane tracking only)</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># 2. Manually delete the AWS resource</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force<span class="w">        </span><span class="c1"># S3</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>aws<span class="w"> </span>rds<span class="w"> </span>delete-db-instance<span class="w"> </span>--db-instance-identifier<span class="w"> </span>&lt;id&gt;<span class="w"> </span>--skip-final-snapshot<span class="w">  </span><span class="c1"># RDS</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>aws<span class="w"> </span>dynamodb<span class="w"> </span>delete-table<span class="w"> </span>--table-name<span class="w"> </span>&lt;name&gt;<span class="w">   </span><span class="c1"># DynamoDB</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>aws<span class="w"> </span>sqs<span class="w"> </span>delete-queue<span class="w"> </span>--queue-url<span class="w"> </span>&lt;url&gt;<span class="w">           </span><span class="c1"># SQS</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># 3. Remove the claim YAML from the repo to prevent ArgoCD re-creating it</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>git<span class="w"> </span>rm<span class="w"> </span>services/&lt;ownerService&gt;/claims/&lt;name&gt;.yaml
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>git<span class="w"> </span>rm<span class="w"> </span>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: decommission &lt;name&gt;"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># 1. Delete the Claim (removes Crossplane tracking only)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>s3bucket<span class="w"> </span>&lt;bucketName&gt;<span class="w"> </span>-n<span class="w"> </span>services-dev
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># 2. Manually delete the AWS resource</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>aws<span class="w"> </span>s3<span class="w"> </span>rb<span class="w"> </span>s3://&lt;bucketName&gt;<span class="w"> </span>--force<span class="w">        </span><span class="c1"># S3</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>aws<span class="w"> </span>rds<span class="w"> </span>delete-db-instance<span class="w"> </span>--db-instance-identifier<span class="w"> </span>&lt;id&gt;<span class="w"> </span>--skip-final-snapshot<span class="w">  </span><span class="c1"># RDS</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>aws<span class="w"> </span>dynamodb<span class="w"> </span>delete-table<span class="w"> </span>--table-name<span class="w"> </span>&lt;name&gt;<span class="w">   </span><span class="c1"># DynamoDB</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>aws<span class="w"> </span>sqs<span class="w"> </span>delete-queue<span class="w"> </span>--queue-url<span class="w"> </span>&lt;url&gt;<span class="w">           </span><span class="c1"># SQS</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># 3. Remove the claim YAML from the repo to prevent ArgoCD re-creating it</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>git<span class="w"> </span>rm<span class="w"> </span>services/&lt;ownerService&gt;/claims/&lt;name&gt;.yaml
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>git<span class="w"> </span>rm<span class="w"> </span>services/&lt;ownerService&gt;/claims/catalog-info-&lt;name&gt;.yaml
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"chore: decommission &lt;name&gt;"</span>
 </code></pre></div>
 <p>Environment teardown uses <code>cleanup.sh</code> which automates steps 2 for all
 <code>idp:provisioner=crossplane</code>-tagged resources. See the

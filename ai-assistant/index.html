@@ -4404,61 +4404,10 @@ carrying an <code>accelerator</code> label and names issue #184 when there is no
 otherwise the pod sits <code>Pending</code> forever and reads as a hang.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <p>The AI Assistant is a <strong>native React chat component</strong> embedded directly in the Backstage frontend. It is not an iframe.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>┌──────────────────────────────────────────────────────────────────┐
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│  Backstage (Docker Compose / EKS pod)                            │
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│                                                                  │
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│  extensions.tsx — AiAssistantPage                                │
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│    POST /api/proxy/kagent/a2a/kagent/platform-assistant          │
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│    GET  /api/proxy/kagent/api/sessions/&lt;id&gt;  (poll)              │
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│    X-Backstage-User: &lt;userRef&gt;  header on every request          │
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>└───────────────────────┬──────────────────────────────────────────┘
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                        │  Backstage proxy
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                        ▼
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>┌──────────────────────────────────────────────────────────────────┐
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│  KAgent  (namespace: kagent)                                     │
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│  kagent-ui.kagent.svc.cluster.local:8080  (in-cluster)           │
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>│  http://kagent.idp.local  (local ingress)                        │
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>│                                                                  │
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>│  Agents:                                                         │
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>│    platform-assistant  — unified entry point (claude-sonnet)     │
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>│    idp-assistant       — platform / scaffolding (claude-haiku)   │
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│    qa-assistant        — test suites + PR review (claude-sonnet) │
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>│    contract-assistant  — API contracts (claude-sonnet)           │
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>│    cost-agent          — cost/budget analysis (claude-sonnet)    │
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>│    release-agent       — ArgoCD sync/rollback (claude-sonnet)    │
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>│    incident-agent      — alert triage (claude-sonnet)            │
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>└───────────────────────────────┬──────────────────────────────────┘
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>                                │ one RemoteMCPServer ("ai-gateway")
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>                                │ + every ModelConfig's anthropic.baseUrl
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>                                ▼
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>              ┌──────────────────────────────────────┐
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>              │  AI Gateway — agentgateway :3000     │  ml-platform
-<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>              │   /mcp          all 8 servers, tool  │
-<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>              │                 names unprefixed     │
-<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>              │   /v1/messages  Anthropic, native    │──▶ LiteLLM ──▶ Anthropic / Bedrock
-<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>              └───────────────────┬──────────────────┘
-<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>                                  │ streamable-HTTP
-<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>       ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
-<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>       ▼          ▼               ▼            ▼       ▼       ▼       ▼
-<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a> ┌──────────┐┌──────────┐┌──────────────┐┌──────────┐┌────────┐┌──────────┐┌───────────┐
-<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a> │ idp-mcp  ││ qa-mcp   ││ contract-mcp ││ github-mcp││cost-mcp││argocd-mcp││incident-mcp│
-<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a> │ :3001    ││ :3002    ││ :3003        ││ :3005     ││ :3007  ││ :3006    ││ :3008      │
-<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a> │ 12 tools ││ 4 tools  ││ 13 tools     ││ 5 tools   ││5 tools ││5 tools   ││7 tools     │
-<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a> └──────────┘└──────────┘└──────────────┘└──────────┘└────────┘└──────────┘└───────────┘
-<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>        (security-mcp :3010, 3 tools, is the eighth — ADP only)
-<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>
-<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>  54 tools total, all names unique — which is what lets the gateway federate
-<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>  them unprefixed. Each agent still receives only its own toolNames allowlist.
-<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>
-<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>Event Bus (agent-event-router :3004)
-<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>  ← GitHub webhooks (PR open/update → qa-assistant)
-<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>  ← AlertManager webhooks (budget alerts → cost-agent; critical non-budget alerts → incident-agent
-<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>                            (+ opens/resolves a GitHub incident issue); other firing alerts → idp-assistant)
-<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>  ← ArgoCD webhooks (OutOfSync/Degraded → release-agent)
-</code></pre></div>
+<p><img alt="AI Assistant architecture: Backstage proxies to KAgent agents, which use the AI Gateway to reach eight MCP servers (54 tools) and LiteLLM; the agent-event-router routes GitHub, AlertManager and ArgoCD webhooks to agents" src="../assets/ai-assistant-architecture.png" /></p>
 <h3 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"scaffold a Go payment service for team-platform"</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># Calls platform-assistant via A2A, streams response to terminal</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"scaffold a Go payment service for team-platform"</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Calls platform-assistant via A2A, streams response to terminal</span>
 </code></pre></div>
 <hr />
 <h2 id="component-breakdown">Component breakdown<a class="headerlink" href="#component-breakdown" title="Permanent link">&para;</a></h2>
@@ -4476,18 +4425,18 @@ the <code>platform-assistant</code> A2A call and propagated to every MCP tool ca
 server binds the user's memory key at the HTTP boundary — the LLM never receives or
 controls this value, preventing cross-user IDOR.</p>
 <p><strong>Message flow per user turn:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>1. Generate a UUID contextId (used to locate the session after creation)
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>2. POST /api/proxy/kagent/a2a/kagent/platform-assistant  { jsonrpc: "2.0", method: "message/send", … }
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>   headers: { X-Backstage-User: &lt;userRef&gt; }
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>   — fire and ignore the SSE response (KAgent streams SSE, not JSON)
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>3. Poll GET /api/proxy/kagent/api/sessions  every 500 ms for up to 12 s
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   — find the session whose id matches contextId (or the most-recent platform_assistant session)
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>4. Poll GET /api/proxy/kagent/api/sessions/&lt;sessionId&gt;  every 1 s for up to 90 s
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>   — inspect the last agent event:
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>       function_call present  → tool round-trip in progress, keep polling
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>       function_response      → agent generating next text, keep polling
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>       plain text only        → turn complete, render the message
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>5. Concatenate all non-partial agent text parts and display as the assistant bubble
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>1. Generate a UUID contextId (used to locate the session after creation)
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>2. POST /api/proxy/kagent/a2a/kagent/platform-assistant  { jsonrpc: "2.0", method: "message/send", … }
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>   headers: { X-Backstage-User: &lt;userRef&gt; }
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>   — fire and ignore the SSE response (KAgent streams SSE, not JSON)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>3. Poll GET /api/proxy/kagent/api/sessions  every 500 ms for up to 12 s
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>   — find the session whose id matches contextId (or the most-recent platform_assistant session)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>4. Poll GET /api/proxy/kagent/api/sessions/&lt;sessionId&gt;  every 1 s for up to 90 s
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>   — inspect the last agent event:
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>       function_call present  → tool round-trip in progress, keep polling
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>       function_response      → agent generating next text, keep polling
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>       plain text only        → turn complete, render the message
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>5. Concatenate all non-partial agent text parts and display as the assistant bubble
 </code></pre></div>
 <p><strong><code>ask_user</code> / interactive form fallback:</strong>
 KAgent may emit an <code>ask_user</code> function call when it wants to render a form dialog.
@@ -4507,20 +4456,20 @@ user turn starts a new server-side session.</p>
 <hr />
 <h3 id="2-backstage-proxy-config">2. Backstage proxy config<a class="headerlink" href="#2-backstage-proxy-config" title="Permanent link">&para;</a></h3>
 <p><strong>Base config (<code>backstage/app-config.yaml</code>):</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">proxy</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">/kagent</span><span class="p">:</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://kagent-ui.kagent.svc.cluster.local:8080</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></p>
+<p><strong>Local override (<code>backstage/app-config.local.yaml</code>):</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">proxy</span><span class="p">:</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">/kagent</span><span class="p">:</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://kagent-ui.kagent.svc.cluster.local:8080</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://kagent.idp.local</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div></p>
-<p><strong>Local override (<code>backstage/app-config.local.yaml</code>):</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">proxy</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">/kagent</span><span class="p">:</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://kagent.idp.local</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div></p>
 <p>The local override is needed because <code>kagent-ui.kagent.svc.cluster.local</code> is not
 resolvable from the Backstage Docker Compose container (it runs on the host network,
@@ -4835,7 +4784,7 @@ account. See <code>kubernetes/kagent/idp-mcp-server-rbac.yaml</code>.</p>
 <h4 id="qa-mcp-server-port-3002"><code>qa-mcp-server</code> (port 3002)<a class="headerlink" href="#qa-mcp-server-port-3002" title="Permanent link">&para;</a></h4>
 <p>4 tools: <code>list_test_suites</code>, <code>scaffold_test_suite</code>, <code>search_test_catalog</code>, <code>get_test_metrics</code>. See <code>services/qa-mcp-server/</code>.</p>
 <h4 id="contract-mcp-server-port-3003"><code>contract-mcp-server</code> (port 3003)<a class="headerlink" href="#contract-mcp-server-port-3003" title="Permanent link">&para;</a></h4>
-<p>9 tools for self-describing, self-testing APIs. See <code>docs/contract-testing.md</code>.</p>
+<p>13 tools for self-describing, self-testing APIs. See <code>docs/contract-testing.md</code>.</p>
 <h4 id="github-mcp-server-port-3005"><code>github-mcp-server</code> (port 3005)<a class="headerlink" href="#github-mcp-server-port-3005" title="Permanent link">&para;</a></h4>
 <p><strong>File:</strong> <code>services/github-mcp-server/src/index.ts</code></p>
 <table>
@@ -5074,17 +5023,17 @@ they respond to platform events without a human initiating the conversation.</p>
 <hr />
 <h3 id="6-idp-ai-cli">6. <code>idp ai</code> CLI<a class="headerlink" href="#6-idp-ai-cli" title="Permanent link">&para;</a></h3>
 <p><strong>File:</strong> <code>cli/cmd/idp/ai.go</code></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Ask anything — streams the platform-assistant response to your terminal</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"scaffold a Go payment service for team-platform"</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"what services are owned by team-qa?"</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"show me the error rate for hello-service"</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Override the KAgent URL (defaults to http://kagent.idp.local)</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="nv">KAGENT_URL</span><span class="o">=</span>http://my-cluster.example.com<span class="w"> </span>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"list deployments"</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>idp<span class="w"> </span>ai<span class="w"> </span>--kagent-url<span class="w"> </span>http://my-cluster.example.com<span class="w"> </span><span class="s2">"list deployments"</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Adjust timeout (default 300s)</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>idp<span class="w"> </span>ai<span class="w"> </span>--timeout<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="s2">"quick catalog search"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Ask anything — streams the platform-assistant response to your terminal</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"scaffold a Go payment service for team-platform"</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"what services are owned by team-qa?"</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"show me the error rate for hello-service"</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># Override the KAgent URL (defaults to http://kagent.idp.local)</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="nv">KAGENT_URL</span><span class="o">=</span>http://my-cluster.example.com<span class="w"> </span>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"list deployments"</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>idp<span class="w"> </span>ai<span class="w"> </span>--kagent-url<span class="w"> </span>http://my-cluster.example.com<span class="w"> </span><span class="s2">"list deployments"</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># Adjust timeout (default 300s)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>idp<span class="w"> </span>ai<span class="w"> </span>--timeout<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="s2">"quick catalog search"</span>
 </code></pre></div>
 <p>The command posts a JSON-RPC 2.0 A2A message to <code>platform-assistant</code>, then polls
 <code>/api/sessions</code> for a response. Tool status lines are printed to stderr during
@@ -5100,14 +5049,14 @@ chat page uses. Session polling still goes directly to KAgent.</p>
 <p>A static service token (<code>BACKSTAGE_TOKEN</code>) won't work here, because the route only
 accepts user principals. To get a user token, sign in to Backstage, open the
 browser devtools console on that tab, and run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s1">'/api/auth/github/refresh?optional&amp;env=development'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s1">'X-Requested-With'</span><span class="o">:</span><span class="w"> </span><span class="s1">'XMLHttpRequest'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">credentials</span><span class="o">:</span><span class="w"> </span><span class="s1">'include'</span><span class="p">,</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="p">})).</span><span class="nx">json</span><span class="p">()).</span><span class="nx">backstageIdentity</span><span class="p">.</span><span class="nx">token</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s1">'/api/auth/github/refresh?optional&amp;env=development'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s1">'X-Requested-With'</span><span class="o">:</span><span class="w"> </span><span class="s1">'XMLHttpRequest'</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="nx">credentials</span><span class="o">:</span><span class="w"> </span><span class="s1">'include'</span><span class="p">,</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="p">})).</span><span class="nx">json</span><span class="p">()).</span><span class="nx">backstageIdentity</span><span class="p">.</span><span class="nx">token</span>
 </code></pre></div>
 <p>(Use <code>env=production</code> against AWS.) The token lasts about an hour.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">IDP_BACKSTAGE_USER_TOKEN</span><span class="o">=</span>&lt;token&gt;
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"what do you remember about me?"</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>idp<span class="w"> </span>ai<span class="w"> </span>--env<span class="w"> </span>aws<span class="w"> </span>--backstage-url<span class="w"> </span>https://backstage.example.com<span class="w"> </span><span class="s2">"list my services"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">IDP_BACKSTAGE_USER_TOKEN</span><span class="o">=</span>&lt;token&gt;
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>idp<span class="w"> </span>ai<span class="w"> </span><span class="s2">"what do you remember about me?"</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>idp<span class="w"> </span>ai<span class="w"> </span>--env<span class="w"> </span>aws<span class="w"> </span>--backstage-url<span class="w"> </span>https://backstage.example.com<span class="w"> </span><span class="s2">"list my services"</span>
 </code></pre></div>
 <hr />
 <h3 id="7-mlflow-page-mlflow">7. MLflow page — <code>/mlflow</code><a class="headerlink" href="#7-mlflow-page-mlflow" title="Permanent link">&para;</a></h3>
@@ -5143,22 +5092,22 @@ endpoints 404 against it, the same pin <code>MLFLOW_CLIENT_VERSION</code> carrie
 </tbody>
 </table>
 <p>Because two of the three are POST, the proxy entry <strong>must</strong> list it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># backstage/app-config.local.yaml</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nt">/mlflow</span><span class="p">:</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://mlflow.idp.local</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">      </span><span class="nt">pathRewrite</span><span class="p">:</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">        </span><span class="s">'^/api/proxy/mlflow'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">''</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># backstage/app-config.aws.yaml — in-cluster Service DNS, since the ALB</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1"># hostname isn't known when this file is rendered into the ConfigMap</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">    </span><span class="nt">/mlflow</span><span class="p">:</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://mlflow.ml-platform.svc.cluster.local:5000</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">      </span><span class="nt">pathRewrite</span><span class="p">:</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">        </span><span class="s">'^/api/proxy/mlflow'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">''</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># backstage/app-config.local.yaml</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nt">/mlflow</span><span class="p">:</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://mlflow.idp.local</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">      </span><span class="nt">pathRewrite</span><span class="p">:</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">        </span><span class="s">'^/api/proxy/mlflow'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">''</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># backstage/app-config.aws.yaml — in-cluster Service DNS, since the ALB</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1"># hostname isn't known when this file is rendered into the ConfigMap</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="w">    </span><span class="nt">/mlflow</span><span class="p">:</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://mlflow.ml-platform.svc.cluster.local:5000</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="w">      </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'GET'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'POST'</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="w">      </span><span class="nt">changeOrigin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="w">      </span><span class="nt">pathRewrite</span><span class="p">:</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="w">        </span><span class="s">'^/api/proxy/mlflow'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="s">''</span>
 </code></pre></div>
 <p><strong>Three display states, unlike the KAgent page's single demo fallback:</strong> demo data
 with an amber banner when <code>aiStack.enabled</code> is false (nothing is deployed, so no
@@ -5177,20 +5126,20 @@ a hostname.</p>
 <hr />
 <h2 id="scaffolding-flow-step-by-step">Scaffolding flow (step-by-step)<a class="headerlink" href="#scaffolding-flow-step-by-step" title="Permanent link">&para;</a></h2>
 <p>When a user says "scaffold a Python FastAPI service called demo-svc, description demo, owner group:default/qa-platform-team":</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Agent turn 1 (same response):
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>  1. call list_templates
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>     → returns template list including template:default/python-service
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  2. call get_template_params { template_ref: "template:default/python-service" }
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>     → returns { params: [ {key:"name", required:true}, {key:"description",...}, ... ] }
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>  3. All required fields (name, description, owner) are already known
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>  4. call scaffold_service {
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>       template_ref: "template:default/python-service",
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>       values: { name: "demo-svc", description: "demo", owner: "group:default/qa-platform-team" }
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>     }
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>     → MCP server auto-builds repoUrl: "github.com?owner=qa-platform-team&amp;repo=demo-svc"
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>     → POSTs to Backstage scaffolder, polls until completed/failed (up to 3 min)
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>     → returns { task_id, status: "completed", ui_url: "http://backstage.idp.local/create/tasks/&lt;id&gt;" }
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>  5. Agent responds with task result and the Backstage task URL
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Agent turn 1 (same response):
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  1. call list_templates
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>     → returns template list including template:default/python-service
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  2. call get_template_params { template_ref: "template:default/python-service" }
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>     → returns { params: [ {key:"name", required:true}, {key:"description",...}, ... ] }
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  3. All required fields (name, description, owner) are already known
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  4. call scaffold_service {
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>       template_ref: "template:default/python-service",
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>       values: { name: "demo-svc", description: "demo", owner: "group:default/qa-platform-team" }
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>     }
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>     → MCP server auto-builds repoUrl: "github.com?owner=qa-platform-team&amp;repo=demo-svc"
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>     → POSTs to Backstage scaffolder, polls until completed/failed (up to 3 min)
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>     → returns { task_id, status: "completed", ui_url: "http://backstage.idp.local/create/tasks/&lt;id&gt;" }
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  5. Agent responds with task result and the Backstage task URL
 </code></pre></div>
 <p>The agent never breaks this into multiple turns or asks for confirmation.</p>
 <hr />
@@ -5202,7 +5151,7 @@ to stdout for mutating actions (<code>scaffold_service</code>, <code>register_co
 <code>sync_app</code>/<code>rollback_app</code>, <code>add_pr_comment</code>, <code>approve_pr</code>/<code>request_changes</code>,
 <code>post_incident_update</code>, <code>send_notification</code>). <code>cost-mcp-server</code> has no audit log — all
 five of its tools are read-only.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">[</span><span class="err">AUDIT</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="nt">"ts"</span><span class="p">:</span><span class="s2">"2026-06-09T12:00:00Z"</span><span class="p">,</span><span class="nt">"server"</span><span class="p">:</span><span class="s2">"idp-mcp-server"</span><span class="p">,</span><span class="nt">"action"</span><span class="p">:</span><span class="s2">"scaffold_service_requested"</span><span class="p">,</span><span class="nt">"agent"</span><span class="p">:</span><span class="s2">"platform-assistant"</span><span class="p">,</span><span class="nt">"service"</span><span class="p">:</span><span class="s2">"demo-svc"</span><span class="p">,</span><span class="nt">"template"</span><span class="p">:</span><span class="s2">"python-service"</span><span class="p">,</span><span class="nt">"dry_run"</span><span class="p">:</span><span class="kc">false</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">[</span><span class="err">AUDIT</span><span class="p">]</span><span class="w"> </span><span class="p">{</span><span class="nt">"ts"</span><span class="p">:</span><span class="s2">"2026-06-09T12:00:00Z"</span><span class="p">,</span><span class="nt">"server"</span><span class="p">:</span><span class="s2">"idp-mcp-server"</span><span class="p">,</span><span class="nt">"action"</span><span class="p">:</span><span class="s2">"scaffold_service_requested"</span><span class="p">,</span><span class="nt">"agent"</span><span class="p">:</span><span class="s2">"platform-assistant"</span><span class="p">,</span><span class="nt">"service"</span><span class="p">:</span><span class="s2">"demo-svc"</span><span class="p">,</span><span class="nt">"template"</span><span class="p">:</span><span class="s2">"python-service"</span><span class="p">,</span><span class="nt">"dry_run"</span><span class="p">:</span><span class="kc">false</span><span class="p">}</span>
 </code></pre></div>
 <table>
 <thead>
@@ -5242,28 +5191,28 @@ human made (or that Policy-as-Prompt auto-approved) — cross-reference the <cod
 that appears in the gated tool's own <code>[AUDIT]</code> entries (<code>sync_app_requested</code>, etc.) once
 those tools pass one through.</p>
 <h3 id="querying-audit-logs-in-loki">Querying audit logs in Loki<a class="headerlink" href="#querying-audit-logs-in-loki" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a># All audit events from the IDP MCP server
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>{app="idp-mcp-server"} |= "[AUDIT]" | json
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a># Scaffold calls only
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>{app="idp-mcp-server"} |= "[AUDIT]" | json | action="scaffold_service_requested"
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a># Contract registration events
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>{app="contract-mcp-server"} |= "[AUDIT]" | json | action="register_contract_requested"
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a># All audit events from the IDP MCP server
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>{app="idp-mcp-server"} |= "[AUDIT]" | json
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a># Scaffold calls only
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>{app="idp-mcp-server"} |= "[AUDIT]" | json | action="scaffold_service_requested"
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a># Contract registration events
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>{app="contract-mcp-server"} |= "[AUDIT]" | json | action="register_contract_requested"
 </code></pre></div>
 <h3 id="per-agent-attribution-metrics">Per-agent attribution metrics<a class="headerlink" href="#per-agent-attribution-metrics" title="Permanent link">&para;</a></h3>
 <p>The <code>mcp_agent_tool_calls_total{server,tool,agent}</code> Prometheus counter tracks every tool call broken down by MCP server, tool name, and agent ID:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Tool call rate per agent</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_agent_tool_calls_total</span><span class="p">{</span><span class="nl">server</span><span class="o">=</span><span class="p">"</span><span class="s">idp-mcp-server</span><span class="p">"}[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="c1"># Error rate per tool</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_tool_calls_total</span><span class="p">{</span><span class="nl">outcome</span><span class="o">=</span><span class="p">"</span><span class="s">error</span><span class="p">"}[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span><span class="w"> </span><span class="o">/</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_tool_calls_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Tool call rate per agent</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_agent_tool_calls_total</span><span class="p">{</span><span class="nl">server</span><span class="o">=</span><span class="p">"</span><span class="s">idp-mcp-server</span><span class="p">"}[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># Error rate per tool</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_tool_calls_total</span><span class="p">{</span><span class="nl">outcome</span><span class="o">=</span><span class="p">"</span><span class="s">error</span><span class="p">"}[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span><span class="w"> </span><span class="o">/</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="kr">rate</span><span class="o">(</span><span class="nv">mcp_tool_calls_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
 </code></pre></div>
 <p>These metrics are visible in the <strong>AI Platform</strong> Grafana dashboard at <code>http://grafana.idp.local/d/ai-platform</code>.</p>
 <h3 id="dry_run-mode">dry_run mode<a class="headerlink" href="#dry_run-mode" title="Permanent link">&para;</a></h3>
 <p>Pass <code>dry_run: true</code> to <code>scaffold_service</code> to get a preview of what would be created without actually creating anything:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>User: "dry run: scaffold a Go service called test-svc, owner platform-team"
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>User: "dry run: scaffold a Go service called test-svc, owner platform-team"
 </code></pre></div>
 <p>The agent detects "dry run", "preview", or "what would happen" phrasing and passes <code>dry_run: true</code> to the tool. The tool returns a preview JSON showing the template, values, and computed <code>repoUrl</code> without making any Backstage scaffolder calls.</p>
 <h3 id="kagent-system-prompt-guardrails">KAgent system-prompt guardrails<a class="headerlink" href="#kagent-system-prompt-guardrails" title="Permanent link">&para;</a></h3>
@@ -5376,20 +5325,20 @@ same helper keeps the two in step.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="an-ai-page-is-missing-from-the-sidebar">An AI page is missing from the sidebar<a class="headerlink" href="#an-ai-page-is-missing-from-the-sidebar" title="Permanent link">&para;</a></h3>
 <p>The AI overlay is off, or Backstage hasn't restarted since it was turned on.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>grep<span class="w"> </span>-A1<span class="w"> </span><span class="s1">'custom-pages/ai-assistant'</span><span class="w"> </span>local/backstage/app-config.ai.yaml<span class="w">   </span><span class="c1"># disabled: true/false?</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>./scripts/bootstrap-ai.sh<span class="w">                                                </span><span class="c1"># deploy the stack (adds --adp for approvals)</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">                           </span><span class="c1"># restart to pick up the config</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>grep<span class="w"> </span>-A1<span class="w"> </span><span class="s1">'custom-pages/ai-assistant'</span><span class="w"> </span>local/backstage/app-config.ai.yaml<span class="w">   </span><span class="c1"># disabled: true/false?</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>./scripts/bootstrap-ai.sh<span class="w">                                                </span><span class="c1"># deploy the stack (adds --adp for approvals)</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage<span class="w">                           </span><span class="c1"># restart to pick up the config</span>
 </code></pre></div>
 <p>If the file doesn't exist at all, <code>docker compose up</code> will bind-mount a directory in its place
 and Backstage will fail to parse it — run either bootstrap script to regenerate it.</p>
 <h3 id="ai-assistant-did-not-respond-no-session-created">"AI assistant did not respond (no session created)"<a class="headerlink" href="#ai-assistant-did-not-respond-no-session-created" title="Permanent link">&para;</a></h3>
 <p>KAgent is not running or the proxy target is wrong.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Check KAgent pods</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>po<span class="w"> </span>-n<span class="w"> </span>kagent
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="c1"># Check the proxy is reachable from Backstage</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># (in the Backstage container or from the host)</span>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>curl<span class="w"> </span>http://kagent.idp.local/api/sessions
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Check KAgent pods</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>po<span class="w"> </span>-n<span class="w"> </span>kagent
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># Check the proxy is reachable from Backstage</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1"># (in the Backstage container or from the host)</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>curl<span class="w"> </span>http://kagent.idp.local/api/sessions
 </code></pre></div>
 <h3 id="agent-resets-to-what-would-you-like-to-do">Agent resets to "what would you like to do?"<a class="headerlink" href="#agent-resets-to-what-would-you-like-to-do" title="Permanent link">&para;</a></h3>
 <p>This was caused by two bugs, both now fixed:
@@ -5403,26 +5352,26 @@ and Backstage will fail to parse it — run either bootstrap script to regenerat
 <p>The platform has been enhanced with comprehensive AI capabilities beyond the chat assistant:</p>
 <h3 id="multi-provider-model-support">Multi-Provider Model Support ✅<a class="headerlink" href="#multi-provider-model-support" title="Permanent link">&para;</a></h3>
 <p>Deploy agents using <strong>Claude Anthropic</strong> (default) or <strong>OpenAI GPT-4o</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Both ModelConfigs available via kubernetes/kagent/</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># - modelconfig-anthropic.yaml (Claude Haiku / Sonnet)</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="c1"># - modelconfig-openai.yaml (GPT-4o)</span>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="c1"># Use in agent spec:</span>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="c1">#   modelConfig: claude-anthropic</span>
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="c1">#   # or</span>
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="c1">#   modelConfig: openai-prod</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Both ModelConfigs available via kubernetes/kagent/</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># - modelconfig-anthropic.yaml (Claude Haiku / Sonnet)</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># - modelconfig-openai.yaml (GPT-4o)</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># Use in agent spec:</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="c1">#   modelConfig: claude-anthropic</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="c1">#   # or</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="c1">#   modelConfig: openai-prod</span>
 </code></pre></div>
 <p><strong>Setup:</strong> Set <code>OPENAI_API_KEY</code> in <code>local/.env</code> before running <code>./scripts/bootstrap-ai.sh</code>.</p>
 <h3 id="model-serving-inference">Model Serving &amp; Inference ✅<a class="headerlink" href="#model-serving-inference" title="Permanent link">&para;</a></h3>
 <p>Deploy trained models as inference APIs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Via Backstage:</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="c1"># Create → Model Serving API</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="c1"># → Ollama (local Kind) or vLLM (AWS EKS with GPU)</span>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="c1"># Manually:</span>
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-model<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/my-model<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">  </span>--namespace<span class="w"> </span>ml-platform
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Via Backstage:</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># Create → Model Serving API</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="c1"># → Ollama (local Kind) or vLLM (AWS EKS with GPU)</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="c1"># Manually:</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>my-model<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">  </span>--set<span class="w"> </span>image.repository<span class="o">=</span>localhost:5003/my-model<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">  </span>--namespace<span class="w"> </span>ml-platform
 </code></pre></div>
 <p>Custom action: <code>idp:deploy-model-server</code> with secure TLS verification.</p>
 <h3 id="ai-platform-scorecard">AI Platform Scorecard ✅<a class="headerlink" href="#ai-platform-scorecard" title="Permanent link">&para;</a></h3>
@@ -5441,11 +5390,11 @@ and Backstage will fail to parse it — run either bootstrap script to regenerat
 <li>Rollback is an ArgoCD revert of that manifest</li>
 <li>Editing a prompt means editing the CRD; the KAgent controller reconciles the change</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># Edit the prompt in Git (preferred — ArgoCD reconciles the change):</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="nv">$EDITOR</span><span class="w"> </span>kubernetes/kagent/release-agent.yaml<span class="w">   </span><span class="c1"># spec.systemMessage</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># Or, to try a prompt change against the live cluster before committing:</span>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>kubectl<span class="w"> </span>edit<span class="w"> </span>agent<span class="w"> </span>release-agent<span class="w"> </span>-n<span class="w"> </span>kagent
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Edit the prompt in Git (preferred — ArgoCD reconciles the change):</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nv">$EDITOR</span><span class="w"> </span>kubernetes/kagent/release-agent.yaml<span class="w">   </span><span class="c1"># spec.systemMessage</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># Or, to try a prompt change against the live cluster before committing:</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>kubectl<span class="w"> </span>edit<span class="w"> </span>agent<span class="w"> </span>release-agent<span class="w"> </span>-n<span class="w"> </span>kagent
 </code></pre></div>
 <p>Extracting prompts into standalone ConfigMaps (with a Backstage "Update Agent Prompt"
 template as the front door) is <strong>not implemented</strong> — there is no <code>kubernetes/kagent/prompts/</code>
@@ -5453,13 +5402,13 @@ directory. Note this also means the Gold-tier "system prompt versioned in Config
 scorecard item above is satisfied by Git versioning of the CRD, not by a separate ConfigMap.</p>
 <h3 id="ml-workflows-argo-workflows">ML Workflows (Argo Workflows) ✅<a class="headerlink" href="#ml-workflows-argo-workflows" title="Permanent link">&para;</a></h3>
 <p>Multi-step training + evaluation pipelines:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># Install (optional):</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># Access at: http://argo-workflows.idp.local</span>
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>
-<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="c1"># Scaffold pipeline:</span>
-<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="c1"># Create → ML Training Job → outputs Argo Workflow YAML</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># Install (optional):</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--install-argo-workflows
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># Access at: http://argo-workflows.idp.local</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="c1"># Scaffold pipeline:</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="c1"># Create → ML Training Job → outputs Argo Workflow YAML</span>
 </code></pre></div>
 <h3 id="cost-attribution">Cost Attribution ✅<a class="headerlink" href="#cost-attribution" title="Permanent link">&para;</a></h3>
 <p>Track AI API spend per team:</p>
@@ -5470,11 +5419,11 @@ scorecard item above is satisfied by Git versioning of the CRD, not by a separat
 </ul>
 <h3 id="rag-semantic-search">RAG Semantic Search ✅<a class="headerlink" href="#rag-semantic-search" title="Permanent link">&para;</a></h3>
 <p>AI search across TechDocs, runbooks, catalog:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Via Backstage AI Assistant:</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>/ai-search
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c1"># Search query: "how to debug deployment failures"</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="c1"># → Returns relevant runbooks, ADRs, documentation</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># Via Backstage AI Assistant:</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>/ai-search
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># Search query: "how to debug deployment failures"</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># → Returns relevant runbooks, ADRs, documentation</span>
 </code></pre></div>
 <p>Backend: Voyage AI embeddings + pgvector. The vector store is the Backstage Postgres itself — the <code>pgvector/pgvector</code> image in <code>local/backstage/docker-compose.yml</code>, initialised by <code>local/backstage/init-pgvector.sql</code>; on AWS, the <code>vector</code> extension on the same RDS instance.</p>
 <h3 id="ai-observability-dashboard">AI Observability Dashboard ✅<a class="headerlink" href="#ai-observability-dashboard" title="Permanent link">&para;</a></h3>
@@ -5495,15 +5444,15 @@ tool calls inside each agent run.</p>
 Postgres, ClickHouse, Valkey and MinIO with it (6 pods, ~2.4Gi), which is a real
 cost on a single-node Kind cluster — see
 <a href="../local-setup/#what-runs-where-and-what-it-costs">docs/local-setup.md</a>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>./scripts/bootstrap-ai.sh<span class="w">                 </span><span class="c1"># local: Langfuse included</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w">           </span><span class="c1"># AWS: Langfuse included</span>
-<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-langfuse<span class="w"> </span><span class="c1"># either target: lighter cluster, no LLM tracing</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>./scripts/bootstrap-ai.sh<span class="w">                 </span><span class="c1"># local: Langfuse included</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--aws<span class="w">           </span><span class="c1"># AWS: Langfuse included</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-langfuse<span class="w"> </span><span class="c1"># either target: lighter cluster, no LLM tracing</span>
 </code></pre></div>
 <p>Then open <strong>AI Observability</strong> in the Backstage sidebar, or
 <a href="http://langfuse.idp.local">http://langfuse.idp.local</a> directly. The admin login is printed during
 bootstrap and recoverable with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.LANGFUSE_INIT_USER_PASSWORD}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.LANGFUSE_INIT_USER_PASSWORD}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
 </code></pre></div>
 <h3 id="how-traces-get-there">How traces get there<a class="headerlink" href="#how-traces-get-there" title="Permanent link">&para;</a></h3>
 <p>Nothing in Backstage produces them. KAgent exports OTLP directly:</p>
@@ -5557,8 +5506,8 @@ with its own name — there is no per-service project or key pair to manage.</p>
 <code>ml-platform</code>, and Kubernetes Secrets are namespace-scoped. The platform
 therefore copies it, by label, into a <code>langfuse-otel</code> Secret in every namespace
 that opts in:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>namespace<span class="w"> </span>&lt;ns&gt;<span class="w"> </span>idp.io/langfuse<span class="o">=</span>enabled
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse-keys-only<span class="w">     </span><span class="c1"># idempotent; deploys nothing</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>namespace<span class="w"> </span>&lt;ns&gt;<span class="w"> </span>idp.io/langfuse<span class="o">=</span>enabled
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--langfuse-keys-only<span class="w">     </span><span class="c1"># idempotent; deploys nothing</span>
 </code></pre></div>
 <p><code>bootstrap-ai.sh --langfuse</code> labels <code>services-dev</code> and runs this itself, so a
 service deployed there needs nothing extra. Workloads already running when the
@@ -5602,21 +5551,21 @@ service's Helm values; they are the two halves of that filter.</p>
 <h3 id="when-the-ai-observability-page-shows-no-data">When the AI Observability page shows no data<a class="headerlink" href="#when-the-ai-observability-page-shows-no-data" title="Permanent link">&para;</a></h3>
 <p>The page reads Langfuse through the Backstage <code>/langfuse</code> proxy, so a failure can
 sit in either. Work outwards from Langfuse:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1"># 1. Is Langfuse itself serving? (expects 6 pods — use instance, not name:</span>
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="c1">#    app.kubernetes.io/name is per-component and matches only web + worker)</span>
-<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/instance<span class="o">=</span>langfuse
-<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>
-<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="c1"># 2. Do the project keys work directly? (expects 200)</span>
-<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="nv">PK</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
-<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="nv">SK</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
-<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'%{http_code}\n'</span><span class="w"> </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$PK</span><span class="s2">:</span><span class="nv">$SK</span><span class="s2">"</span><span class="w"> </span>http://langfuse.idp.local/api/public/traces?limit<span class="o">=</span><span class="m">1</span>
-<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>
-<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a><span class="c1"># 3. Does it work through Backstage? (expects 200)</span>
-<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a><span class="c1">#    Not a secret: this is the static local dev token declared in plaintext under</span>
-<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a><span class="c1">#    backend.auth.externalAccess in backstage/app-config.local.yaml.</span>
-<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a><span class="nv">BACKSTAGE_TOKEN</span><span class="o">=</span>local-catalog-exporter-token
-<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="si">${</span><span class="nv">BACKSTAGE_TOKEN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a><span class="w">  </span><span class="s1">'http://backstage.idp.local/api/proxy/langfuse/api/public/traces?limit=1'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c1"># 1. Is Langfuse itself serving? (expects 6 pods — use instance, not name:</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="c1">#    app.kubernetes.io/name is per-component and matches only web + worker)</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/instance<span class="o">=</span>langfuse
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="c1"># 2. Do the project keys work directly? (expects 200)</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="nv">PK</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.LANGFUSE_INIT_PROJECT_PUBLIC_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="nv">SK</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>langfuse-init<span class="w"> </span>-n<span class="w"> </span>ml-platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.LANGFUSE_INIT_PROJECT_SECRET_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+<a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>curl<span class="w"> </span>-s<span class="w"> </span>-o<span class="w"> </span>/dev/null<span class="w"> </span>-w<span class="w"> </span><span class="s1">'%{http_code}\n'</span><span class="w"> </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$PK</span><span class="s2">:</span><span class="nv">$SK</span><span class="s2">"</span><span class="w"> </span>http://langfuse.idp.local/api/public/traces?limit<span class="o">=</span><span class="m">1</span>
+<a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>
+<a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="c1"># 3. Does it work through Backstage? (expects 200)</span>
+<a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a><span class="c1">#    Not a secret: this is the static local dev token declared in plaintext under</span>
+<a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a><span class="c1">#    backend.auth.externalAccess in backstage/app-config.local.yaml.</span>
+<a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a><span class="nv">BACKSTAGE_TOKEN</span><span class="o">=</span>local-catalog-exporter-token
+<a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a>curl<span class="w"> </span>-s<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="si">${</span><span class="nv">BACKSTAGE_TOKEN</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-15" name="__codelineno-24-15" href="#__codelineno-24-15"></a><span class="w">  </span><span class="s1">'http://backstage.idp.local/api/proxy/langfuse/api/public/traces?limit=1'</span>
 </code></pre></div>
 <table>
 <thead>
@@ -5655,9 +5604,9 @@ scale back. The trace data lives in PVCs and survives that.</p>
 <h3 id="prompt-versioning">Prompt versioning<a class="headerlink" href="#prompt-versioning" title="Permanent link">&para;</a></h3>
 <p><code>scripts/sync-agent-prompts.py</code> pushes each agent's <code>systemMessage</code> to Langfuse
 as a versioned prompt, and fails CI when a CRD and Langfuse disagree:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--push<span class="w">          </span><span class="c1"># CRDs → Langfuse</span>
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--check<span class="w">         </span><span class="c1"># drift gate</span>
-<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--check-evals<span class="w">   </span><span class="c1"># CRD vs the DeepEval copy (runs in CI)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--push<span class="w">          </span><span class="c1"># CRDs → Langfuse</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--check<span class="w">         </span><span class="c1"># drift gate</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>python3<span class="w"> </span>scripts/sync-agent-prompts.py<span class="w"> </span>--check-evals<span class="w">   </span><span class="c1"># CRD vs the DeepEval copy (runs in CI)</span>
 </code></pre></div>
 <p>Git stays the source of truth. KAgent has no per-invocation prompt fetch, so
 Langfuse is the authoring and review surface, not the runtime. <code>systemMessageFrom</code>
@@ -5672,9 +5621,9 @@ that is not deployed.</p>
 set</strong> automatically — <code>idp</code>, <code>qa</code>, <code>release</code>, <code>cost</code>, <code>platform</code>, <code>contract</code>. The
 remaining three (<code>incident</code>, <code>security</code>, <code>onboarding</code>) install only when you ask
 for them:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>all<span class="w">          </span><span class="c1"># all nine</span>
-<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,security<span class="w"> </span><span class="c1"># an explicit subset</span>
-<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">         </span><span class="c1"># print what is available</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>all<span class="w">          </span><span class="c1"># all nine</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>idp,security<span class="w"> </span><span class="c1"># an explicit subset</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--agents<span class="w"> </span>list<span class="w">         </span><span class="c1"># print what is available</span>
 </code></pre></div>
 <p>Re-running <strong>prunes</strong> agents outside the selection, so <code>--agents idp</code> on a cluster
 that has all nine will remove the other eight. Each agent is one pod; see
@@ -5682,19 +5631,19 @@ that has all nine will remove the other eight. Each agent is one pod; see
 for why that matters on a small machine, and
 <a href="../scripts-reference/#bootstrap-aish-flags">Scripts Reference</a> for the full flag list.</p>
 <p>To target specific resources manually:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1"># Redeploy a single MCP server</span>
-<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>github-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="w">  </span>--values<span class="w"> </span>services/github-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
-<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>
-<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="c1"># Re-apply all KAgent resources</span>
-<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/modelconfig-sonnet.yaml
-<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/ai-gateway-toolserver.yaml
-<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/platform-agent.yaml
-<a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>
-<a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a><span class="c1"># Rebuild a service image after code changes</span>
-<a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a><span class="nb">cd</span><span class="w"> </span>services/github-mcp-server<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/github-mcp-server:0.1.0<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/github-mcp-server:0.1.0
-<a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/github-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="c1"># Redeploy a single MCP server</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>github-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="w">  </span>--values<span class="w"> </span>services/github-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="c1"># Re-apply all KAgent resources</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/modelconfig-sonnet.yaml
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/ai-gateway-toolserver.yaml
+<a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>kubernetes/kagent/platform-agent.yaml
+<a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a>
+<a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a><span class="c1"># Rebuild a service image after code changes</span>
+<a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a><span class="nb">cd</span><span class="w"> </span>services/github-mcp-server<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/github-mcp-server:0.1.0<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/github-mcp-server:0.1.0
+<a id="__codelineno-27-13" name="__codelineno-27-13" href="#__codelineno-27-13"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/github-mcp-server<span class="w"> </span>-n<span class="w"> </span>services-dev
 </code></pre></div>
 <h2 id="whats-next">What's next<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
 <p>Sprints 1-4 above are delivered and documented in this file. The remaining roadmap
@@ -5702,41 +5651,41 @@ for why that matters on a small machine, and
 reorganized into the <strong>Agentic Development Platform (ADP)</strong> epic — see
 <a href="../agentic-platform/">agentic-platform.md</a> for the phased plan and current status.</p>
 <h3 id="scaffold-task-stuck-in-processing">Scaffold task stuck in "processing"<a class="headerlink" href="#scaffold-task-stuck-in-processing" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1"># Check task status directly in Backstage</span>
-<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>open<span class="w"> </span>http://backstage.idp.local/create/tasks/&lt;task-id&gt;
-<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>
-<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c1"># Check the scaffolder backend logs</span>
-<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="c1"># Check task status directly in Backstage</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>open<span class="w"> </span>http://backstage.idp.local/create/tasks/&lt;task-id&gt;
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="c1"># Check the scaffolder backend logs</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>backstage<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>backstage<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
 </code></pre></div>
 <h3 id="no-description-available-for-agent-tools-in-kagent-ui">"No description available" for agent tools in KAgent UI<a class="headerlink" href="#no-description-available-for-agent-tools-in-kagent-ui" title="Permanent link">&para;</a></h3>
 <p>The KAgent controller connects to the MCP server to fetch tool metadata via <code>tools/list</code>.
 If a tool is listed in the agent's <code>toolNames</code> but not exported by the MCP server, the controller cannot resolve all tools and displays "No description available" for all of them.</p>
 <p>Check the controller logs:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">"error|registered"</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span>kagent<span class="w"> </span>deployment/kagent-controller<span class="w"> </span>--tail<span class="o">=</span><span class="m">30</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">"error|registered"</span>
 </code></pre></div></p>
 <p>If you see <code>no such host: idp-mcp-server.services-dev.svc.cluster.local</code>, the MCP server is not deployed:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services-dev
-<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="c1"># If missing, deploy manually:</span>
-<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>idp-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a><span class="w">  </span>--values<span class="w"> </span>services/idp-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>services-dev
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="c1"># If missing, deploy manually:</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>idp-mcp-server<span class="w"> </span>helm/service-template<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="w">  </span>--namespace<span class="w"> </span>services-dev<span class="w"> </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="w">  </span>--values<span class="w"> </span>services/idp-mcp-server/helm-values-local.yaml<span class="w"> </span>--wait
 </code></pre></div></p>
 <h3 id="no-metrics-found-for">"No metrics found for …"<a class="headerlink" href="#no-metrics-found-for" title="Permanent link">&para;</a></h3>
 <p>The service's <code>/metrics</code> endpoint is not yet scraped. Check that a <code>ServiceMonitor</code>
 exists in the <code>services</code> namespace and that Prometheus has discovered it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>servicemonitor<span class="w"> </span>-n<span class="w"> </span>services
-<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="c1"># Then check Prometheus targets: http://prometheus.idp.local/targets</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>servicemonitor<span class="w"> </span>-n<span class="w"> </span>services
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="c1"># Then check Prometheus targets: http://prometheus.idp.local/targets</span>
 </code></pre></div>
 <hr />
 <h2 id="rebuilding-the-idp-mcp-server-image">Rebuilding the IDP MCP Server image<a class="headerlink" href="#rebuilding-the-idp-mcp-server-image" title="Permanent link">&para;</a></h2>
 <p>After any code change to <code>services/idp-mcp-server/</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-kagent
-<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="c1"># Rebuilds and pushes the idp-mcp-server image only, then reloads the deployment</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>./scripts/bootstrap-ai.sh<span class="w"> </span>--skip-mlflow<span class="w"> </span>--skip-kagent
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="c1"># Rebuilds and pushes the idp-mcp-server image only, then reloads the deployment</span>
 </code></pre></div>
 <p>Or manually:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/idp-mcp-server:latest<span class="w"> </span>services/idp-mcp-server/
-<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/idp-mcp-server:latest
-<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span>-n<span class="w"> </span>kagent
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>localhost:5003/idp-mcp-server:latest<span class="w"> </span>services/idp-mcp-server/
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>docker<span class="w"> </span>push<span class="w"> </span>localhost:5003/idp-mcp-server:latest
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/idp-mcp-server<span class="w"> </span>-n<span class="w"> </span>kagent
 </code></pre></div></p>
 <hr />
 <h2 id="ai-search-semantic-rag">AI Search (Semantic / RAG)<a class="headerlink" href="#ai-search-semantic-rag" title="Permanent link">&para;</a></h2>
@@ -5744,26 +5693,26 @@ exists in the <code>services</code> namespace and that Prometheus has discovered
 <strong>and rendered TechDocs content</strong> (runbooks, architecture docs, this file) using
 <a href="https://www.voyageai.com">Voyage AI</a> embeddings stored in pgvector.</p>
 <h3 id="architecture_1">Architecture<a class="headerlink" href="#architecture_1" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>Browser → Backstage frontend (AiSearchPage)
-<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>            ↓  GET /api/rag-search/search?q=&lt;query&gt;
-<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>          Backstage backend (idpRagSearch plugin)
-<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>            ↓  Voyage AI API (voyage-3-lite, 512-dim)
-<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>            ↓  PostgreSQL + pgvector (HNSW cosine similarity)
-<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>            → top-10 results with similarity score
-<a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>
-<a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>Indexing (every 30 min, or POST /api/rag-search/index):
-<a id="__codelineno-35-9" name="__codelineno-35-9" href="#__codelineno-35-9"></a>  1. Catalog entities — GET {catalogBase}/entities (description, tags, owner)
-<a id="__codelineno-35-10" name="__codelineno-35-10" href="#__codelineno-35-10"></a>  2. External sources — ragSearch.externalSources config (optional, off by default)
-<a id="__codelineno-35-11" name="__codelineno-35-11" href="#__codelineno-35-11"></a>  3. TechDocs pages — for every entity with a backstage.io/techdocs-ref annotation,
-<a id="__codelineno-35-12" name="__codelineno-35-12" href="#__codelineno-35-12"></a>     fetch {techdocsBase}/static/docs/&lt;namespace&gt;/&lt;kind&gt;/&lt;name&gt;/search/search_index.json
-<a id="__codelineno-35-13" name="__codelineno-35-13" href="#__codelineno-35-13"></a>     (the same per-entity search index the TechDocs UI's own search box reads) and
-<a id="__codelineno-35-14" name="__codelineno-35-14" href="#__codelineno-35-14"></a>     index each page's rendered text. This goes through the techdocs-backend, so it
-<a id="__codelineno-35-15" name="__codelineno-35-15" href="#__codelineno-35-15"></a>     works the same whether the publisher is local filesystem (Kind) or S3 (AWS) —
-<a id="__codelineno-35-16" name="__codelineno-35-16" href="#__codelineno-35-16"></a>     it does NOT read markdown source files directly.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>Browser → Backstage frontend (AiSearchPage)
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>            ↓  GET /api/rag-search/search?q=&lt;query&gt;
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>          Backstage backend (idpRagSearch plugin)
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>            ↓  Voyage AI API (voyage-3-lite, 512-dim)
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>            ↓  PostgreSQL + pgvector (HNSW cosine similarity)
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>            → top-10 results with similarity score
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>Indexing (every 30 min, or POST /api/rag-search/index):
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>  1. Catalog entities — GET {catalogBase}/entities (description, tags, owner)
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>  2. External sources — ragSearch.externalSources config (optional, off by default)
+<a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a>  3. TechDocs pages — for every entity with a backstage.io/techdocs-ref annotation,
+<a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>     fetch {techdocsBase}/static/docs/&lt;namespace&gt;/&lt;kind&gt;/&lt;name&gt;/search/search_index.json
+<a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a>     (the same per-entity search index the TechDocs UI's own search box reads) and
+<a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a>     index each page's rendered text. This goes through the techdocs-backend, so it
+<a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a>     works the same whether the publisher is local filesystem (Kind) or S3 (AWS) —
+<a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a>     it does NOT read markdown source files directly.
 </code></pre></div>
 <h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
 <p>Add your Voyage AI API key to <code>local/backstage/.env</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="nv">VOYAGE_API_KEY</span><span class="o">=</span>your-key-here
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="nv">VOYAGE_API_KEY</span><span class="o">=</span>your-key-here
 </code></pre></div>
 <p>Sign up at <a href="https://www.voyageai.com">https://www.voyageai.com</a> — the free tier provides 200M tokens/month,
 which is more than sufficient for a local IDP catalog.</p>
@@ -5817,10 +5766,10 @@ TechDocs site has been built at least once (visit the entity's Docs tab, or wait
 scheduled TechDocs build) — the indexer reads the already-built <code>search_index.json</code>, it
 does not trigger a TechDocs build itself.</p>
 <h3 id="configuration-app-configyaml">Configuration (<code>app-config.yaml</code>)<a class="headerlink" href="#configuration-app-configyaml" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="nt">ragSearch</span><span class="p">:</span>
-<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a><span class="w">  </span><span class="nt">voyageApiKey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${VOYAGE_API_KEY}</span>
-<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a><span class="w">  </span><span class="nt">indexIntervalMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a><span class="w">  </span><span class="nt">externalSources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">   </span><span class="c1"># optional list of documentation URLs to include</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="nt">ragSearch</span><span class="p">:</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="w">  </span><span class="nt">voyageApiKey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${VOYAGE_API_KEY}</span>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="w">  </span><span class="nt">indexIntervalMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a><span class="w">  </span><span class="nt">externalSources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span><span class="w">   </span><span class="c1"># optional list of documentation URLs to include</span>
 </code></pre></div>
 <h3 id="troubleshooting_1">Troubleshooting<a class="headerlink" href="#troubleshooting_1" title="Permanent link">&para;</a></h3>
 <p><strong>Search returns 503</strong></p>
@@ -5828,17 +5777,17 @@ does not trigger a TechDocs build itself.</p>
 restart Backstage (<code>./scripts/bootstrap-local.sh --start-backstage</code>).</p>
 <p><strong>No results / stale results</strong></p>
 <p>Trigger a manual re-index:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://backstage.idp.local/api/rag-search/index
-<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a><span class="c1"># Or click the "Re-index" button on the /ai-search page</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://backstage.idp.local/api/rag-search/index
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a><span class="c1"># Or click the "Re-index" button on the /ai-search page</span>
 </code></pre></div></p>
 <p>Check indexing status:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>curl<span class="w"> </span>http://backstage.idp.local/api/rag-search/status
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>curl<span class="w"> </span>http://backstage.idp.local/api/rag-search/status
 </code></pre></div></p>
 <p><strong>pgvector extension missing</strong></p>
 <p>The <code>rag_documents</code> table won't exist if Backstage was started before the
 <code>init-pgvector.sql</code> fix was committed. Tear down and restart Docker Compose:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
-<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>local/backstage/docker-compose.yml<span class="w"> </span>down<span class="w"> </span>-v
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>./scripts/bootstrap-local.sh<span class="w"> </span>--start-backstage
 </code></pre></div>
 
 

@@ -1,0 +1,97 @@
+/* Shared look for the flow diagrams that replace hand-typed ASCII art in docs/.
+   Same dark + amber palette as platform-architecture.html. A diagram page links
+   this file, wraps everything in <div class="canvas">, and is rendered by
+   render.mjs. Nothing here depends on the network except the Poppins webfont. */
+:root { --page:#0d0e10; --panel:#16181c; --ink:#f4f4f5; --muted:#c9c9cf; --dim:#8b8d94;
+        --accent:#f5a524; --blue:#5aa9ff; --green:#4cc38a; --red:#ff6b6b; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink);
+       font-family:Poppins, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+.canvas { padding:40px 48px 48px; width:1200px; display:flex; flex-direction:column; align-items:center; }
+h1 { margin:0 0 28px; font-size:36px; font-weight:600; text-align:center; }
+.row { display:flex; gap:28px; width:100%; justify-content:center; align-items:stretch; }
+.box { flex:1; background:var(--panel); border:2px solid var(--accent); border-radius:12px;
+       padding:18px 22px; font-size:17px; color:var(--muted); line-height:1.5; }
+.box.blue { border-color:var(--blue); } .box.green { border-color:var(--green); }
+.box.red { border-color:var(--red); } .box.plain { border-color:#3a3d44; }
+.box h2 { margin:0 0 6px; font-size:20px; font-weight:600; color:var(--ink); }
+.box b, .box code { color:var(--ink); font-weight:500; }
+.box code { font-family:"JetBrains Mono", ui-monospace, Menlo, monospace; font-size:15px; }
+.box .sub { color:var(--dim); font-size:15px; }
+.box ul { margin:6px 0 0; padding-left:20px; } .box li { margin:2px 0; }
+.box hr { border:0; border-top:1px solid #3a3d44; margin:10px 0; }
+.narrow { max-width:620px; } .wide { width:100%; }
+.arrow { display:flex; flex-direction:column; align-items:center; margin:2px 0; min-height:46px;
+         color:var(--dim); font-size:14px; font-family:"JetBrains Mono", ui-monospace, monospace; }
+.arrow::before { content:""; width:2px; flex:1; min-height:20px; background:var(--accent); }
+.arrow::after { content:""; border:7px solid transparent; border-top-color:var(--accent);
+                border-bottom:0; margin-top:-1px; }
+.arrow.up { flex-direction:column-reverse; }
+.arrow.up::after { border-top-color:transparent; border-bottom:7px solid var(--accent); border-top-width:0; }
+.arrow span { padding:3px 0; text-align:center; }
+.tag { font-size:13px; color:var(--accent); letter-spacing:.06em; text-transform:uppercase; }
+
+/* ---- agent-approvals / agentic-platform / ai-assistant additions ---- */
+.aa-steps { margin:8px 0 0; padding-left:22px; } .aa-steps li { margin:3px 0; }
+.aa-side { display:flex; flex-direction:column; align-items:center; flex:1; }
+.ag-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.ag-chip { border:1px solid #3a3d44; border-radius:999px; padding:3px 12px; font-size:15px; color:var(--ink); }
+.ag-chip.new { border-color:var(--accent); } .ag-chip.new::after { content:" *"; color:var(--accent); }
+.ag-foot { width:100%; margin-top:22px; font-size:15px; color:var(--dim); line-height:1.6; }
+.ai-mcp { text-align:center; padding:14px 10px; font-size:15px; } .ai-mcp h2 { font-size:17px; }
+.ai-tools { color:var(--accent); font-size:14px; }
+.ai-model { display:flex; align-items:center; gap:14px; color:var(--dim); font-size:16px; }
+
+/* --- crossplane.md: provisioning flow (xp-*) --- */
+.xp-flow { display:flex; align-items:center; width:100%; gap:0; }
+.xp-flow .box { flex:1; }
+.xp-h { display:flex; flex-direction:column; align-items:center; min-width:120px; color:var(--dim);
+        font-size:14px; font-family:"JetBrains Mono", ui-monospace, monospace; }
+.xp-h::after { content:""; width:100%; height:2px; background:var(--accent); }
+.xp-h span { padding-bottom:6px; }
+.xp-right { align-self:flex-end; width:50%; display:flex; flex-direction:column; align-items:center; }
+
+/* --- scripts-reference.md: setup execution flow (sr-*) --- */
+.sr-split { display:flex; gap:28px; width:100%; align-items:flex-start; }
+.sr-col { flex:1; display:flex; flex-direction:column; align-items:stretch; }
+.sr-col > .box { flex:none; }
+.sr-label { text-align:center; color:var(--accent); font-size:15px; font-family:"JetBrains Mono", ui-monospace, monospace; margin-bottom:4px; }
+
+/* --- engineering-intelligence/architecture.md: target architecture (ei-*) --- */
+.ei-stack { width:100%; display:flex; flex-direction:column; align-items:stretch; }
+.ei-layer { display:grid; grid-template-columns:200px 1fr; background:var(--panel); border:2px solid var(--accent);
+            border-radius:12px; overflow:hidden; font-size:16px; color:var(--muted); line-height:1.5; }
+.ei-layer > .ei-name { padding:14px 20px; font-weight:600; font-size:18px; color:var(--accent);
+                       border-right:2px solid var(--accent); display:flex; align-items:center; }
+.ei-layer > div:last-child { padding:14px 22px; }
+.ei-layer code { font-family:"JetBrains Mono", ui-monospace, monospace; font-size:14px; color:var(--ink); }
+.ei-layer b { color:var(--ink); font-weight:500; }
+.ei-layer ul { margin:4px 0 0; padding-left:20px; }
+.ei-link { height:30px; width:2px; background:var(--accent); align-self:center; margin:0; }
+.ei-fork { display:flex; gap:28px; margin-top:0; }
+.ei-fork .box { flex:1; }
+
+/* ---- additions for architecture.md diagrams ---- */
+.cols { display:flex; gap:28px; width:100%; align-items:stretch; }
+.col { flex:1; display:flex; flex-direction:column; gap:14px; }
+.group { width:100%; border:2px dashed #4a4d55; border-radius:16px; padding:20px 22px 22px; }
+.group > .tag { display:block; margin-bottom:14px; color:var(--ink); font-size:15px; text-transform:none; letter-spacing:0; }
+.group .box { font-size:16px; padding:14px 18px; }
+.group .box h2 { font-size:18px; }
+.mini { background:#0f1114; border:1px solid #3a3d44; border-radius:8px; padding:6px 10px;
+        margin-top:8px; font-size:14px; color:var(--muted); }
+.mini code { font-size:13px; }
+.sidenote { align-self:center; color:var(--dim); font-size:14px; }
+.step { display:grid; grid-template-columns:200px 1fr 110px; gap:18px; width:100%; align-items:start;
+        background:var(--panel); border:2px solid var(--accent); border-radius:12px;
+        padding:14px 22px; font-size:16px; color:var(--muted); line-height:1.5; }
+.step + .step { margin-top:14px; }
+.step .n { color:var(--ink); font-weight:600; font-size:18px; }
+.step .t { color:var(--accent); text-align:right; font-size:15px; white-space:nowrap; }
+.step b, .step code { color:var(--ink); font-weight:500; }
+.step code { font-family:"JetBrains Mono", ui-monospace, Menlo, monospace; font-size:14px; }
+.map { display:grid; grid-template-columns:auto 28px 1fr; gap:6px 12px; font-size:15px; width:100%; }
+.map code { font-family:"JetBrains Mono", ui-monospace, Menlo, monospace; font-size:14px; color:var(--ink); }
+.map .a { color:var(--accent); text-align:center; }
+.subnet { text-align:center; }
+.subnet .az { color:var(--accent); font-size:14px; }

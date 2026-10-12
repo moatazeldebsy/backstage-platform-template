@@ -3583,33 +3583,17 @@ the scripts fall back to plain <code>docker build</code> + <code>docker push</co
 </tbody>
 </table>
 <h2 id="execution-flow">Execution flow<a class="headerlink" href="#execution-flow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># First-time setup (interactive)
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>scripts/setup.sh
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  └─ Phase 0: replace placeholders in all files
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  └─ Phase 1: choose local | aws | skip
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>       │
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>       ├─ local path ──► bootstrap-local.sh
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>       │                    ├─ get-k8s-credentials.sh   (auto)
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>       │                    └─ apply-catalog-exporter.sh (auto)
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>       │                ► bootstrap-local.sh --start-backstage
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>       │                    ├─ docker compose build + up
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>       │                    ├─ wire nginx endpoint
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>       │                    ├─ seed QA metrics
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>       │                    └─ trigger catalog export
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>       │
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>       └─ AWS path  ──► bootstrap.sh
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                          └─ terraform init/apply
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                          └─ helm installs on EKS
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a># Per new service (day-2)
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>idp scaffold service --name my-svc --type nodejs   # Backstage API when running
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>idp scaffold service --name my-svc --type nodejs --local  # offline / pre-Backstage
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>scripts/setup-runner.sh --repo my-svc
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a># Per new QA test suite (day-2)
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
+<p><img alt="First-time setup flow: setup.sh personalises placeholders, then branches to bootstrap-local.sh (plus --start-backstage) for local or bootstrap.sh for AWS" src="../assets/scripts-setup-flow.png" /></p>
+<p>Then, per new service or QA test suite (day-2):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Per new service (day-2)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w">   </span><span class="c1"># Backstage API when running</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>service<span class="w"> </span>--name<span class="w"> </span>my-svc<span class="w"> </span>--type<span class="w"> </span>nodejs<span class="w"> </span>--local<span class="w">  </span><span class="c1"># offline / pre-Backstage</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>scripts/setup-runner.sh<span class="w"> </span>--repo<span class="w"> </span>my-svc
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># Per new QA test suite (day-2)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>my-e2e<span class="w">  </span>--type<span class="w"> </span>playwright<span class="w">    </span>--service<span class="w"> </span>my-svc
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>my-perf<span class="w"> </span>--type<span class="w"> </span>k6<span class="w">            </span>--service<span class="w"> </span>my-svc<span class="w"> </span>--vus<span class="w"> </span><span class="m">20</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>idp<span class="w"> </span>scaffold<span class="w"> </span>test-suite<span class="w"> </span>--name<span class="w"> </span>my-a11y<span class="w"> </span>--type<span class="w"> </span>accessibility<span class="w"> </span>--service<span class="w"> </span>my-svc
 </code></pre></div>
 
 

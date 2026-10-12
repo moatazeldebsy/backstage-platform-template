@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Crossplane S3 provisioning flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas">
+  <h1>Provisioning an S3 bucket with Crossplane</h1>
+  <div class="xp-flow">
+    <div class="box"><h2>Backstage scaffolder</h2><code>s3-bucket-crossplane</code></div>
+    <div class="xp-h"><span>PR</span></div>
+    <div class="box"><h2>GitHub</h2>platform repo</div>
+    <div class="xp-h"><span>sync</span></div>
+    <div class="box"><h2>ArgoCD</h2>in-cluster</div>
+  </div>
+  <div class="xp-right"><div class="arrow" style="width:100%"><span>apply</span></div></div>
+  <div class="xp-right"><div class="box blue" style="width:100%"><h2>S3Bucket Claim</h2>custom resource (CR)</div></div>
+  <div class="xp-right"><div class="arrow"><span>reconcile</span></div></div>
+  <div class="xp-right"><div class="box blue" style="width:100%"><h2>Crossplane</h2>provider-aws-s3</div></div>
+  <div class="xp-right"><div class="arrow"><span>IRSA</span></div></div>
+  <div class="xp-right"><div class="box green" style="width:100%"><h2>S3 bucket</h2>real bucket in AWS</div></div>
+</div><script>window.redrawWires = () => {};</script></body></html>
