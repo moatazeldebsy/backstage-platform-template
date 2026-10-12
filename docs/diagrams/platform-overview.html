@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Platform overview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas" style="width:1280px">
+  <h1>Platform Overview</h1>
+
+  <div class="group">
+    <span class="tag">DEVELOPER EXPERIENCE</span>
+    <div class="row">
+      <div class="box blue"><h2>Backstage Portal</h2>+ AI Assistant<br>+ custom scaffolder actions</div>
+      <div class="box blue"><h2>GitHub</h2>source of truth</div>
+      <div class="box blue"><h2><code>idp</code> CLI</h2>local scaffold</div>
+    </div>
+  </div>
+  <div class="arrow"><span>scaffold · deploy (<code>idp:deploy-local</code>) · push</span></div>
+
+  <div class="box wide" style="max-width:760px;text-align:center">
+    <h2>CI/CD layer — GitHub Actions</h2>
+    install → test → docker build → <code>/healthz</code><br><span class="sub">AWS continuous delivery is done by ArgoCD GitOps sync</span>
+  </div>
+  <div class="arrow"></div>
+
+  <div class="group">
+    <span class="tag">LOCAL: KIND CLUSTER &nbsp;/&nbsp; AWS: EKS</span>
+    <div class="cols">
+      <div class="col">
+        <div class="box green"><h2>services · services-dev</h2>Deployments (Helm golden path)<br>Services · Ingress (nginx / ALB)
+          <div class="mini"><code>idp-mcp-server</code> :3001<br><code>qa-mcp-server</code> :3002<br><code>contract-mcp-server</code> :3003</div></div>
+        <div class="box green"><h2>kagent</h2>KAgent runtime<br>idp-assistant · contract-assistant · other agents</div>
+      </div>
+      <div class="col">
+        <div class="box green"><h2>monitoring</h2>kube-prometheus-stack<br>Prometheus · Grafana · AlertManager<br>Pushgateway</div>
+        <div class="box green"><h2>ml-platform</h2>MLflow tracking server<br>S3 / MinIO artifact store</div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow"><span>AWS only</span></div>
+
+  <div class="box wide red" style="max-width:900px;text-align:center">
+    <h2>AWS infrastructure (Terraform)</h2>
+    VPC → private / public subnets → EKS → ECR → IAM (OIDC / IRSA)
+  </div>
+</div>
+<script>window.redrawWires = () => {};</script></body></html>

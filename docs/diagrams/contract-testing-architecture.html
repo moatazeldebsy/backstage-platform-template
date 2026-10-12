@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Contract testing architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css">
+</head>
+<body>
+<div class="canvas">
+  <h1>Contract Testing — Architecture</h1>
+
+  <div class="row">
+    <div class="box"><h2>hello-service <span class="sub">(K8s)</span></h2><code>GET /openapi.json</code></div>
+    <div class="box"><h2>payments-api <span class="sub">(K8s)</span></h2><code>GET /openapi.json</code></div>
+  </div>
+  <div class="arrow"><span>auto_discover_contracts · fetch_service_contract</span></div>
+
+  <div class="box narrow blue">
+    <h2>contract-mcp-server <span class="sub">:3003</span></h2>
+    <hr>
+    <b>13 MCP tools</b> &nbsp;·&nbsp; REST shim <code>/api/…</code>
+    <hr>
+    Storage: in-memory · PostgreSQL · DynamoDB
+  </div>
+  <div class="arrow"></div>
+
+  <div class="row">
+    <div class="box green"><h2>Pact JSON + TypeScript test</h2>schema matchers</div>
+    <div class="box green"><h2>Breaking-change webhook</h2>Slack / PagerDuty / GitHub</div>
+    <div class="box green"><h2>Compatibility matrix report</h2>all consumers</div>
+  </div>
+  <div class="arrow"></div>
+
+  <div class="box wide">
+    <h2>CI / CD <span class="sub">(GitHub Actions + ArgoCD)</span></h2>
+    <div class="row" style="gap:36px;margin-top:10px;align-items:flex-start">
+      <div style="flex:1"><b>contract-check.yml</b>
+        <ul><li>Register PR spec as new version</li><li><code>detect_breaking_changes</code> vs previous</li>
+        <li>Post PR comment with diff</li><li>Fail job if breaking → blocks merge</li></ul></div>
+      <div style="flex:1"><b>ArgoCD PreSync hook</b>
+        <ul><li><code>detect_breaking_changes</code> → block deploy if breaking</li></ul>
+        <b style="display:block;margin-top:12px">ArgoCD PostSync hook</b>
+        <ul><li><code>fetch_service_contract</code> — register running version</li>
+        <li><code>get_compatibility_report</code> — log consumer status</li></ul></div>
+    </div>
+  </div>
+  <div class="arrow up"></div>
+
+  <div class="row">
+    <div class="box red"><h2>KAgent contract-assistant</h2>AI orchestration over all 13 tools<br><span class="sub">natural-language queries</span></div>
+    <div class="box red"><h2>Backstage</h2>AI Assistant · Scaffolder templates<br><span class="sub">same agent, IDP-embedded · one-click onboarding</span></div>
+  </div>
+</div>
+<script>window.redrawWires = () => {};</script>
+</body>
+</html>

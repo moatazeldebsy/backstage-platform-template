@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Agentic platform architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas" style="width:1300px">
+  <h1>Agentic Platform — Architecture</h1>
+
+  <div class="box wide"><h2>Backstage</h2>
+    chat UI <code>/ai-assistant</code> · semantic search <code>/ai-search</code> · approval UI <code>/approvals</code></div>
+
+  <div class="row" style="margin-top:0">
+    <div class="aa-side"><div class="arrow"><span style="padding-bottom:9px">A2A protocol (JSON-RPC)</span></div>
+      <div class="box"><h2>platform-assistant</h2>entry point, routes by intent · all tools</div>
+      <div class="arrow"><span style="padding-bottom:9px">A2A</span></div></div>
+    <div class="aa-side"><div class="arrow"><span style="padding-bottom:9px"><code>/api/proxy/approval-service</code> (list / decide)</span></div>
+      <div class="box blue wide" style="flex:none;width:100%"><h2>approval-service *</h2>
+        Policy-as-Prompt (ConfigMap) + <code>agent_approvals</code> (Postgres)</div>
+      <div class="arrow up"><span style="padding-top:9px"><code>check_policy</code> · <code>request_approval</code> · <code>get_approval_status</code></span></div></div>
+  </div>
+
+  <div class="box wide"><h2>Specialist agents <span class="sub">(also reachable directly)</span></h2>
+    <div class="ag-chips">
+      <span class="ag-chip">idp-assistant</span><span class="ag-chip">qa-assistant</span><span class="ag-chip">contract-assistant</span>
+      <span class="ag-chip">cost-agent</span><span class="ag-chip">release-agent</span>
+      <span class="ag-chip new">incident-agent</span><span class="ag-chip new">security-agent</span><span class="ag-chip new">onboarding-agent</span>
+    </div></div>
+  <div class="arrow"><span style="padding-bottom:9px">MCP / HTTP — one RemoteMCPServer (<code>ai-gateway</code>)</span></div>
+
+  <div class="box narrow blue"><h2>AI Gateway <span class="sub">(agentgateway)</span></h2>
+    <code>ml-platform :3000/mcp</code> · <code>prefixMode: never</code><br>
+    multiplexes all 8 servers · tool names unprefixed · failOpen · per-target timeouts</div>
+  <div class="arrow"><span style="padding-bottom:9px">streamable-HTTP</span></div>
+
+  <div class="box wide green"><h2>MCP servers</h2>
+    <div class="ag-chips">
+      <span class="ag-chip">idp-mcp :3001</span><span class="ag-chip">qa-mcp :3002</span><span class="ag-chip">contract-mcp :3003</span>
+      <span class="ag-chip">github-mcp :3005</span><span class="ag-chip">argocd-mcp :3006</span><span class="ag-chip">cost-mcp :3007</span>
+      <span class="ag-chip new">incident-mcp :3008</span><span class="ag-chip new">security-mcp :3010</span>
+    </div></div>
+
+  <div class="arrow up" style="min-height:60px"><span>budget alerts → cost-agent · critical alerts → incident-agent * (+ tracked GitHub issue)<br>ArgoCD OutOfSync/Degraded → release-agent</span></div>
+  <div class="box narrow plain"><h2>agent-event-router <span class="sub">:3004</span></h2>GitHub / AlertManager / ArgoCD webhooks</div>
+
+  <div class="ag-foot">
+    Each agent receives only the tools in its own <code>toolNames</code> allowlist — the gateway federates, KAgent filters. An unreachable target is skipped, so a partial platform yields fewer tools rather than an error.<br>
+    Real (non-dry-run) <code>sync_app</code> / <code>rollback_app</code> / <code>approve_pr</code> calls are rejected by their MCP server unless they carry an <code>approval_id</code> whose status is “approved” — enforced in code.<br>
+    * new in ADP — Phase 3: incident-agent, incident-mcp-server · Phase 4: approval-service · Phase 5: security-agent, security-mcp-server, onboarding-agent
+  </div>
+</div>
+<script>window.redrawWires = () => {};</script></body></html>

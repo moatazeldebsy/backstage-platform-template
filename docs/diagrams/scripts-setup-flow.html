@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>First-time setup flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas">
+  <h1>First-time setup — <code style="font-size:30px">scripts/setup.sh</code></h1>
+  <div class="box wide"><h2>Phase 0 — personalise</h2>Replace placeholders in all files (GitHub org, AWS account, region, cluster name)</div>
+  <div class="arrow"></div>
+  <div class="box wide"><h2>Phase 1 — choose an environment</h2>interactive prompt: <b>local</b> · <b>aws</b> · <b>skip</b></div>
+  <div class="arrow"></div>
+  <div class="sr-split">
+    <div class="sr-col">
+      <div class="sr-label">local</div>
+      <div class="box blue"><h2>bootstrap-local.sh</h2>
+        <ul><li><code>get-k8s-credentials.sh</code> <span class="sub">(auto)</span></li>
+        <li><code>apply-catalog-exporter.sh</code> <span class="sub">(auto)</span></li></ul></div>
+      <div class="arrow"></div>
+      <div class="box blue"><h2>bootstrap-local.sh --start-backstage</h2>
+        <ul><li>docker compose build + up</li><li>wire nginx endpoint</li><li>seed QA metrics</li><li>trigger catalog export</li></ul></div>
+    </div>
+    <div class="sr-col">
+      <div class="sr-label">aws</div>
+      <div class="box green"><h2>bootstrap.sh</h2>
+        <ul><li><code>terraform init</code> / <code>apply</code></li><li>helm installs on EKS</li></ul></div>
+    </div>
+  </div>
+</div><script>window.redrawWires = () => {};</script></body></html>

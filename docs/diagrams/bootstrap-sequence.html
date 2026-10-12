@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Bootstrap sequence</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas" style="width:1280px">
+  <h1>AWS Bootstrap Sequence</h1>
+  <div class="box wide plain" style="margin-bottom:14px"><code>./scripts/setup.sh</code> — replaces the organisation placeholders, creates <code>terraform.tfvars</code> and <code>local/.env</code></div>
+  <div class="step"><span class="n">1 · Terraform</span><span>VPC · EKS · RDS · ECR · IAM / OIDC · Secrets Manager placeholders</span><span class="t">15–25 min</span></div>
+  <div class="step"><span class="n">2 · kubectl + builds</span><span>Kubeconfig and connectivity check; hello-service and Backstage images start building <b>in the background</b></span><span class="t">&lt; 1 min</span></div>
+  <div class="step"><span class="n">3 · Platform base</span><span>Namespaces · quotas · RBAC · External Secrets Operator · ClusterSecretStore · Secrets Manager population</span><span class="t">3–5 min</span></div>
+  <div class="step"><span class="n">4 · Observability</span><span>kube-prometheus-stack · Pushgateway · OpenCost · DORA exporter</span><span class="t">5–10 min</span></div>
+  <div class="step"><span class="n">3.8 – 4.4 · Policy + extras</span><span>Gatekeeper + Kyverno · Argo Rollouts · Loki · Tempo · Datadog — parallel batches</span><span class="t">3–8 min</span></div>
+  <div class="step"><span class="n">4.5 – 4.7 · GitOps</span><span>ArgoCD · <code>idp-services</code> ApplicationSet (auto-discovers <code>services/*/</code>) · Crossplane · API tokens</span><span class="t">3–5 min</span></div>
+  <div class="step"><span class="n">5 · Image join</span><span>Waits for the background builds, writes the seed image tag into <code>helm-values-aws.yaml</code></span><span class="t">0–20 min</span></div>
+  <div class="step"><span class="n">5.6 – 5.8 · Backstage</span><span>ExternalSecret → Kubernetes Secret → Backstage pod; catalog exporter; AlertManager routing</span><span class="t">2–8 min</span></div>
+  <div class="step" style="border-color:var(--red)"><span class="n">6 · AI/ML <span class="sub">(optional)</span></span><span><code>bootstrap-ai.sh --aws</code> via <code>--with-ai</code> or <code>--adp</code>: KAgent · MLflow · Langfuse · MCP servers. Needs <code>ANTHROPIC_API_KEY</code></span><span class="t">8–20 min</span></div>
+  <div class="sub" style="margin-top:16px;color:var(--dim);font-size:15px">Total ≈ 40–70 minutes cold.</div>
+</div>
+<script>window.redrawWires = () => {};</script></body></html>

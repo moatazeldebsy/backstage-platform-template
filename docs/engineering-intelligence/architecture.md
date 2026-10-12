@@ -26,29 +26,7 @@ usefully — an honest inventory of which data genuinely exists today.
 
 ## Target architecture
 
-```
-Data sources        Prometheus · Catalog API · Tech Insights · OpenCost · Langfuse
-                                         │
-Collectors          one module per source, in
-                    packages/backend/src/modules/engineeringIntelligence/
-                    · reads the source directly, never the Backstage UI
-                    · failure yields no samples — never a default, never a throw
-                                         │
-Metrics model       MetricSample { metric, value, source, observedAt }
-                                         │
-Scoring engine      packages/engineering-intelligence-core  ← no Backstage imports
-                    normalise → weight → evidence → score → recommendations
-                                         │
-Snapshot store      ei_snapshots (Postgres, jsonb) — the platform's only trend store
-                                         │
-API                 /api/engineering-intelligence/*
-                                         │
-                    ┌────────────────────┴────────────────────┐
-       /engineering-intelligence                AI Advisor (phase 9)
-       (its own frontend plugin,
-        links out to /dora, /finops,
-        /scorecard, /slo, /langfuse)
-```
+![Target architecture, top to bottom: data sources, collectors, metrics model, scoring engine, snapshot store, API, then the dashboard and the AI Advisor](../assets/ei-target-architecture.png)
 
 The one architectural rule worth stating plainly: **the scoring engine imports
 nothing from Backstage**. It is a plain TypeScript package that takes samples and

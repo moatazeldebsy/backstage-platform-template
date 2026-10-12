@@ -235,6 +235,11 @@ jobs:
       - name: Build every TechDocs site
         run: python3 scripts/check-techdocs.py
 
+      # Hand-typed ASCII box diagrams with ragged right borders render broken on
+      # the public site. Draw them (docs/diagrams/README.md) instead.
+      - name: Check docs diagrams are aligned
+        run: python3 scripts/check-docs-diagrams.py docs
+
   # Shell scripts had no CI coverage at all — scripts/ was absent from the old
   # path filter, so bootstrap-local.sh and friends were never even parsed.
   shell-lint:

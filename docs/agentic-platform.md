@@ -20,54 +20,7 @@ incidents/security, and a human-in-the-loop approval layer — needed to trust a
 
 ## Architecture
 
-```
-Backstage — chat UI (/ai-assistant), semantic search (/ai-search), approval UI (/approvals)
-        │  A2A protocol (JSON-RPC)                 │  /api/proxy/approval-service (list/decide)
-        ▼                                          ▼
-┌──────────────────┐                    ┌────────────────────────────┐
-│ platform-assistant│ ← entry point,    │       approval-service*      │
-│ (all tools)        │   routes by intent│  Policy-as-Prompt (ConfigMap) │
-└────────┬───────────┘                   │  + agent_approvals (Postgres) │
-         │                               └───────────────┬────────────┘
-         │  A2A                                           ▲
-         ▼                                                 │ check_policy / request_approval /
-┌────────────────────────────────────────────────────┐    │ get_approval_status
-│ Specialist agents (also reachable directly)          │────┘
-│  idp-assistant · qa-assistant · contract-assistant   │
-│  cost-agent · release-agent · incident-agent*        │
-│  security-agent* · onboarding-agent*                 │
-└───────────────────────┬──────────────────────────────┘
-                         │ MCP/HTTP — one RemoteMCPServer ("ai-gateway")
-                         ▼
-              ┌──────────────────────────────┐
-              │  AI Gateway (agentgateway)   │  ml-platform :3000/mcp
-              │  multiplexes all 8, tool     │  prefixMode: never
-              │  names unprefixed, failOpen  │  per-target timeouts
-              └──────────────┬───────────────┘
-                             │ streamable-HTTP
-                             ▼
-  idp-mcp :3001   qa-mcp :3002   contract-mcp :3003   github-mcp :3005
-  cost-mcp :3007  argocd-mcp :3006   incident-mcp :3008*   security-mcp :3010*
-
-  Each agent still receives only the tools in its own `toolNames` allowlist —
-  the gateway federates, KAgent filters. A target the gateway cannot reach is
-  skipped, so a partial platform yields fewer tools rather than an error.
-
-  Real (non-dry-run) sync_app / rollback_app / approve_pr calls are rejected by their MCP
-  server unless they carry an approval_id whose status is "approved" — enforced in code, not
-  just a system-prompt convention. On by default: APPROVAL_SERVICE_URL is declared in each
-  server's helm values. Unset it and the tools run ungated, with a warning per call.
-
-                              ▲
-                              │  budget alerts → cost-agent
-                              │  critical alerts → incident-agent* (+ tracked GitHub issue)
-                              │  ArgoCD OutOfSync/Degraded → release-agent
-                    agent-event-router :3004
-              (GitHub / AlertManager / ArgoCD webhooks)
-
-  * new in ADP — Phase 3: incident-agent, incident-mcp-server · Phase 4: approval-service ·
-    Phase 5: security-agent, security-mcp-server, onboarding-agent
-```
+![Agentic platform architecture: Backstage and approval-service above platform-assistant and the specialist agents, which reach eight MCP servers through one AI Gateway; agent-event-router feeds alerts and webhooks to the agents](assets/agentic-platform-architecture.png)
 
 ---
 
