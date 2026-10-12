@@ -19,31 +19,7 @@ human running `terraform apply`. No manual step between "PR merged" and
 
 ## End-to-end example: provisioning an S3 bucket
 
-```
-┌──────────────┐    PR      ┌────────────┐   sync   ┌──────────────┐
-│  Backstage   │──────────▶ │   GitHub   │ ───────▶ │   ArgoCD     │
-│  scaffolder  │            │ (platform  │          │ (in-cluster) │
-│ s3-bucket-   │            │   repo)    │          │              │
-│ crossplane   │            └────────────┘          └──────┬───────┘
-└──────────────┘                                           │ apply
-                                                           ▼
-                                                  ┌─────────────────┐
-                                                  │  S3Bucket Claim │
-                                                  │      (CR)       │
-                                                  └────────┬────────┘
-                                                           │ reconcile
-                                                           ▼
-                                                  ┌─────────────────┐
-                                                  │  Crossplane +   │
-                                                  │ provider-aws-s3 │
-                                                  └────────┬────────┘
-                                                           │ IRSA
-                                                           ▼
-                                                  ┌─────────────────┐
-                                                  │  Real S3 bucket │
-                                                  │      in AWS     │
-                                                  └─────────────────┘
-```
+![Flow: Backstage scaffolder opens a PR to GitHub, ArgoCD syncs it and applies an S3Bucket Claim, Crossplane with provider-aws-s3 reconciles it, and IRSA creates the real S3 bucket in AWS](assets/crossplane-provisioning-flow.png)
 
 1. Engineer opens the Backstage portal, picks the **S3 Object Bucket
    (Crossplane)** template, fills in `bucketName`, `ownerService`, region,

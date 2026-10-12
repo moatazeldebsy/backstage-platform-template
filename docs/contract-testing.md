@@ -64,68 +64,7 @@ After onboarding, your service's contract status is visible in the **Backstage C
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              PLATFORM OVERVIEW                                  │
-└─────────────────────────────────────────────────────────────────────────────────┘
-
-  ┌──────────────────────────┐    ┌──────────────────────────┐
-  │  hello-service (K8s)     │    │  payments-api (K8s)       │
-  │  GET /openapi.json  ─────┼─┐  │  GET /openapi.json  ─────┼─┐
-  └──────────────────────────┘ │  └──────────────────────────┘ │
-                               │                               │
-                               └──────────────┬────────────────┘
-                                              │ auto_discover_contracts
-                                              │ fetch_service_contract
-                                              ▼
-                          ┌───────────────────────────────────────┐
-                          │        contract-mcp-server :3003       │
-                          │  ─────────────────────────────────── │
-                          │  9 MCP tools  │  REST shim /api/...   │
-                          │  ─────────────────────────────────── │
-                          │  Storage: in-memory │ PostgreSQL       │
-                          │           │ DynamoDB                   │
-                          └──────┬────────────────────────────────┘
-                                 │
-              ┌──────────────────┼──────────────────────────┐
-              │                  │                           │
-              ▼                  ▼                           ▼
-  ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────────┐
-  │  Pact JSON +      │  │  Breaking-change   │  │  Compatibility        │
-  │  TypeScript test  │  │  Webhook           │  │  matrix report        │
-  │  (schema matchers)│  │  (Slack / PD / GH) │  │  (all consumers)      │
-  └───────────────────┘  └───────────────────┘  └───────────────────────┘
-              │
-              ▼
-  ┌───────────────────────────────────────────────────────────────────────┐
-  │                 CI / CD  (GitHub Actions)                              │
-  │                                                                       │
-  │  contract-check.yml                                                   │
-  │  ├── Register PR spec as new version                                  │
-  │  ├── detect_breaking_changes vs previous                              │
-  │  ├── Post PR comment with diff                                        │
-  │  └── Fail job if breaking → blocks merge                              │
-  │                                                                       │
-  │  ArgoCD PreSync hook                                                  │
-  │  └── detect_breaking_changes → block deploy if breaking               │
-  │                                                                       │
-  │  ArgoCD PostSync hook                                                 │
-  │  ├── fetch_service_contract  (register running version)               │
-  │  └── get_compatibility_report (log consumer compat status)           │
-  └───────────────────────────────────────────────────────────────────────┘
-              ▲
-              │
-  ┌───────────────────────────────────────┐
-  │  KAgent contract-assistant            │  ← natural-language queries
-  │  AI orchestration over all 9 tools    │
-  └───────────────────────────────────────┘
-              ▲
-              │
-  ┌───────────────────────────────────────┐
-  │  Backstage AI Assistant               │  ← same agent, IDP-embedded
-  │  Backstage Scaffolder Templates       │  ← one-click onboarding
-  └───────────────────────────────────────┘
-```
+![Contract testing architecture: services publish OpenAPI specs to contract-mcp-server, which feeds Pact tests, breaking-change webhooks and compatibility reports into CI/CD, driven by the KAgent contract-assistant and Backstage](assets/contract-testing-architecture.png)
 
 ---
 
@@ -639,7 +578,7 @@ To use the contract testing tools directly from Claude Desktop or any MCP-compat
 }
 ```
 
-Add this to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS). After restarting Claude Desktop, the 9 tools appear automatically and you can use them in any conversation: *"use register_contract to register this OpenAPI spec for payments-api v2.0.0: ..."*
+Add this to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS). After restarting Claude Desktop, the 13 tools appear automatically and you can use them in any conversation: *"use register_contract to register this OpenAPI spec for payments-api v2.0.0: ..."*
 
 **Note:** Always set `Accept: application/json, text/event-stream` for raw MCP calls. Without it the StreamableHTTP transport returns 406.
 

@@ -57,59 +57,7 @@ otherwise the pod sits `Pending` forever and reads as a hang.
 
 The AI Assistant is a **native React chat component** embedded directly in the Backstage frontend. It is not an iframe.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  Backstage (Docker Compose / EKS pod)                            │
-│                                                                  │
-│  extensions.tsx — AiAssistantPage                                │
-│    POST /api/proxy/kagent/a2a/kagent/platform-assistant          │
-│    GET  /api/proxy/kagent/api/sessions/<id>  (poll)              │
-│    X-Backstage-User: <userRef>  header on every request          │
-└───────────────────────┬──────────────────────────────────────────┘
-                        │  Backstage proxy
-                        ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  KAgent  (namespace: kagent)                                     │
-│  kagent-ui.kagent.svc.cluster.local:8080  (in-cluster)           │
-│  http://kagent.idp.local  (local ingress)                        │
-│                                                                  │
-│  Agents:                                                         │
-│    platform-assistant  — unified entry point (claude-sonnet)     │
-│    idp-assistant       — platform / scaffolding (claude-haiku)   │
-│    qa-assistant        — test suites + PR review (claude-sonnet) │
-│    contract-assistant  — API contracts (claude-sonnet)           │
-│    cost-agent          — cost/budget analysis (claude-sonnet)    │
-│    release-agent       — ArgoCD sync/rollback (claude-sonnet)    │
-│    incident-agent      — alert triage (claude-sonnet)            │
-└───────────────────────────────┬──────────────────────────────────┘
-                                │ one RemoteMCPServer ("ai-gateway")
-                                │ + every ModelConfig's anthropic.baseUrl
-                                ▼
-              ┌──────────────────────────────────────┐
-              │  AI Gateway — agentgateway :3000     │  ml-platform
-              │   /mcp          all 8 servers, tool  │
-              │                 names unprefixed     │
-              │   /v1/messages  Anthropic, native    │──▶ LiteLLM ──▶ Anthropic / Bedrock
-              └───────────────────┬──────────────────┘
-                                  │ streamable-HTTP
-       ┌──────────┬───────────────┼────────────┬───────┬───────┬───────┐
-       ▼          ▼               ▼            ▼       ▼       ▼       ▼
- ┌──────────┐┌──────────┐┌──────────────┐┌──────────┐┌────────┐┌──────────┐┌───────────┐
- │ idp-mcp  ││ qa-mcp   ││ contract-mcp ││ github-mcp││cost-mcp││argocd-mcp││incident-mcp│
- │ :3001    ││ :3002    ││ :3003        ││ :3005     ││ :3007  ││ :3006    ││ :3008      │
- │ 12 tools ││ 4 tools  ││ 13 tools     ││ 5 tools   ││5 tools ││5 tools   ││7 tools     │
- └──────────┘└──────────┘└──────────────┘└──────────┘└────────┘└──────────┘└───────────┘
-        (security-mcp :3010, 3 tools, is the eighth — ADP only)
-
-  54 tools total, all names unique — which is what lets the gateway federate
-  them unprefixed. Each agent still receives only its own toolNames allowlist.
-
-Event Bus (agent-event-router :3004)
-  ← GitHub webhooks (PR open/update → qa-assistant)
-  ← AlertManager webhooks (budget alerts → cost-agent; critical non-budget alerts → incident-agent
-                            (+ opens/resolves a GitHub incident issue); other firing alerts → idp-assistant)
-  ← ArgoCD webhooks (OutOfSync/Degraded → release-agent)
-```
+![AI Assistant architecture: Backstage proxies to KAgent agents, which use the AI Gateway to reach eight MCP servers (54 tools) and LiteLLM; the agent-event-router routes GitHub, AlertManager and ArgoCD webhooks to agents](assets/ai-assistant-architecture.png)
 
 ### CLI
 
@@ -335,7 +283,7 @@ account. See `kubernetes/kagent/idp-mcp-server-rbac.yaml`.
 
 #### `contract-mcp-server` (port 3003)
 
-9 tools for self-describing, self-testing APIs. See `docs/contract-testing.md`.
+13 tools for self-describing, self-testing APIs. See `docs/contract-testing.md`.
 
 #### `github-mcp-server` (port 3005)
 

@@ -77,3 +77,22 @@ dark cards. They carry `lg-dark` and the stylesheet inverts them.
 
 The renderer checks for both: any mark with zero width after layout is reported
 as blank rather than silently shipped.
+
+## Flow diagrams (replace hand-typed ASCII)
+
+Box-and-arrow diagrams in the docs pages are HTML pages that share `flow.css`
+and render to `docs/assets/<name>.png`. Never draw them as ASCII in a fenced
+block: `scripts/check-docs-diagrams.py` (run in CI) fails on ragged borders.
+
+```bash
+cd backstage/app
+node ../../docs/diagrams/render.mjs \
+  ../../docs/diagrams/contract-testing-architecture.html \
+  ../../docs/assets/contract-testing-architecture.png
+```
+
+Sources: `contract-testing-architecture`, `platform-overview`,
+`aws-network-topology`, `secrets-flow`, `bootstrap-sequence`,
+`agent-approvals-flow`, `agentic-platform-architecture`,
+`ai-assistant-architecture`, `crossplane-provisioning-flow`,
+`scripts-setup-flow`, `ei-target-architecture`.

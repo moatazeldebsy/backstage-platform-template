@@ -216,25 +216,11 @@ the scripts fall back to plain `docker build` + `docker push`.
 
 ## Execution flow
 
-```
-# First-time setup (interactive)
-scripts/setup.sh
-  └─ Phase 0: replace placeholders in all files
-  └─ Phase 1: choose local | aws | skip
-       │
-       ├─ local path ──► bootstrap-local.sh
-       │                    ├─ get-k8s-credentials.sh   (auto)
-       │                    └─ apply-catalog-exporter.sh (auto)
-       │                ► bootstrap-local.sh --start-backstage
-       │                    ├─ docker compose build + up
-       │                    ├─ wire nginx endpoint
-       │                    ├─ seed QA metrics
-       │                    └─ trigger catalog export
-       │
-       └─ AWS path  ──► bootstrap.sh
-                          └─ terraform init/apply
-                          └─ helm installs on EKS
+![First-time setup flow: setup.sh personalises placeholders, then branches to bootstrap-local.sh (plus --start-backstage) for local or bootstrap.sh for AWS](assets/scripts-setup-flow.png)
 
+Then, per new service or QA test suite (day-2):
+
+```bash
 # Per new service (day-2)
 idp scaffold service --name my-svc --type nodejs   # Backstage API when running
 idp scaffold service --name my-svc --type nodejs --local  # offline / pre-Backstage
@@ -244,5 +230,4 @@ scripts/setup-runner.sh --repo my-svc
 idp scaffold test-suite --name my-e2e  --type playwright    --service my-svc
 idp scaffold test-suite --name my-perf --type k6            --service my-svc --vus 20
 idp scaffold test-suite --name my-a11y --type accessibility --service my-svc
-
 ```

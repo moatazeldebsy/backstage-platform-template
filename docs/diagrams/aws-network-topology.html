@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>AWS network topology</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas" style="width:1280px">
+  <h1>AWS Network Topology</h1>
+  <div class="group">
+    <span class="tag">AWS REGION us-east-1 · VPC 10.0.0.0/16</span>
+    <div class="cols">
+      <div class="col subnet">
+        <div class="box"><h2>Public subnet</h2><div class="az">AZ-a · 10.0.64.0/20</div>NAT gateway · ALB targets</div>
+        <div class="arrow" style="min-height:34px"><span>private route</span></div>
+        <div class="box green"><h2>Private subnet</h2><div class="az">AZ-a · 10.0.0.0/20</div>EKS nodes · RDS primary</div>
+      </div>
+      <div class="col subnet">
+        <div class="box"><h2>Public subnet</h2><div class="az">AZ-b · 10.0.80.0/20</div>NAT gateway · ALB targets</div>
+        <div class="arrow" style="min-height:34px"><span>&nbsp;</span></div>
+        <div class="box green"><h2>Private subnet</h2><div class="az">AZ-b · 10.0.16.0/20</div>EKS nodes · RDS standby</div>
+      </div>
+      <div class="col subnet">
+        <div class="box"><h2>Public subnet</h2><div class="az">AZ-c · 10.0.96.0/20</div>NAT gateway · ALB targets</div>
+        <div class="arrow" style="min-height:34px"><span>&nbsp;</span></div>
+        <div class="box green"><h2>Private subnet</h2><div class="az">AZ-c · 10.0.32.0/20</div>EKS nodes</div>
+      </div>
+    </div>
+    <div class="sub" style="margin-top:14px;text-align:center;color:var(--dim);font-size:14px">
+      One NAT gateway per AZ and RDS Multi-AZ on the <code>medium</code> / <code>large</code> profiles; the default profile shares a single NAT gateway.</div>
+  </div>
+  <div class="arrow"><span>Internet-facing ALBs (one per service with <code>ingressClassName: alb</code>)</span></div>
+  <div class="box wide blue" style="max-width:640px;text-align:center">
+    <h2>Internet / developer browser</h2>
+    Backstage · Grafana · ArgoCD<br>Prometheus · Pushgateway<br>OpenCost · hello-service
+  </div>
+</div>
+<script>window.redrawWires = () => {};</script></body></html>

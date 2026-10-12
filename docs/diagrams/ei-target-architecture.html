@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Engineering Intelligence target architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="flow.css"></head>
+<body><div class="canvas" style="width:1300px">
+  <h1>Engineering Intelligence — Target Architecture</h1>
+  <div class="ei-stack">
+    <div class="ei-layer"><div class="ei-name">Data sources</div><div>Prometheus · Catalog API · Tech Insights · OpenCost · Langfuse</div></div>
+    <div class="ei-link"></div>
+    <div class="ei-layer"><div class="ei-name">Collectors</div><div>One module per source, in <code>packages/backend/src/modules/engineeringIntelligence/</code>
+      <ul><li>Reads the source directly, never the Backstage UI</li><li>A failure yields no samples — never a default, never a throw</li></ul></div></div>
+    <div class="ei-link"></div>
+    <div class="ei-layer"><div class="ei-name">Metrics model</div><div><code>MetricSample { metric, value, source, observedAt }</code></div></div>
+    <div class="ei-link"></div>
+    <div class="ei-layer"><div class="ei-name">Scoring engine</div><div><code>packages/engineering-intelligence-core</code> — <b>no Backstage imports</b><br>normalise → weight → evidence → score → recommendations</div></div>
+    <div class="ei-link"></div>
+    <div class="ei-layer"><div class="ei-name">Snapshot store</div><div><code>ei_snapshots</code> (Postgres, jsonb) — the platform's only trend store</div></div>
+    <div class="ei-link"></div>
+    <div class="ei-layer"><div class="ei-name">API</div><div><code>/api/engineering-intelligence/*</code></div></div>
+    <div class="ei-link"></div>
+    <div class="ei-fork">
+      <div class="box blue"><h2><code style="font-size:18px">/engineering-intelligence</code></h2>Dashboard in the Backstage app<br>
+        <span class="sub">links out to /dora, /finops, /scorecard, /slo</span></div>
+      <div class="box blue"><h2>AI Advisor</h2>answers leadership questions from the scored reports</div>
+    </div>
+  </div>
+</div><script>window.redrawWires = () => {};</script></body></html>

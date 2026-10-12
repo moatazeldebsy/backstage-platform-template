@@ -78,64 +78,14 @@ Three channels connect developers, platform engineers, and AI agents to the plat
 | # | Channel | Entry point | Reaches |
 |---|---------|-------------|---------|
 | 1 | **CLI** (`idp`) | `idp scaffold service`, `idp template list` | Scaffolder Engine → GitHub repo → CI |
-| 2 | **Backstage Portal** | Software Catalog, 21 software templates, 18 QA templates, TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights | Scaffolder Backend → Catalog API → ArgoCD |
-| 3 | **AI Agent / MCP** | KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (9 tools) → Platform APIs |
+| 2 | **Backstage Portal** | Software Catalog, 59 scaffolder templates (18 of them QA suites), TechDocs, Tech Radar, AI Assistant, DORA tab, Tech Insights | Scaffolder Backend → Catalog API → ArgoCD |
+| 3 | **AI Agent / MCP** | KAgent agents (IDP, QA, Contract assistants) powered by Claude / GPT-4o | IDP MCP Server (6 tools), QA MCP Server, Contract MCP Server (13 tools) → Platform APIs |
 
 All three channels converge on the **Platform Control Plane**: GitHub Actions CI, ArgoCD GitOps sync, Helm golden-path chart, Crossplane Claims — targeting Kind locally or AWS EKS 1.35 in production.
 
 ---
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                       Developer Experience                           │
-│  ┌────────────────── ┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │  Backstage        │  │  GitHub      │  │  create-service.sh     │ │
-│  │  Portal           │  │  (source)    │  │  (CLI scaffold)        │ │
-│  │  + AI Assistant   │  └──────┬───────┘  └────────────────────────┘ │
-│  │  + custom actions │         │ push                                │
-│  └──────┬───────┬────┘         │                                     │
-└─────────┼───────┼──────────────┼─────────────────────────────────────┘
-          │       │              │
-  scaffold│  deploy              │ push
-          │  (idp:deploy-local)  ▼
-          │       │   ┌──────────────────────────────────────────┐
-          │       │   │           CI/CD Layer                    │
-          │       │   │  GitHub Actions (ubuntu-latest)          │
-          │       │   │  install → test → docker build → /healthz│
-          │       │   └────────────────┬─────────────────────────┘
-          │       │                    │ (AWS CD — planned)
-          ▼       ▼                    ▼
-┌───────────────────────────────────────────────────────────────────── ┐
-│               Local: Kind cluster  /  AWS: EKS                       │
-│                                                                      │
-│  namespace: services              namespace: monitoring              │
-│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-│  │ Deployments (Helm)   │         │ kube-prometheus-stack          │ │
-│  │ Services             │         │ (Prometheus + Grafana +        │ │
-│  │ Ingress (nginx/ALB)  │         │  AlertManager + Pushgateway)   │ │
-│  └──────────────────────┘         └────────────────────────────────┘ │
-│                                                                      │
-│  namespace: kagent                namespace: ml-platform             │
-│  ┌──────────────────────┐         ┌────────────────────────────────┐ │
-│  │ KAgent (AI agents)   │         │ MLflow tracking server         │ │
-│  │ idp-assistant Agent  │◄───────►│ S3/MinIO artifact store        │ │
-│  │ contract-assistant   │         │                                │ │
-│  │ IDP MCP Server       │         └────────────────────────────────┘ │
-│  │ QA MCP Server        │                                            │
-│  │ Contract MCP Server  │         namespace: services-dev            │
-│  └──────────────────────┘         ┌────────────────────────────────┐ │
-│                                   │ contract-mcp-server (port 3003)│ │
-│                                   │ idp-mcp-server (port 3001)     │ │
-│                                   │ qa-mcp-server  (port 3002)     │ │
-│                                   └────────────────────────────────┘ │
-└───────────────────────────────────────────────────────────────────── ┘
-                    │ (AWS only)
-                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                 AWS Infrastructure (Terraform)                      │
-│   VPC → Private/Public Subnets → EKS → ECR → IAM (OIDC/IRSA)        │
-└─────────────────────────────────────────────────────────────────────┘
-```
+![Platform overview: developer experience layer, CI/CD, Kind or EKS cluster namespaces, and AWS infrastructure](assets/platform-overview.png)
 
 ## Key Design Decisions
 
@@ -345,35 +295,7 @@ rebuilding from IaC and restoring backups. See
 
 ### Network Topology
 
-```
-AWS Region: us-east-1
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  VPC  10.0.0.0/16                                                           │
-│                                                                             │
-│  ┌──────────────────────┐  ┌──────────────────────┐  ┌───────────────────┐ │
-│  │  Public Subnet       │  │  Public Subnet       │  │  Public Subnet    │ │
-│  │  10.0.64.0/20 (AZ-a) │  │  10.0.80.0/20 (AZ-b) │  │  10.0.96.0/20(AZ-c)│ │
-│  │  NAT Gateway         │  │  NAT Gateway         │  │  NAT Gateway      │ │
-│  │  ALB targets         │  │  ALB targets         │  │  ALB targets      │ │
-│  └──────────┬───────────┘  └──────────┬───────────┘  └────────┬──────────┘ │
-│             │ private route            │                       │            │
-│  ┌──────────▼───────────┐  ┌──────────▼───────────┐  ┌────────▼──────────┐ │
-│  │  Private Subnet      │  │  Private Subnet      │  │  Private Subnet   │ │
-│  │  10.0.0.0/20  (AZ-a) │  │  10.0.16.0/20 (AZ-b) │  │  10.0.32.0/20(AZ-c)│ │
-│  │  EKS nodes           │  │  EKS nodes           │  │  EKS nodes        │ │
-│  │  RDS (primary)       │  │  RDS (standby)       │  │                   │ │
-│  └──────────────────────┘  └──────────────────────┘  └───────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │
-          │  Internet-facing ALBs (one per service with ingressClassName: alb)
-          ▼
-┌─────────────────────────────────┐
-│  Internet / Developer Browser   │
-│  Backstage  · Grafana · ArgoCD  │
-│  Prometheus · Pushgateway       │
-│  OpenCost   · hello-service     │
-└─────────────────────────────────┘
-```
+![AWS network topology: VPC with three public and three private subnets across AZs, fronted by internet-facing ALBs](assets/aws-network-topology.png)
 
 ### AWS Services Used
 
@@ -467,41 +389,7 @@ EKS Cluster: idp-mvp (us-east-1)
 
 ### Secrets Flow (AWS Secrets Manager → Pods)
 
-```
-Terraform
-  └── creates placeholders in AWS Secrets Manager
-        idp-mvp/backstage   → GITHUB_TOKEN, AUTH_GITHUB_CLIENT_ID/SECRET,
-                               K8S_SERVICE_ACCOUNT_TOKEN, POSTGRES_*, AUTH_SESSION_SECRET,
-                               PAGERDUTY_TOKEN, JIRA_TOKEN, JIRA_URL,
-                               DD_API_KEY, DD_APP_KEY
-        idp-mvp/dora-exporter → GITHUB_TOKEN
-        idp-mvp/kagent      → ANTHROPIC_API_KEY
-        idp-mvp/slack-webhook → SLACK_WEBHOOK_URL
-
-bootstrap.sh
-  └── injects real values (reads from local/.env and cluster)
-        K8S_SERVICE_ACCOUNT_TOKEN ← kubectl get secret backstage-sa-token
-        BACKSTAGE_CATALOG_TOKEN   ← generated random value
-        GITHUB_TOKEN              ← read from env
-        GITHUB_APP_ID/CLIENT_ID/CLIENT_SECRET/PRIVATE_KEY/WEBHOOK_SECRET ← GitHub App (optional; replaces PAT)
-        TEAM_MAP                  ← optional JSON map of repo→team for DORA metrics
-
-External Secrets Operator (ESO)
-  ├── ClusterSecretStore: aws-secretsmanager      (usable from every namespace)
-  │     auth: IRSA via external-secrets-sa (idp-mvp-external-secrets role)
-  │     → reads only idp-mvp/dora-exporter
-  ├── SecretStore aws-secrets-manager (namespace: backstage)
-  │     auth: IRSA via the backstage SA (idp-mvp-backstage role)
-  ├── SecretStore (namespace: ml-platform, litellm-eso-sa)
-  │
-  └── ExternalSecret (per namespace)
-        backstage-secrets  (namespace: backstage)  → idp-mvp/backstage      [backstage SecretStore]
-        dora-exporter-secret (namespace: monitoring) → idp-mvp/dora-exporter [ClusterSecretStore]
-        litellm secrets (namespace: ml-platform)    → idp-mvp/kagent, idp-mvp/litellm [ml-platform SecretStore]
-              │
-              ▼ syncs every 1h (or on force-sync annotation)
-        Kubernetes Secret → mounted as env vars into pods
-```
+![Secrets flow: Terraform creates placeholders, bootstrap.sh injects values, External Secrets Operator syncs them into Kubernetes Secrets](assets/secrets-flow.png)
 
 ### IRSA Roles (IAM Roles for Service Accounts)
 
@@ -519,45 +407,7 @@ External Secrets Operator (ESO)
 
 ### Bootstrap Sequence
 
-```
-./scripts/setup.sh
-  └── replaces moatazeldebsy placeholders, creates terraform.tfvars, local/.env
-
-./scripts/bootstrap.sh
-  ├── Phase 1 — Terraform (~20 min)
-  │     VPC · EKS · RDS · ECR · IAM/OIDC · Secrets Manager (placeholders)
-  │
-  ├── Phase 2 — Platform base (~5 min)
-  │     Namespaces · `services-quota.yaml` (ResourceQuota+LimitRange for services-dev/staging/prod)
-  │     RBAC · AWS Load Balancer Controller
-  │     External Secrets Operator · create external-secrets-sa · ClusterSecretStore
-  │
-  ├── Phase 3 — GitOps (~8 min)
-  │     ArgoCD · OPA/Gatekeeper · Crossplane
-  │     idp-services ApplicationSet (auto-discovers services/*/)
-  │     Kyverno 3.2.7 + team policies (crossplane-team-label-policy, team-quota-policy)
-  │     Secrets Manager updated: GITHUB_APP_* + TEAM_MAP (if env vars set)
-  │
-  ├── Phase 4 — Observability (~10 min)
-  │     kube-prometheus-stack (Prometheus + Grafana + AlertManager)
-  │     Pushgateway (cluster-internal)
-  │     OpenCost (cluster-internal)
-  │     DORA exporter CronJob
-  │
-  ├── Phase 5 — hello-service (~5 min)
-  │     docker buildx build --platform linux/amd64 → ECR push
-  │     ArgoCD syncs hello-service-dev
-  │
-  └── Phase 6 — Backstage (~5 min)
-        Build + push Backstage image to ECR
-        kubectl apply -f kubernetes/backstage/rbac.yaml  (shared RBAC)
-        kubectl apply -f aws/backstage/external-secret.yaml
-        kubectl apply -f aws/backstage/deployment.yaml
-        ExternalSecret syncs → K8s Secret → Backstage pod reads credentials
-
-./scripts/bootstrap-ai.sh  (optional, requires ANTHROPIC_API_KEY)
-  └── KAgent · idp-assistant · MLflow · MCP servers (idp, qa, contract)
-```
+![AWS bootstrap sequence: Terraform, platform base, observability, GitOps, Backstage and optional AI/ML phases](assets/bootstrap-sequence.png)
 
 ### ALB Ingress Map
 

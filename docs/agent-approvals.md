@@ -18,25 +18,7 @@ A mutating tool call fails unless it carries an `approval_id` whose recorded sta
 
 ## How it works
 
-```
- agent (release-agent, qa-agent)
-   │
-   │ 1. check_policy(action, target)              ─┐
-   │ 2. request_approval(action, target, context)  ├─ idp-mcp-server → approval-service
-   │ 3. get_approval_status(approval_id)          ─┘
-   │
-   │ 4. sync_app(app_name, dry_run:false, approval_id)
-   ▼
- argocd-mcp-server / github-mcp-server
-   │  requireApproval() → GET /approvals/:id on approval-service
-   │  rejects unless status == "approved" AND action+target match
-   ▼
- real ArgoCD sync / GitHub review
-
- human
-   │  Backstage → Agent Approvals (/approvals)
-   └─ approve / deny → POST /approvals/:id/decide
-```
+![Agent approval gate: the agent checks policy, requests approval and polls status, then calls the MCP server, which rejects the real action unless approval-service reports it approved; a human approves or denies in Backstage](assets/agent-approvals-flow.png)
 
 | Piece | Path |
 |---|---|
