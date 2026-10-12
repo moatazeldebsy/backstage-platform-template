@@ -1,0 +1,63 @@
+.github/workflows/ci.yml
+  s_ae13ce8a355bcf::t_66406e7dc6d5d4 238-242
+docs/agent-approvals.md
+  s_ae13ce8a355bcf::t_72b22dbcd06b0a 21
+docs/agentic-platform.md
+  s_ae13ce8a355bcf::t_8cc1d9623b4353 23
+docs/ai-assistant.md
+  s_ae13ce8a355bcf::t_e758d2c8f31f7f 60,286
+docs/architecture.md
+  s_ae13ce8a355bcf::t_d3250a2b376fe7 81-82,88,298,392,410
+docs/contract-testing.md
+  s_ae13ce8a355bcf::t_d38c5ebffe3d32 67,581
+docs/crossplane.md
+  s_ae13ce8a355bcf::t_e45305e53a5291 22
+docs/diagrams/README.md
+  s_ae13ce8a355bcf::t_a69fe473a64677 80-98
+docs/diagrams/agent-approvals-flow.html
+  s_ae13ce8a355bcf::t_95eeb12d5cf5bb 1-31
+docs/diagrams/agentic-platform-architecture.html
+  s_ae13ce8a355bcf::t_b01272c10ba050 1-50
+docs/diagrams/ai-assistant-architecture.html
+  s_ae13ce8a355bcf::t_1826a24ce063fb 1-60
+docs/diagrams/aws-network-topology.html
+  s_ae13ce8a355bcf::t_d16c060df9fb0c 1-35
+docs/diagrams/bootstrap-sequence.html
+  s_ae13ce8a355bcf::t_3eb848e33aa8f0 1-19
+docs/diagrams/contract-testing-architecture.html
+  s_ae13ce8a355bcf::t_83a740f4c32370 1-57
+docs/diagrams/crossplane-provisioning-flow.html
+  s_ae13ce8a355bcf::t_905766e8f62a97 1-20
+docs/diagrams/ei-target-architecture.html
+  s_ae13ce8a355bcf::t_a5a381929cb3ed 1-27
+docs/diagrams/flow.css
+  s_ae13ce8a355bcf::t_fff9e03d61849e 1-97
+docs/diagrams/platform-overview.html
+  s_ae13ce8a355bcf::t_e5741505eb09f6 1-45
+docs/diagrams/scripts-setup-flow.html
+  s_ae13ce8a355bcf::t_4dea4e90d1bc7e 1-27
+docs/diagrams/secrets-flow.html
+  s_ae13ce8a355bcf::t_f03c7b8fc6c210 1-53
+docs/engineering-intelligence/architecture.md
+  s_ae13ce8a355bcf::t_f4d98841e4423e 29
+docs/scripts-reference.md
+  s_ae13ce8a355bcf::t_13e935a9c3bd62 219-221,223
+scripts/check-docs-diagrams.py
+  s_ae13ce8a355bcf::t_5221dfb3ebb0ba 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c87544bcea3141d9446a2570c824b85f8b8f0b26",
+  "prompts": {},
+  "sessions": {
+    "s_ae13ce8a355bcf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0108e09f-96fa-4349-a5c4-37c450e66c53",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "idp-bot <idp-bot@platform>"
+    }
+  }
+}
