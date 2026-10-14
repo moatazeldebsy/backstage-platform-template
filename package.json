@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@ai-sdk/anthropic": "^4.0.75",
+    "@e2e-dev/web": "^0.13.0",
+    "ai": "^7.0.0",
+    "e2e": "^0.18.0",
+    "zod": "^4.1.8"
+  },
+  "scripts": {
+    "test:e2e": "e2e run"
+  }
+}
