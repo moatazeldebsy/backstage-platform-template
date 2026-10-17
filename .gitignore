@@ -130,3 +130,9 @@ coverage.out
 .e2e/failures/
 .e2e/logs/
 .e2e/videos/
+
+# Local e2e agent tooling (installed by the e2e skill / MCP setup)
+.agents/
+.claude/skills/e2e
+.cursor/
+.mcp.json
