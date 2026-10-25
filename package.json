@@ -6,9 +6,12 @@
     "@e2e-dev/web": "^0.13.0",
     "ai": "^7.0.0",
     "e2e": "^0.18.0",
-    "zod": "^4.1.8"
+    "zod": "^4.6.7"
   },
   "scripts": {
     "test:e2e": "e2e run"
+  },
+  "overrides": {
+    "zod": "$zod"
   }
 }
