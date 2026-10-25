@@ -3400,11 +3400,11 @@ entry points, which is why they are absent from the tables above.</p>
 </tr>
 <tr>
 <td><code>validate-platform-outputs.py</code></td>
-<td>CI gate (<code>platform-outputs</code> job) — renders every template whose PR targets this repo (via <code>render-template.js</code>) and checks the PR: only new files, only where something applies them, Terraform valid + fmt-clean, claims valid against the XRDs, manifests pass kubeconform, onboarding values render through the chart and pass the Gatekeeper policies. Then checks the committed <code>terraform/infra/</code>, <code>services/*/claims|secrets|helm-values-*</code> the same way. Locally: needs node, terraform, helm, kubeconform, gator, and PyYAML + jsonschema.</td>
+<td>CI gate (<code>platform-outputs</code> job) — renders every template whose PR targets this repo (via <code>render-template.cjs</code>) and checks the PR: only new files, only where something applies them, Terraform valid + fmt-clean, claims valid against the XRDs, manifests pass kubeconform, onboarding values render through the chart and pass the Gatekeeper policies. Then checks the committed <code>terraform/infra/</code>, <code>services/*/claims|secrets|helm-values-*</code> the same way. Locally: needs node, terraform, helm, kubeconform, gator, and PyYAML + jsonschema.</td>
 </tr>
 <tr>
-<td><code>render-template.js</code></td>
-<td>Renders a scaffolder template offline, as <code>fetch:template</code> would: <code>node scripts/render-template.js backstage/catalog/templates &lt;name&gt; - /tmp/out</code>.</td>
+<td><code>render-template.cjs</code></td>
+<td>Renders a scaffolder template offline, as <code>fetch:template</code> would: <code>node scripts/render-template.cjs backstage/catalog/templates &lt;name&gt; - /tmp/out</code>.</td>
 </tr>
 <tr>
 <td><code>validate-mcp-metrics.py</code></td>
