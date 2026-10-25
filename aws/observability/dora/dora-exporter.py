@@ -267,6 +267,20 @@ DEVEX_GAUGES = {
     "devex_build_failure_ratio":  "Failed CI runs as a fraction of runs that reached a verdict",
 }
 
+# Throughput — the DX Core 4 Speed key metric (diffs per engineer) is this sum
+# over a team's services divided by its catalog headcount, which the Engineering
+# Intelligence backend does; the exporter only counts. A count, not a mean, so it
+# is summed in the roll-up and pushed at zero: a repo that merged nothing this
+# week has a real throughput of zero, unlike a cycle time, which has no value.
+#
+# A fixed 7-day window rather than LOOKBACK_HOURS, so a quiet weekend does not
+# read as a team that stopped shipping. The page of 100 PRs bounds it: a repo
+# merging more than 100 a week is undercounted, and says so in the docs.
+DEVEX_COUNT_GAUGES = {
+    "devex_prs_merged_weekly":    "Pull requests merged in the trailing 7 days",
+}
+THROUGHPUT_WINDOW = timedelta(days=7)
+
 
 def get_recent_pull_requests(repo: str) -> list:
     """The most recently updated closed PRs.
@@ -301,6 +315,16 @@ def compute_pr_cycle_time(prs: list, since: datetime) -> float:
         created = datetime.fromisoformat(pr["created_at"].replace("Z", "+00:00"))
         durations.append((merged - created).total_seconds() / 3600.0)
     return sum(durations) / len(durations) if durations else 0.0
+
+
+def compute_prs_merged(prs: list, since: datetime) -> int:
+    """Pull requests merged at or after `since`. Closed-unmerged PRs do not count."""
+    count = 0
+    for pr in prs:
+        merged_at = pr.get("merged_at")
+        if merged_at and datetime.fromisoformat(merged_at.replace("Z", "+00:00")) >= since:
+            count += 1
+    return count
 
 
 def compute_ci_duration(runs: list) -> float:
@@ -489,7 +513,7 @@ def main():
 
     repos = get_service_repos()
     all_deploy_freq, all_lead_times, all_cfr, all_mttr = [], [], [], []
-    all_devex: dict = {name: [] for name in DEVEX_GAUGES}
+    all_devex: dict = {name: [] for name in {**DEVEX_GAUGES, **DEVEX_COUNT_GAUGES}}
     # Services published from inside a monorepo. They are not GitHub repos, so
     # they must be recorded here or prune_stale_services deletes each one
     # moments after it is pushed — which is exactly what happened to
@@ -547,10 +571,14 @@ def main():
                 devex["devex_build_failure_ratio"] = (
                     compute_build_failure_ratio(runs), DEVEX_GAUGES["devex_build_failure_ratio"], "gauge")
 
-            cycle_time = compute_pr_cycle_time(get_recent_pull_requests(repo), since)
+            prs = get_recent_pull_requests(repo)
+            cycle_time = compute_pr_cycle_time(prs, since)
             if cycle_time > 0:
                 devex["devex_pr_cycle_time_hours"] = (
                     cycle_time, DEVEX_GAUGES["devex_pr_cycle_time_hours"], "gauge")
+            devex["devex_prs_merged_weekly"] = (
+                compute_prs_merged(prs, datetime.now(timezone.utc) - THROUGHPUT_WINDOW),
+                DEVEX_COUNT_GAUGES["devex_prs_merged_weekly"], "gauge")
 
             for _name, _entry in devex.items():
                 all_devex[_name].append(_entry[0])
@@ -609,7 +637,13 @@ def main():
             # becoming a platform-wide zero.
             **{
                 name: (sum(values) / len(values), DEVEX_GAUGES[name], "gauge")
-                for name, values in all_devex.items() if values
+                for name, values in all_devex.items() if values and name in DEVEX_GAUGES
+            },
+            # Counts are summed, not averaged: the platform merged N PRs, not
+            # the mean repo's worth.
+            **{
+                name: (sum(values), DEVEX_COUNT_GAUGES[name], "gauge")
+                for name, values in all_devex.items() if values and name in DEVEX_COUNT_GAUGES
             },
         })
 

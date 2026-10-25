@@ -1,4 +1,6 @@
 import type {
+  Core4Change,
+  Core4Report,
   DimensionScore,
   HealthReport,
   MaturityAssessment,
@@ -103,6 +105,16 @@ export interface AdvisorResponse {
   actions: string[];
 }
 
+/** The DX Core 4 view, plus its quarter-ago movement and survey context. */
+export type Core4Response = Core4Report & {
+  change: { since: string; sinceDays: number; areas: Core4Change[] } | null;
+  survey: {
+    cycle: { id: number; title: string; opensAt: string; closesAt: string; open: boolean };
+    responses: number;
+    minResponses: number;
+  } | null;
+};
+
 export interface ExecutiveReport {
   generatedAt: string;
   overallScore: number | null;
@@ -163,6 +175,10 @@ export class EngineeringIntelligenceApi {
 
   aiCost(): Promise<AiCostResponse> {
     return this.get<AiCostResponse>('/ai-cost');
+  }
+
+  core4(): Promise<Core4Response> {
+    return this.get<Core4Response>('/core4');
   }
 
   executiveReport(): Promise<ExecutiveReport> {

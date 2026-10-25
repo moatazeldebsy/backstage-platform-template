@@ -16,6 +16,7 @@ import {
   latestSnapshot,
   listSnapshots,
   saveSnapshot,
+  snapshotsSince,
 } from '../engineeringIntelligence/store';
 import {
   HealthReport,
@@ -198,18 +199,31 @@ function fakeDb() {
   const builder = (table: string) => {
     if (table !== 'ei_snapshots') throw new Error(`unexpected table ${table}`);
     let limit = Infinity;
+    let ascending = false;
+    let since = -Infinity;
     const chain: any = {
       insert: async (row: any) => {
         rows.push(row);
       },
-      orderBy: () => chain,
+      // Only the `captured_at >= x` filter snapshotsSince uses.
+      where: (_column: string, _op: string, value: string) => {
+        since = Date.parse(value);
+        return chain;
+      },
+      orderBy: (_column: string, direction: string) => {
+        ascending = direction === 'asc';
+        return chain;
+      },
       limit: (n: number) => {
         limit = n;
         return chain;
       },
       select: async () =>
         [...rows]
-          .sort((a, b) => Date.parse(b.captured_at) - Date.parse(a.captured_at))
+          .filter(r => Date.parse(r.captured_at) >= since)
+          .sort((a, b) =>
+            (ascending ? 1 : -1) * (Date.parse(a.captured_at) - Date.parse(b.captured_at)),
+          )
           .slice(0, limit),
     };
     return chain;
@@ -275,6 +289,16 @@ describe('snapshot store', () => {
     const latest = await latestSnapshot(db);
     expect(latest?.report.maturity.currentLevel).toBe(1);
     expect(latest?.report.maturity.levels).toHaveLength(5);
+  });
+
+  it('returns snapshots since a date, oldest first, for the Core 4 baseline', async () => {
+    const db = fakeDb();
+    await saveSnapshot(db, report('2026-06-01T09:00:00.000Z', 60));
+    await saveSnapshot(db, report('2026-07-20T09:00:00.000Z', 65));
+    await saveSnapshot(db, report('2026-08-28T09:00:00.000Z', 74));
+
+    const since = await snapshotsSince(db, '2026-07-01T00:00:00.000Z', 10);
+    expect(since.map(s => s.report.overallScore)).toEqual([65, 74]);
   });
 
   it('preserves a null overall score rather than coercing it', async () => {

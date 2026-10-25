@@ -110,3 +110,42 @@ export {
   overallChange,
   unsupportedCitations,
 } from './advisor';
+
+export type {
+  DriverId,
+  PerceptionId,
+  Statement,
+  SurveyAggregate,
+  SurveyAnswers,
+  TimeBucket,
+} from './devexSurvey';
+export {
+  DRIVERS,
+  LIKERT_MAX,
+  LIKERT_MIN,
+  MIN_RESPONSES,
+  PERCEPTIONS,
+  TIME_BUCKETS,
+  aggregateSurvey,
+  likertToScore,
+  validateAnswers,
+} from './devexSurvey';
+
+export type {
+  Core4Area,
+  Core4AreaConfig,
+  Core4AreaId,
+  Core4Change,
+  Core4Report,
+  Core4TeamInput,
+  Core4TeamRow,
+  NotMeasured,
+} from './core4';
+export {
+  CORE4_AREAS,
+  CORE4_AREA_IDS,
+  CORE4_GUARDRAIL,
+  core4Changes,
+  core4TeamRows,
+  scoreCore4,
+} from './core4';
