@@ -23,9 +23,15 @@ updates:
     # `react-router: ^6.30.4` under `resolutions`, so a bumped dependency
     # declaration resolves back to 6.x anyway (verified — 0 lockfile entries
     # for react-router 8 after a real yarn install).
+    #
+    # @azure/msal-node is likewise blocked upstream (SECURITY.md): the fix is
+    # 7.1.0, but even the latest @azure/identity depends on msal-node ^6, so
+    # every security update run fails to resolve. Remove this entry together
+    # with the SECURITY.md row once @azure/identity accepts msal-node ^7.1.0.
     ignore:
       - dependency-name: react-router
       - dependency-name: react-router-dom
+      - dependency-name: "@azure/msal-node"
 
   - package-ecosystem: npm
     directory: /services/idp-mcp-server
