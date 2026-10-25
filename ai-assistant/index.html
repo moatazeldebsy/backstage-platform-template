@@ -1943,6 +1943,8 @@
       
         
       
+        
+      
     
     
     
@@ -2138,6 +2140,34 @@
     
   
     AI Advisor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engineering-intelligence/core4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DX Core 4
   
 
     
@@ -4497,6 +4527,10 @@ responding, so defaults are pre-filled without asking.</p>
 <td><code>catalog_search</code>, <code>catalog_semantic_search</code>, <code>get_service_metrics</code>, <code>list_templates</code>, <code>get_template_params</code>, <code>scaffold_service</code>, <code>list_deployments</code></td>
 </tr>
 <tr>
+<td>Engineering productivity</td>
+<td><code>get_core4_report</code></td>
+</tr>
+<tr>
 <td>User memory</td>
 <td><code>get_user_memory</code>, <code>set_user_memory</code></td>
 </tr>
@@ -4723,6 +4757,11 @@ created per request (<code>createServer()</code> factory).</p>
 <td><code>list_deployments</code></td>
 <td>Kubernetes apps/v1 Deployments</td>
 <td>Defaults to namespace <code>services</code></td>
+</tr>
+<tr>
+<td><code>get_core4_report</code></td>
+<td>Backstage <code>/api/engineering-intelligence/core4</code></td>
+<td>DX Core 4 areas, key metrics, movement and team rows; optional <code>team</code> filter. Team-level only</td>
 </tr>
 <tr>
 <td><code>get_user_memory</code></td>
