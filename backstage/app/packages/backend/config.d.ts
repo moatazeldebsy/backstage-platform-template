@@ -30,6 +30,10 @@ export interface Config {
       scaffolder?: boolean;
       mlflow?: boolean;
       litellm?: boolean;
+      /** The devex-survey plugin's aggregates (DX Core 4 Effectiveness and Impact). */
+      devexSurvey?: boolean;
+      /** Merged PRs per engineer (DX Core 4 Speed): Prometheus plus catalog Group membership. */
+      throughput?: boolean;
     };
 
     /**

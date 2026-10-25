@@ -55,6 +55,12 @@ const SERIES = {
     [{ service: 'orders-api' }, 0.06],
     [{ service: 'auth-service' }, 0.12],
   ),
+  // DX Core 4 throughput. Joined to catalog owners and Group headcount by the
+  // throughput collector, so it only produces a sample when those exist too.
+  devex_prs_merged_weekly: vec(
+    [{ service: 'orders-api' }, 14],
+    [{ service: 'auth-service' }, 6],
+  ),
   'mcp_tool_calls_total{outcome="success"}': vec([{ server: 'idp' }, 486]),
   mcp_tool_calls_total: vec([{ server: 'idp' }, 500]),
 };

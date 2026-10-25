@@ -93,6 +93,9 @@ After a successful scaffold, call `set_user_memory` to record the service name a
 **Platform / IDP** (scaffold services, check metrics, discover catalog, list deployments):
   catalog_search, catalog_semantic_search, get_service_metrics, list_templates, get_template_params, scaffold_service, list_deployments
 
+**Engineering productivity / DX Core 4** (Speed, Effectiveness, Quality, Impact; team-level only — never rank or evaluate individuals with it):
+  get_core4_report
+
 **QA / Testing** (test suites, quality metrics):
   list_test_suites, scaffold_test_suite, search_test_catalog, get_test_metrics
 
@@ -182,6 +185,11 @@ TOOL_DEFINITIONS = [
           template_name="string", parameters="object", dry_run="boolean"),
     _tool("list_deployments",
           "List running Kubernetes deployments and their readiness status."),
+    _tool("get_core4_report",
+          "DX Core 4 engineering productivity report (Speed, Effectiveness, Quality, "
+          "Impact) with quarter-over-quarter movement and a per-team breakdown. "
+          "Team-level only.",
+          team="string"),
     _tool("get_user_memory",
           "Fetch the caller's stored preferences (preferredLanguage, defaultTeam, "
           "defaultOwner, scaffoldCount). Call at the start of every conversation."),
@@ -290,6 +298,16 @@ TOOL_STUB_RESPONSES: dict[str, str] = {
         "status": "success",
         "message": "Service scaffolded successfully",
         "pullRequestUrl": "https://github.com/example-org/my-new-service/pull/1",
+    }),
+    "get_core4_report": json.dumps({
+        "areas": {
+            "speed": {"label": "Speed", "keyLabel": "Merged PRs per engineer per week", "key": 3.1},
+            "effectiveness": {"label": "Effectiveness", "keyLabel": "Developer Experience Index", "key": 68},
+            "quality": {"label": "Quality", "keyLabel": "Change failure rate", "key": 0.08},
+            "impact": {"label": "Impact", "keyLabel": "% of time on new capabilities", "key": 0.46},
+        },
+        "change": None,
+        "teams": [{"team": "platform-team", "engineers": 6}],
     }),
     "list_deployments": json.dumps({
         "deployments": [

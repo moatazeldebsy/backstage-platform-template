@@ -7,7 +7,12 @@ import {
   MetricSample,
   WeightOverrides,
   AdvisorQuestion,
+  Core4Report,
+  Core4TeamInput,
+  HealthReport,
   answer as answerQuestion,
+  core4Changes,
+  scoreCore4,
   buildAdvisorContext,
   costRecommendations,
   dimensionChanges,
@@ -34,12 +39,19 @@ import { collectLangfuse } from './engineeringIntelligence/langfuse';
 import { collectOpenCost } from './engineeringIntelligence/opencost';
 import { collectPrometheus } from './engineeringIntelligence/prometheus';
 import { collectTechInsights } from './engineeringIntelligence/techInsights';
+import { collectThroughput } from './engineeringIntelligence/throughput';
+import {
+  SurveyAggregateResponse,
+  collectSurvey,
+  teamInputs,
+} from './engineeringIntelligence/devexSurvey';
 import { getJson } from './engineeringIntelligence/source';
 import {
   ensureSchema,
   latestSnapshot,
   listSnapshots,
   saveSnapshot,
+  snapshotsSince,
 } from './engineeringIntelligence/store';
 
 // Engineering Intelligence — the API over the scoring engine.
@@ -97,6 +109,11 @@ export function viewsAreStale(
   return now - lastCollectedAt > refreshMinutes * 60_000 * 1.5;
 }
 const MAX_SNAPSHOTS = 200;
+
+/** How far back the Core 4 comparison reaches — a quarter. */
+const CORE4_BASELINE_DAYS = 90;
+/** The youngest snapshot a Core 4 movement may be measured against. */
+const CORE4_MIN_BASELINE_DAYS = 7;
 
 function parseWeights(raw: unknown): WeightOverrides | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
@@ -213,6 +230,12 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
         // the same catalog snapshot the platform figures came from.
         let owners: Record<string, string> = {};
 
+        // Team-level Core 4 inputs from the most recent collection. Set by the
+        // throughput and survey collectors, read once both have finished, so
+        // the Core 4 report is attached to the same snapshot as the scores.
+        let lastThroughputTeams: Core4TeamInput[] = [];
+        let lastSurvey: SurveyAggregateResponse | undefined;
+
         /**
          * `persist: false` is for on-demand view refreshes: the snapshot table
          * is the trend history, written once per interval by the scheduled
@@ -273,6 +296,30 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
             // held here because nothing else in this module reads it back —
             // unlike lastCost, this collector's output is samples only.
             enabled('litellm') ? () => collectLitellmSpend(ctx) : undefined,
+            // DX Core 4 inputs. Both collectors hold their team rows rather than
+            // emitting team-labelled samples: the scoring engine takes one
+            // sample per metric, so a per-team sample would be read as the
+            // organisation's figure.
+            enabled('devexSurvey')
+              ? async () => {
+                  const result = await collectSurvey({
+                    baseUrl: () => discovery.getBaseUrl('devex-survey'),
+                    token: () => serviceToken('devex-survey'),
+                  });
+                  lastSurvey = result.survey;
+                  return result;
+                }
+              : undefined,
+            enabled('throughput')
+              ? async () => {
+                  const result = await collectThroughput(ctx, {
+                    baseUrl: () => discovery.getBaseUrl('catalog'),
+                    token: () => serviceToken('catalog'),
+                  });
+                  lastThroughputTeams = result.teams ?? [];
+                  return result;
+                }
+              : undefined,
             enabled('techInsights')
               ? () =>
                   collectTechInsights({
@@ -284,6 +331,10 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           ].filter((c): c is () => Promise<any> => !!c);
 
           const outcome = await collectAndScore(collectors, { weights });
+          outcome.report.core4 = scoreCore4(outcome.samples, {
+            generatedAt: outcome.report.generatedAt,
+            teams: teamInputs(lastThroughputTeams, lastSurvey),
+          });
           lastSamples = outcome.samples;
           lastCollectedAt = Date.now();
           if (persist) await saveSnapshot(db as any, outcome.report);
@@ -325,6 +376,49 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
           const snapshot = await latestSnapshot(db as any);
           if (snapshot) return snapshot.report;
           return (await refresh()).report;
+        }
+
+        /**
+         * The Core 4 view: the current report's, the quarter-ago baseline's
+         * movement against it, and which survey cycle it reflects.
+         */
+        async function core4View(report: HealthReport) {
+          let core4: Core4Report | undefined = report.core4;
+          if (!core4) {
+            // A snapshot written before Core 4 existed. Score the in-memory
+            // samples instead of returning nothing until the next collection.
+            await ensureFreshViews();
+            core4 = scoreCore4(lastSamples, {
+              generatedAt: report.generatedAt,
+              teams: teamInputs(lastThroughputTeams, lastSurvey),
+            });
+          }
+          const since = new Date(
+            Date.parse(report.generatedAt) - CORE4_BASELINE_DAYS * 86_400_000,
+          ).toISOString();
+          // At least a week old: against a snapshot from half an hour ago every
+          // delta is noise, and a page showing "+0.3" invites a reading of it.
+          const latestBaseline = Date.parse(report.generatedAt) - CORE4_MIN_BASELINE_DAYS * 86_400_000;
+          const baseline = (await snapshotsSince(db as any, since, 50)).find(
+            s => s.report.core4 && Date.parse(s.capturedAt) <= latestBaseline,
+          );
+          return {
+            ...core4,
+            // Null until there is an earlier Core 4 snapshot to compare with —
+            // the same no-back-fill rule the executive report follows.
+            change: baseline
+              ? {
+                  since: baseline.capturedAt,
+                  sinceDays: Math.round(
+                    (Date.parse(report.generatedAt) - Date.parse(baseline.capturedAt)) / 86_400_000,
+                  ),
+                  areas: core4Changes(core4, baseline.report.core4!),
+                }
+              : null,
+            survey: lastSurvey?.cycle
+              ? { cycle: lastSurvey.cycle, responses: lastSurvey.org?.responses ?? 0, minResponses: lastSurvey.minResponses }
+              : null,
+          };
         }
 
         /** Collect for the in-memory views if they are stale; concurrent callers share one collection. */
@@ -413,6 +507,21 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
             // about the engineering organisation.
             cannotMeasure: evidenceGaps(report.dimensions),
             snapshotsAvailable: summaries.length,
+            core4: await core4View(report).then(
+              v => ({
+                areas: Object.values(v.areas).map(a => ({
+                  area: a.dimension,
+                  label: a.label,
+                  score: a.score,
+                  status: a.status,
+                  keyLabel: a.keyLabel,
+                  key: a.key?.value ?? null,
+                })),
+                change: v.change,
+                guardrail: v.guardrail,
+              }),
+              () => null,
+            ),
           });
         }));
 
@@ -506,6 +615,16 @@ export const engineeringIntelligencePlugin = createBackendPlugin({
             return;
           }
           res.json({ available: true, ...lastEvaluation });
+        }));
+
+        // GET /api/engineering-intelligence/core4
+        //
+        // DX Core 4 for leadership. Readable by backend callers as well as
+        // users, so the AI Assistant's idp-mcp-server can answer "how did
+        // Effectiveness move this quarter" from the same numbers the page shows.
+        router.get('/core4', route(async (req, res) => {
+          await httpAuth.credentials(req, { allow: ['user', 'service'] });
+          res.json(await core4View(await currentReport()));
         }));
 
         // GET /api/engineering-intelligence/ai-readiness

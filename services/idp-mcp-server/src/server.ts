@@ -480,6 +480,52 @@ export function createServer(agentId = 'unknown', userRef = '') {
     },
   );
 
+  // ── get_core4_report ──────────────────────────────────────────────────
+  // DX Core 4 from the Engineering Intelligence plugin — the same numbers the
+  // /core4 page shows, team-level only, with the response floor already applied.
+
+  server.tool(
+    'get_core4_report',
+    'DX Core 4 engineering productivity report (Speed, Effectiveness, Quality, Impact): each area\'s key metric, score and quarter-over-quarter movement, plus a per-team breakdown. Team-level only — never use it to evaluate individuals or set targets.',
+    {
+      team: z.string().optional().describe('Only return this team\'s row of the breakdown (catalog Group name, e.g. "payments")'),
+    },
+    async ({ team }) => {
+      const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'get_core4_report' });
+      agentToolCalls.inc({ server: SERVER_NAME, tool: 'get_core4_report', agent: agentId });
+      let outcome = 'success';
+      try {
+        const report = await fetchCatalog('/api/engineering-intelligence/core4') as {
+          generatedAt: string;
+          guardrail: string;
+          areas: Record<string, { label: string; score: number | null; status: string; keyLabel: string; key: { value: number } | null; notMeasured: unknown[] }>;
+          teams: Array<{ team: string }>;
+          change: unknown;
+          survey: unknown;
+        };
+        // Trimmed to what a model needs to answer: the evidence rows stay on the page.
+        const summary = {
+          generatedAt: report.generatedAt,
+          guardrail: report.guardrail,
+          areas: Object.values(report.areas).map(a => ({
+            area: a.label,
+            score: a.score,
+            status: a.status,
+            keyMetric: a.keyLabel,
+            keyValue: a.key?.value ?? null,
+            notMeasured: a.notMeasured,
+          })),
+          change: report.change,
+          survey: report.survey,
+          teams: team ? report.teams.filter(t => t.team === team) : report.teams,
+          ui_url: `${BACKSTAGE_EXTERNAL_URL}/core4`,
+        };
+        return { content: [{ type: 'text' as const, text: JSON.stringify(summary) }] };
+      } catch (err) { outcome = 'error'; throw err; }
+      finally { end(); toolCalls.inc({ server: SERVER_NAME, tool: 'get_core4_report', outcome }); }
+    },
+  );
+
   // ── ADP Phase 4 — HiTL approval gate (docs/agentic-platform.md) ──────────
   // These three tools proxy to approval-service. Bind them to any agent whose
   // other tools include a mutating action gated behind APPROVAL_SERVICE_URL

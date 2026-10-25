@@ -145,6 +145,20 @@ DEVEX_GAUGES = {
     "devex_build_failure_ratio":  "Failed CI runs as a fraction of runs that reached a verdict",
 }
 
+# Throughput — the DX Core 4 Speed key metric (diffs per engineer) is this sum
+# over a team's services divided by its catalog headcount, which the Engineering
+# Intelligence backend does; the exporter only counts. A count, not a mean, so it
+# is summed in the roll-up and pushed at zero: a repo that merged nothing this
+# week has a real throughput of zero, unlike a cycle time, which has no value.
+#
+# A fixed 7-day window rather than LOOKBACK_HOURS, so a quiet weekend does not
+# read as a team that stopped shipping. The page of 100 PRs bounds it: a repo
+# merging more than 100 a week is undercounted, and says so in the docs.
+DEVEX_COUNT_GAUGES = {
+    "devex_prs_merged_weekly":    "Pull requests merged in the trailing 7 days",
+}
+THROUGHPUT_WINDOW = timedelta(days=7)
+
 
 def get_recent_pull_requests(repo: str) -> list:
     """The most recently updated closed PRs.
@@ -182,6 +196,16 @@ def compute_pr_cycle_time(prs: list, since: datetime) -> float:
         created = datetime.fromisoformat(pr["created_at"].replace("Z", "+00:00"))
         durations.append((merged - created).total_seconds() / 3600.0)
     return sum(durations) / len(durations) if durations else 0.0
+
+
+def compute_prs_merged(prs: list, since: datetime) -> int:
+    """Pull requests merged at or after `since`. Closed-unmerged PRs do not count."""
+    count = 0
+    for pr in prs:
+        merged_at = pr.get("merged_at")
+        if merged_at and datetime.fromisoformat(merged_at.replace("Z", "+00:00")) >= since:
+            count += 1
+    return count
 
 
 def compute_ci_duration(runs: list) -> float:
@@ -289,7 +313,7 @@ def push_metrics(service: str, deploy_freq: float, lead_time: float, cfr: float,
           "Mean time to restore after a failed prod deploy (minutes)",
           ["service"], registry=registry).labels(service=service).set(mttr)
 
-    for name, help_text in DEVEX_GAUGES.items():
+    for name, help_text in {**DEVEX_GAUGES, **DEVEX_COUNT_GAUGES}.items():
         if devex and name in devex:
             Gauge(name, help_text, ["service"], registry=registry) \
                 .labels(service=service).set(devex[name])
@@ -331,6 +355,11 @@ def push_aggregate_metrics(repos: list, all_deploy_freq: list, all_lead_times: l
         if values:
             Gauge(name, help_text, ["service"], registry=registry) \
                 .labels(service="all-services").set(sum(values) / len(values))
+    for name, help_text in DEVEX_COUNT_GAUGES.items():
+        values = (all_devex or {}).get(name) or []
+        if values:
+            Gauge(name, help_text, ["service"], registry=registry) \
+                .labels(service="all-services").set(sum(values))
 
     push_to_gateway(PUSHGATEWAY_URL, job="dora-exporter",
                     grouping_key=grouping, registry=registry)
@@ -462,7 +491,7 @@ def main():
     all_lead_times:  list[float] = []
     all_cfr:         list[float] = []
     all_mttr:        list[float] = []
-    all_devex: dict[str, list[float]] = {name: [] for name in DEVEX_GAUGES}
+    all_devex: dict[str, list[float]] = {name: [] for name in {**DEVEX_GAUGES, **DEVEX_COUNT_GAUGES}}
 
     for repo in repos:
         log.info("Processing repo: %s", repo)
@@ -489,6 +518,8 @@ def main():
             cycle_time = compute_pr_cycle_time(merged, since)
             if cycle_time > 0:
                 devex["devex_pr_cycle_time_hours"] = cycle_time
+            devex["devex_prs_merged_weekly"] = compute_prs_merged(
+                merged, datetime.now(timezone.utc) - THROUGHPUT_WINDOW)
 
             push_metrics(repo, deploy_freq, lead_time, cfr, mttr, devex)
 

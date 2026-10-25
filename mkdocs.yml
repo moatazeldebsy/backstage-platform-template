@@ -97,6 +97,7 @@ nav:
     - Scoring: engineering-intelligence/scoring.md
     - Integrations: engineering-intelligence/integrations.md
     - AI Advisor: engineering-intelligence/ai-advisor.md
+    - DX Core 4: engineering-intelligence/core4.md
     - Roadmap: engineering-intelligence/roadmap.md
   - Quality & Security:
     - Shift-Left Quality: shift-left.md
