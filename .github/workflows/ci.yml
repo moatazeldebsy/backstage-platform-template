@@ -176,7 +176,7 @@ jobs:
             # What templates commit to this repo, and where it lands: the
             # templates themselves, the paths their PRs write, and everything
             # the checks read (chart, policies, XRDs, the scripts).
-            echo "platform-outputs=$(match '^(backstage/catalog/templates/|backstage/catalog/all-templates\.yaml$|terraform/infra/|services/[^/]+/(claims/|secrets/|helm-values-)|kubernetes/(teams|policies|namespaces)/|observability/slo/|helm/service-template/|aws/crossplane/compositions/|scripts/(render-template\.js|validate-platform-outputs\.py)$)')"
+            echo "platform-outputs=$(match '^(backstage/catalog/templates/|backstage/catalog/all-templates\.yaml$|terraform/infra/|services/[^/]+/(claims/|secrets/|helm-values-)|kubernetes/(teams|policies|namespaces)/|observability/slo/|helm/service-template/|aws/crossplane/compositions/|scripts/(render-template\.cjs|validate-platform-outputs\.py)$)')"
             # Sloth sources, their committed output, and the script that
             # regenerates one from the other.
             echo "slo=$(match '^(observability/slo/|scripts/generate-slo-rules\.sh$)')"
@@ -867,7 +867,7 @@ jobs:
         with:
           node-version: '24'
 
-      # Only the two modules render-template.js needs, at the versions Backstage
+      # Only the two modules render-template.cjs needs, at the versions Backstage
       # itself resolves — not a full `yarn install` of backstage/app.
       - name: Install template renderer deps
         run: npm install --prefix "$RUNNER_TEMP/render" --no-save --no-audit --no-fund nunjucks@3.2.4 yaml@2.8.3

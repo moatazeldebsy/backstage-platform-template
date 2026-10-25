@@ -10,7 +10,7 @@
 // repo URL, ...), then the overrides file. Steps that call live actions
 // (publish:*, idp:*, catalog:*) are not run; their outputs render empty.
 //
-// usage: node scripts/render-template.js <templatesDir> <template> <overrides.json|-> <outDir>
+// usage: node scripts/render-template.cjs <templatesDir> <template> <overrides.json|-> <outDir>
 //
 // Needs `nunjucks` and `yaml`, resolved from RENDER_NODE_PATH (CI installs
 // them there) or backstage/app/node_modules.
@@ -25,7 +25,7 @@ const yaml = need('yaml');
 
 const [tdir, name, overridesFile, outDir] = process.argv.slice(2);
 if (!outDir) {
-  console.error('usage: render-template.js <templatesDir> <template> <overrides.json|-> <outDir>');
+  console.error('usage: render-template.cjs <templatesDir> <template> <overrides.json|-> <outDir>');
   process.exit(2);
 }
 const root = path.join(tdir, name);
