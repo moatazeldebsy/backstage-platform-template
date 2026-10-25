@@ -182,9 +182,12 @@ catalog:
       target: /catalog/qa-catalog.yaml
       rules:
         - allow: [Component, Resource]
-    # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ at /)
+    # System entity at repo root (uses dir:. for techdocs → mkdocs.yml + docs/ under /idp)
     - type: file
-      target: /catalog-info.yaml
+      # /idp is a writable copy of the repo root's catalog-info.yaml, mkdocs.yml
+      # and docs/ (see local/backstage/docker-compose.yml) — TechDocs 2.x needs to
+      # write to mkdocs.yml before it builds.
+      target: /idp/catalog-info.yaml
       rules:
         - allow: [System]
     # API definitions
