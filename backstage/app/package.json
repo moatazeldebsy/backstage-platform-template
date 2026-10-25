@@ -36,8 +36,8 @@
     "plugins/*"
   ],
   "devDependencies": {
-    "@backstage/cli": "^0.36.6",
-    "@backstage/cli-defaults": "^0.1.6",
+    "@backstage/cli": "^0.36.7",
+    "@backstage/cli-defaults": "^0.1.7",
     "@backstage/e2e-test-utils": "^0.1.2",
     "@jest/environment-jsdom-abstract": "^30.0.0",
     "@playwright/test": "^1.32.3",
@@ -71,6 +71,7 @@
     "postcss": "^8.5.18",
     "@babel/core": "^7.29.6",
     "launch-editor": "^2.14.2",
+    "zod@npm:^3.20.0": "^4.6.7",
     "zod@npm:^4.0.0": "^4.6.7",
     "zod@npm:^3.25.76 || ^4.0.0": "^4.6.7",
     "markdown-it": "^14.3.3",
