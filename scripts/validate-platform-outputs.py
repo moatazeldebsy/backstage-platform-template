@@ -6,7 +6,7 @@ Terraform modules, Crossplane claims, ExternalSecrets, team namespaces, SLOs)
 were only ever checked as template source. Rendered, several were broken:
 Deployments with no containerPort, invalid Terraform, PRs that overwrote the
 repo's own README.md and Terraform root, and files written where nothing
-applies them. This renders each such template with scripts/render-template.js
+applies them. This renders each such template with scripts/render-template.cjs
 and checks the result the way the cluster and CI would, then runs the same
 checks over the committed paths those PRs land in:
 
@@ -21,7 +21,7 @@ checks over the committed paths those PRs land in:
               kubernetes/policies/ (services/*/helm-values-{aws,local}.yaml)
   rollout     helm-values-rollout-<env>.yaml uses an env an ApplicationSet loads
 
-Needs node (+ nunjucks and yaml, see render-template.js), terraform, helm,
+Needs node (+ nunjucks and yaml, see render-template.cjs), terraform, helm,
 kubeconform, gator, and python3 with PyYAML and jsonschema on PATH.
 
 usage: python3 scripts/validate-platform-outputs.py [--only TEMPLATE ...] [--skip-committed]
@@ -126,7 +126,7 @@ def render(name: str, work: Path) -> Path | None:
     out = work / name
     ov = work / f"{name}.overrides.json"
     ov.write_text(json.dumps(OVERRIDES.get(name, {})))
-    r = run(["node", str(REPO / "scripts/render-template.js"), str(TEMPLATES), name, str(ov), str(out)])
+    r = run(["node", str(REPO / "scripts/render-template.cjs"), str(TEMPLATES), name, str(ov), str(out)])
     if r.returncode:
         fail(name, f"render failed: {r.stderr.strip()[:400]}")
         return None

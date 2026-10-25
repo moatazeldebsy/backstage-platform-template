@@ -148,21 +148,35 @@ services:
       # tech-radar.json served as a static asset so the tech-radar backend can read it
       # via http://localhost:7007/tech-radar.json without needing a GitHub token
       - ../../backstage/catalog/tech-radar.json:/app/packages/app/dist/tech-radar.json:ro
-      # repo root catalog-info.yaml — System entity with dir:. for techdocs
-      - ../../catalog-info.yaml:/catalog-info.yaml:ro
-      # repo root mkdocs.yml + docs/ — needed by internal-developer-platform System entity (dir:.)
-      - ../../mkdocs.yml:/mkdocs.yml:ro
-      - ../../docs:/docs:ro
-      # services/ — needed so TechDocs can resolve dir: refs in entity files
-      - ../../services:/services:ro
+      # Sources for dir:-based TechDocs, mounted read-only under /src and copied
+      # into the writable tmpfs mounts below at startup (see `command:`).
+      # TechDocs 2.x rewrites mkdocs.yml in place before every build (it
+      # sanitises the file and throws if it cannot write), so building straight
+      # from a :ro mount fails with EROFS, and from a writable bind mount it
+      # would rewrite the repo's own files. Copies give it something to write to.
+      # The catalog reads these entity files from the copies too, so host edits
+      # under services/ or test-suites/ need a `restart backstage` to show up.
+      #
+      # repo root catalog-info.yaml + mkdocs.yml + docs/ — the
+      # internal-developer-platform System entity (dir:.), served from /idp
+      - ../../catalog-info.yaml:/src/idp/catalog-info.yaml:ro
+      - ../../mkdocs.yml:/src/idp/mkdocs.yml:ro
+      - ../../docs:/src/idp/docs:ro
+      # services/ — dir: refs in service entity files
+      - ../../services:/src/services:ro
       # test-suites/ — catalog-info.yaml entries for eval suites
-      - ../../test-suites:/test-suites:ro
+      - ../../test-suites:/src/test-suites:ro
       # idp:deploy-local — helm chart and kubeconfig
       - ../../helm/service-template:/helm/service-template:ro
       - ~/.kube/config:/home/node/.kube/config:ro
       # Docker socket — required for idp:seed-image action to tag & push
       # placeholder images to the local Kind registry (localhost:5003)
       - /var/run/docker.sock:/var/run/docker.sock
+    # Writable copies of the /src trees above, owned by the `node` user.
+    tmpfs:
+      - /idp:uid=1000,gid=1000,mode=0755
+      - /services:uid=1000,gid=1000,mode=0755
+      - /test-suites:uid=1000,gid=1000,mode=0755
     # Rewrite 127.0.0.1 → host.docker.internal in kubeconfig so kubectl can
     # reach the Kind API server running on the Mac host from inside Docker.
     command:
@@ -173,6 +187,10 @@ services:
           -e 's/127\.0\.0\.1/host.docker.internal/g' \
           -e 's/certificate-authority-data:.*/insecure-skip-tls-verify: true/' \
           /home/node/.kube/config > /tmp/kubeconfig &&
+        for d in idp services test-suites; do
+          tar -C /src/$$d --exclude=node_modules --exclude=dist --exclude=.venv \
+            --exclude=coverage --exclude=__pycache__ -cf - . | tar -C /$$d -xf - || exit 1;
+        done &&
         if [ -n "${GITHUB_ORG}" ] && [ "${GITHUB_ORG}" != "moatazeldebsy" ]; then
           find /catalog -name "*.yaml" \
             -exec sed -i "s/moatazeldebsy/${GITHUB_ORG}/g" {} \;
