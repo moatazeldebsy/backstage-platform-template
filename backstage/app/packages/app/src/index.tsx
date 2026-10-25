@@ -1,4 +1,6 @@
 import '@backstage/cli/asset-types';
+// First, before anything that may call crypto.randomUUID — see the file header.
+import './randomUUIDPolyfill';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import '@backstage/ui/css/styles.css';
