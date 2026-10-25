@@ -362,6 +362,51 @@ describe('catalog_semantic_search', () => {
   });
 });
 
+describe('get_core4_report', () => {
+  const report = {
+    generatedAt: '2026-10-17T12:00:00.000Z',
+    guardrail: 'Team-level only.',
+    areas: {
+      speed: { label: 'Speed', score: 71, status: 'ok', keyLabel: 'Merged PRs per engineer per week', key: { value: 2.8 }, notMeasured: [], evidence: [{ metric: 'x' }] },
+      effectiveness: { label: 'Effectiveness', score: null, status: 'insufficient-evidence', keyLabel: 'Developer Experience Index (platform)', key: null, notMeasured: [] },
+    },
+    teams: [{ team: 'payments', dxi: 70 }, { team: 'search', dxi: null }],
+    change: null,
+    survey: null,
+  };
+
+  it('summarises areas with key values and keeps unscored areas null', async () => {
+    fetchMock().mockResolvedValueOnce(makeResponse(report));
+    const client = await buildClient();
+    const parsed = parseResult(await client.callTool({ name: 'get_core4_report', arguments: {} }) as Parameters<typeof parseResult>[0]) as {
+      areas: Array<{ area: string; keyValue: number | null; score: number | null }>;
+      teams: unknown[];
+      guardrail: string;
+    };
+    expect(parsed.areas).toEqual([
+      expect.objectContaining({ area: 'Speed', keyValue: 2.8, score: 71 }),
+      expect.objectContaining({ area: 'Effectiveness', keyValue: null, score: null }),
+    ]);
+    expect(parsed.teams).toHaveLength(2);
+    expect(parsed.guardrail).toBe('Team-level only.');
+    expect(fetchMock().mock.calls[0][0]).toContain('/api/engineering-intelligence/core4');
+  });
+
+  it('filters the team breakdown when a team is given', async () => {
+    fetchMock().mockResolvedValueOnce(makeResponse(report));
+    const client = await buildClient();
+    const parsed = parseResult(await client.callTool({ name: 'get_core4_report', arguments: { team: 'payments' } }) as Parameters<typeof parseResult>[0]) as { teams: Array<{ team: string }> };
+    expect(parsed.teams).toEqual([{ team: 'payments', dxi: 70 }]);
+  });
+
+  it('returns isError when the backend refuses', async () => {
+    fetchMock().mockResolvedValueOnce(makeResponse('Unauthorized', 401));
+    const client = await buildClient();
+    const result = await client.callTool({ name: 'get_core4_report', arguments: {} }) as { isError?: boolean };
+    expect(result.isError).toBe(true);
+  });
+});
+
 // ── Error-path coverage ───────────────────────────────────────────────────────
 // These tests verify that when upstream HTTP calls fail, tools return isError:true
 // (MCP SDK wraps the thrown exception rather than propagating it as a rejection).

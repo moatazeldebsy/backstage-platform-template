@@ -199,6 +199,36 @@ def test_devex_gauge_names_match_the_collector(mod):
     }
 
 
+@BOTH
+def test_throughput_gauge_name_matches_the_collector(mod):
+    # Queried by engineeringIntelligence/throughput.ts for the Core 4 Speed key
+    # metric. Kept apart from DEVEX_GAUGES because it is summed, not averaged.
+    assert set(mod.DEVEX_COUNT_GAUGES) == {"devex_prs_merged_weekly"}
+    assert not set(mod.DEVEX_COUNT_GAUGES) & set(mod.DEVEX_GAUGES)
+
+
+# ── merged pull request count (Core 4 throughput) ─────────────────────────────
+
+
+@BOTH
+def test_prs_merged_counts_merges_inside_the_window(mod):
+    week_ago = NOW - timedelta(days=7)
+    prs = [
+        pr(NOW - timedelta(days=2), NOW - timedelta(days=1)),  # in
+        pr(NOW - timedelta(days=9), NOW - timedelta(days=6)),  # in
+        pr(NOW - timedelta(days=20), NOW - timedelta(days=8)),  # merged before the window
+        pr(NOW - timedelta(days=1), None),  # closed unmerged
+    ]
+    assert mod.compute_prs_merged(prs, week_ago) == 2
+
+
+@BOTH
+def test_prs_merged_is_a_real_zero(mod):
+    # Unlike cycle time, a count has a value when nothing merged: zero. The
+    # exporter pushes it, so a team that shipped nothing reads as zero, not absent.
+    assert mod.compute_prs_merged([], NOW - timedelta(days=7)) == 0
+
+
 # ── the drift guard ───────────────────────────────────────────────────────────
 
 
@@ -227,6 +257,10 @@ def test_both_exporters_compute_devex_identically():
     assert local.compute_ci_duration(runs) == aws.compute_ci_duration(runs)
     assert local.compute_build_failure_ratio(runs) == aws.compute_build_failure_ratio(runs)
     assert local.DEVEX_GAUGES == aws.DEVEX_GAUGES
+    week_ago = NOW - timedelta(days=7)
+    assert local.compute_prs_merged(prs, week_ago) == aws.compute_prs_merged(prs, week_ago)
+    assert local.DEVEX_COUNT_GAUGES == aws.DEVEX_COUNT_GAUGES
+    assert local.THROUGHPUT_WINDOW == aws.THROUGHPUT_WINDOW
 
 
 def test_pull_request_query_is_bounded():

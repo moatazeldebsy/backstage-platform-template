@@ -83,6 +83,29 @@ export async function listSnapshots(
   }));
 }
 
+/**
+ * Snapshots captured at or after `since`, oldest first.
+ *
+ * The quarter-over-quarter baseline for Core 4: "the first snapshot after 90
+ * days ago". `listSnapshots` cannot answer that — at a 30-minute refresh its
+ * 200-row cap reaches back about four days.
+ */
+export async function snapshotsSince(
+  db: Knexish,
+  since: string,
+  limit: number,
+): Promise<Snapshot[]> {
+  const rows = await db('ei_snapshots')
+    .where('captured_at', '>=', since)
+    .orderBy('captured_at', 'asc')
+    .limit(limit)
+    .select('captured_at', 'report');
+  return (rows ?? []).map((row: any) => ({
+    capturedAt: toIso(row.captured_at),
+    report: parseReport(row.report),
+  }));
+}
+
 function toIso(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
   return String(value);

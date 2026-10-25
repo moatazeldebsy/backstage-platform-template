@@ -24,6 +24,7 @@ import { themesModule } from './modules/themes';
 import { scaffolderFieldsModule } from './modules/scaffolderFields';
 import { customPagesPlugin } from './extensions';
 import { engineeringIntelligencePlugin } from './engineeringIntelligence';
+import { devexSurveyPlugin } from './devexSurvey';
 
 // Override the default sign-in page to add GitHub provider alongside Guest.
 // Using createFrontendModule (targeting pluginId: 'app') avoids the version
@@ -57,6 +58,7 @@ export default createApp({
   features: [
     customPagesPlugin,
     engineeringIntelligencePlugin,
+    devexSurveyPlugin,
     catalogPlugin,
     catalogGraphPlugin,
     scaffolderPlugin,

@@ -8,6 +8,7 @@
 // tier logic exists in three places with three different thresholds (see
 // docs/engineering-intelligence/scoring.md#why-a-separate-package).
 
+import type { Core4Report } from './core4';
 import type { MaturityAssessment } from './maturity';
 
 /** The seven dimensions of the Engineering Health model. */
@@ -138,4 +139,12 @@ export interface HealthReport {
    * from a report that did not store it.
    */
   maturity: MaturityAssessment;
+  /**
+   * The DX Core 4 view of the same collection. Optional because it is attached
+   * by the backend (it needs team data the engine does not collect) and because
+   * snapshots written before it existed have none. Stored on the report for the
+   * same reason maturity is: a quarter-over-quarter comparison needs last
+   * quarter's figure, and nothing else retains one.
+   */
+  core4?: Core4Report;
 }

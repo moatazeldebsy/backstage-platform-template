@@ -168,6 +168,7 @@ responding, so defaults are pre-filled without asking.
 | Domain | Tools |
 |--------|-------|
 | Platform / IDP | `catalog_search`, `catalog_semantic_search`, `get_service_metrics`, `list_templates`, `get_template_params`, `scaffold_service`, `list_deployments` |
+| Engineering productivity | `get_core4_report` |
 | User memory | `get_user_memory`, `set_user_memory` |
 | QA / testing | `list_test_suites`, `scaffold_test_suite`, `search_test_catalog`, `get_test_metrics` |
 | Contract testing | `register_contract`, `get_contract`, `list_contracts`, `generate_contract_tests`, `validate_compatibility`, `detect_breaking_changes`, `get_compatibility_report`, `fetch_service_contract`, `auto_discover_contracts` |
@@ -259,6 +260,7 @@ created per request (`createServer()` factory).
 | `get_template_params` | Backstage catalog entity by name | Returns full parameter schema for a template |
 | `scaffold_service` | Backstage scaffolder v2 tasks API | Auto-builds repoUrl; polls for up to 3 min; supports `dry_run: true` |
 | `list_deployments` | Kubernetes apps/v1 Deployments | Defaults to namespace `services` |
+| `get_core4_report` | Backstage `/api/engineering-intelligence/core4` | DX Core 4 areas, key metrics, movement and team rows; optional `team` filter. Team-level only |
 | `get_user_memory` | Kubernetes ConfigMap in `kagent` ns | Reads `user-memory-<userRef>` preferences JSON |
 | `set_user_memory` | Kubernetes ConfigMap in `kagent` ns | Patch-merges key/value into preferences JSON |
 

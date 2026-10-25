@@ -5,6 +5,7 @@ import {
   createRouteRef,
 } from '@backstage/frontend-plugin-api';
 import InsightsIcon from '@material-ui/icons/Assessment';
+import DashboardIcon from '@material-ui/icons/Dashboard';
 
 // The first custom frontend plugin in this repo to live outside extensions.tsx.
 //
@@ -35,11 +36,27 @@ const engineeringIntelligencePage = PageBlueprint.make({
   },
 });
 
+export const core4RouteRef = createRouteRef();
+
+// The leadership view of the same collection, in DX Core 4 terms. Its own page
+// rather than a section of the one above: that page is for the platform team
+// working the evidence, this one is the four numbers leadership reviews.
+const core4Page = PageBlueprint.make({
+  name: 'core4',
+  params: {
+    title: 'DX Core 4',
+    icon: <DashboardIcon fontSize="inherit" />,
+    path: '/core4',
+    routeRef: core4RouteRef,
+    loader: () => import('./Core4Page').then(m => <m.Core4Page />),
+  },
+});
+
 // The explicit FrontendPlugin annotation mirrors customPagesPlugin's, and for
 // the same reason: without it TypeScript emits a nondeterministic TS2742 from a
 // hoisted nested @backstage/catalog-model.
 export const engineeringIntelligencePlugin: FrontendPlugin = createFrontendPlugin({
   pluginId: 'engineering-intelligence',
-  routes: { root: engineeringIntelligenceRouteRef },
-  extensions: [engineeringIntelligencePage],
+  routes: { root: engineeringIntelligenceRouteRef, core4: core4RouteRef },
+  extensions: [engineeringIntelligencePage, core4Page],
 });

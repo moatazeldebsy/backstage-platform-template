@@ -1,9 +1,9 @@
 # Engineering Intelligence — Roadmap
 
-Thirteen phases. Each one names its data blocker, because on this platform the
+Fourteen phases. Each one names its data blocker, because on this platform the
 blocker is almost never the code.
 
-**Shipped: all thirteen phases, 0–12.**
+**Shipped: all fourteen phases, 0–13.**
 
 ---
 
@@ -326,6 +326,18 @@ into a storage key.
 
 **No artificial limits are introduced.** Nothing here gates a feature on tenancy,
 and the open-source platform stays fully usable single-tenant.
+
+## Phase 13 — DX Core 4 ✅
+
+A leadership view in [DX Core 4](core4.md) terms (Speed, Effectiveness, Quality, Impact) at
+`/core4`, plus the platform's first **self-reported** data: a quarterly DevEx survey at
+`/devex-survey`. Before this, Effectiveness and Impact had no source at all.
+
+It is a third model over the same engine, like AI readiness, with two differences: it has
+no overall score, and each area leads with its key metric in that metric's own units. One new
+system series, `devex_prs_merged_weekly`, is joined to catalog Group headcount to give
+merged PRs per engineer. Both that figure and the survey results are withheld for groups under
+five.
 
 ---
 
