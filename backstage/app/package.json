@@ -107,7 +107,7 @@
     "tough-cookie": "^5.0.0",
     "cookie": "^0.7.2",
     "file-type": "^21.3.1",
-    "follow-redirects": "^1.16.1",
+    "follow-redirects": "^1.16.2",
     "@octokit/request": "^8.4.1",
     "@octokit/plugin-paginate-rest": "^9.2.2",
     "@octokit/request-error": "^5.1.1",
