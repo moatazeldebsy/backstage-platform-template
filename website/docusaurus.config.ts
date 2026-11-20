@@ -75,6 +75,7 @@ const config: Config = {
     },
     navbar: {
       title: 'Internal Developer Platform',
+      logo: {alt: '', src: 'img/logo.svg'},
       items: [
         {type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs'},
         {
