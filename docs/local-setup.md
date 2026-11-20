@@ -25,7 +25,7 @@ docker info     # Docker running
 > else in the local setup needs it: CI runs 3.12/3.13 and the exporter CronJobs
 > use `python:3.12-slim` / `python:3.13-slim`.
 
-## Machine requirements — and what to do if you don't have them
+## Machine requirements — and what to do if you don't have them {#machine-requirements-and-what-to-do-if-you-dont-have-them}
 
 The full platform is ~90 pods. What it actually consumes once settled, measured
 with `kubectl top` on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-22):

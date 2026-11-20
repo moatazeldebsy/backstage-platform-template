@@ -406,7 +406,7 @@ helm upgrade --install qa-mcp-server helm/service-template \
 
 ---
 
-## Phase 4 — AWS setup (`bootstrap.sh`)
+## Phase 4 — AWS setup (`bootstrap.sh`) {#phase-4-aws-setup-bootstrapsh}
 
 > For a comprehensive list of issues that were present in earlier versions and are now patched, see [docs/DEPLOYMENT_GUIDE.md — Known Issues & Fixes](DEPLOYMENT_GUIDE.md#known-issues-fixes). This section covers issues that can still occur on a fresh deployment.
 
@@ -839,7 +839,7 @@ helm upgrade --install <service-name> helm/service-template \
 
 ## Team Infrastructure (v0.4.0+)
 
-### Symptom: Crossplane claim rejected — "owner is required"
+### Symptom: Crossplane claim rejected — "owner is required" {#symptom-crossplane-claim-rejected-owner-is-required}
 
 Kyverno validate policy `crossplane-require-cost-tags` is blocking the claim.
 
@@ -878,7 +878,7 @@ set `validationFailureAction: Audit` and remediate claims before re-enforcing.
 
 ---
 
-### Symptom: `ExternalSecret` error — "SecretStore not found: team-<name>-secrets"
+### Symptom: `ExternalSecret` error — "SecretStore not found: team-<name>-secrets" {#symptom-externalsecret-error-secretstore-not-found-team-secrets}
 
 The namespace-scoped SecretStore was not created (IAM role ARN was blank when the team was scaffolded).
 

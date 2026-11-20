@@ -52,7 +52,7 @@ grant.
 | **AI & ML** *(optional)* | The **AI Gateway** is the single entry point: agentgateway routes every MCP tool call and every model call, and LiteLLM behind it serves Anthropic and Bedrock with virtual keys and spend tracking. Behind it: 9 KAgent agents, 8 MCP servers, MLflow, Ollama, Langfuse and DeepEval |
 | **Observability** *(optional)* | Prometheus, Grafana, Loki, Tempo, Alertmanager; DORA, flaky-test and Tech Insights exporters; OpenCost and Sloth SLOs; Engineering Intelligence scoring |
 
-The diagram is generated from [`diagrams/platform-planes.html`](diagrams/README.md), so update it there when a plane changes.
+The diagram is generated from [`diagrams/platform-planes.html`](https://github.com/moatazeldebsy/backstage-platform-template/blob/main/docs/diagrams/README.md), so update it there when a plane changes.
 
 ## Local vs AWS at a glance
 

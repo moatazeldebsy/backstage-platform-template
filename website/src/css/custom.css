@@ -1,0 +1,50 @@
+/*
+ * Brand tokens carried over from the old MkDocs skin (docs/stylesheets/extra.css):
+ * brand blue #1f3bd6, Inter for text, JetBrains Mono for code.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --ifm-color-primary: #1f3bd6;
+  --ifm-color-primary-dark: #1c35c1;
+  --ifm-color-primary-darker: #1a32b6;
+  --ifm-color-primary-darkest: #1730b3;
+  --ifm-color-primary-light: #3550e2;
+  --ifm-color-primary-lighter: #4a62e8;
+  --ifm-color-primary-lightest: #6a7fec;
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  --ifm-heading-font-weight: 700;
+  --ifm-code-font-size: 90%;
+  --ifm-background-color: #ffffff;
+
+  --docusaurus-highlighted-code-line-bg: rgba(31, 59, 214, 0.07);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #7c93ff;
+  --ifm-color-primary-dark: #5e7aff;
+  --ifm-color-primary-darker: #4f6dff;
+  --ifm-color-primary-darkest: #2246ff;
+  --ifm-color-primary-light: #9aacff;
+  --ifm-color-primary-lighter: #a3b3ff;
+  --ifm-color-primary-lightest: #c7d1ff;
+
+  --ifm-background-color: #1b1b1d;
+
+  --docusaurus-highlighted-code-line-bg: rgba(124, 147, 255, 0.12);
+}
+
+.markdown h1:first-child {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.markdown img {
+  border-radius: 8px;
+}
+
+.markdown details {
+  margin-bottom: var(--ifm-spacing-vertical);
+}

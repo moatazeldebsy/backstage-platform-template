@@ -833,7 +833,7 @@ tool calls inside each agent run.
 On by default on both targets, so local matches what you ship. The chart brings
 Postgres, ClickHouse, Valkey and MinIO with it (6 pods, ~2.4Gi), which is a real
 cost on a single-node Kind cluster — see
-[docs/local-setup.md](local-setup.md#what-runs-where-and-what-it-costs):
+[docs/local-setup.md](local-setup.md#adding-it-up):
 
 ```bash
 ./scripts/bootstrap-ai.sh                 # local: Langfuse included
@@ -1020,7 +1020,7 @@ for them:
 
 Re-running **prunes** agents outside the selection, so `--agents idp` on a cluster
 that has all nine will remove the other eight. Each agent is one pod; see
-[Local Setup](local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them)
+[Local Setup](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them)
 for why that matters on a small machine, and
 [Scripts Reference](scripts-reference.md#bootstrap-aish-flags) for the full flag list.
 

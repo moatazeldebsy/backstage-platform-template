@@ -102,7 +102,7 @@ in the docs that mentions a `bootstrap-ai.sh` flag should defer to this table.
 
 | Flag | Default | What it does |
 |---|---|---|
-| `--agents <list>` | `idp,qa,release,cost,platform,contract` | Comma-separated KAgent agents to install; each is one pod, so this is the main lever on a small machine. Special values: `all` (all nine — adds `incident`, `security`, `onboarding`), `none` (KAgent runtime and UI, zero agent pods), `list` (print the available agents and exit). Re-running **prunes** agents outside the selection. See [Local Setup](local-setup.md#machine-requirements--and-what-to-do-if-you-dont-have-them). |
+| `--agents <list>` | `idp,qa,release,cost,platform,contract` | Comma-separated KAgent agents to install; each is one pod, so this is the main lever on a small machine. Special values: `all` (all nine — adds `incident`, `security`, `onboarding`), `none` (KAgent runtime and UI, zero agent pods), `list` (print the available agents and exit). Re-running **prunes** agents outside the selection. See [Local Setup](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them). |
 | `--adp` | off | Also install the Agentic Development Platform — dev-workflow and ops agents behind a human-in-the-loop approval gate. See [Agentic Platform](agentic-platform.md). |
 | `--ollama` | off | Run the agents against a local Ollama model instead of Anthropic, so the stack works with no `ANTHROPIC_API_KEY`. See [AI Assistant](ai-assistant.md). |
 | `--gateway` | on | Install the AI Gateway (agentgateway, standalone). Two things run through it: **tools** — all eight MCP servers multiplexed at `ai-gateway.ml-platform.svc.cluster.local:3000/mcp`, tool names unprefixed — and **model calls**, served natively at `/v1/messages` (`kubernetes/kagent/modelconfig*.yaml` point `anthropic.baseUrl` here), which it now forwards to LiteLLM rather than calling Anthropic directly (see `--litellm` below). **On by default**; without it agents have neither tools nor a model. ~9Mi working set measured. Its admin UI is published locally at `http://ai-gateway.idp.local` (`/ui`, `/config_dump`) and is deliberately not ingressed on AWS. Unreachable MCP targets are skipped rather than failing the session, so the gateway can be Ready while serving fewer tools than expected — the bootstrap and `validate-deployment.sh` both report how many resolve. See [ADR-0007](design/adr-0007-ai-gateway.md). |
@@ -140,7 +140,7 @@ entry points, which is why they are absent from the tables above.
 | `validate-mcp-tool-names.py` | CI gate — MCP tool names must be unique across all servers. The AI Gateway federates with `prefixMode: never`, and a collision does not error: the gateway routes by name and one server silently wins. |
 | `sync-mcp-common.sh` | Pushes `services/mcp-common/src/` out to every `services/*-mcp-server/src/`. Edit the mcp-common copy, run this, commit the set. `--check` writes nothing and exits 1 on drift — that is what the `mcp-telemetry-drift` CI job runs. |
 
-## Re-running the bootstrap scripts — caching and parallelism
+## Re-running the bootstrap scripts — caching and parallelism {#re-running-the-bootstrap-scripts-caching-and-parallelism}
 
 `bootstrap-local.sh`, `bootstrap.sh` and `bootstrap-ai.sh` are all designed to be re-run. They skip work they
 can prove is unchanged and overlap the work that remains, so a re-run against a

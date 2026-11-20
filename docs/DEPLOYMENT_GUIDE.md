@@ -11,11 +11,11 @@
 2. [Deployment Steps](#deployment-steps)
 3. [Post-Deployment Validation](#post-deployment-validation)
 4. [Adding AWS CD to a Scaffolded Service](#adding-aws-cd-to-a-scaffolded-service)
-5. [Known Issues & Fixes](#known-issues--fixes)
+5. [Known Issues & Fixes](#known-issues-fixes)
 6. [Troubleshooting](#troubleshooting)
 7. [Cost Optimization](#cost-optimization)
 8. [Production Hardening](#production-hardening)
-9. [Cleanup & Destroy](#cleanup--destroy)
+9. [Cleanup & Destroy](#cleanup-destroy)
 
 ---
 
@@ -336,7 +336,7 @@ only the platform repository and carries near-admin permissions.
 
 ---
 
-## Known Issues & Fixes
+## Known Issues & Fixes {#known-issues-fixes}
 
 All issues below are **already fixed in the codebase**. This section is history, not
 live advice — it is here so a symptom on an older checkout is searchable.
@@ -1008,7 +1008,7 @@ EOF
 
 ---
 
-## Cleanup & Destroy
+## Cleanup & Destroy {#cleanup-destroy}
 
 ```bash
 # Safe teardown — runs all phases in the correct order

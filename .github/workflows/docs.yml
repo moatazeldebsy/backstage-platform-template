@@ -1,36 +1,63 @@
-name: Deploy Docs to GitHub Pages
+name: Docs site (Docusaurus)
 
+# Builds the public docs site from docs/ with Docusaurus (website/). Pull
+# requests only build it, which also fails on broken links; pushes to main
+# publish it to the gh-pages branch. mkdocs.yml is now only the Backstage
+# TechDocs config, checked by the techdocs-build job in ci.yml.
 on:
   push:
     branches:
       - main
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
-      - 'mkdocs.site.yml'
+      - 'website/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'website/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          python-version: '3.12'
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
 
-      # Same versions as the techdocs-build job in ci.yml (the Backstage image's),
-      # so a page that renders here also renders in the Backstage Docs tab.
-      - name: Install MkDocs dependencies
-        run: pip install mkdocs==1.6.1 mkdocs-techdocs-core==1.7.1 mkdocs-material==9.7.7
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
 
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force --clean -f mkdocs.site.yml
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        # deploy clones the repo into a temp dir, where checkout's per-repo
+        # credential header doesn't apply, so pass the token explicitly.
+        env:
+          GIT_USER: x-access-token
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npx docusaurus deploy --skip-build
