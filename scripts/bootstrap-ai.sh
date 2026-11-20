@@ -903,6 +903,33 @@ fi
 # runs: the failure is otherwise several minutes in, at the CRD install.
 ensure_docker_cred_helper
 
+# kubectl with no current-context silently falls back to localhost:8080, so the
+# first `kubectl apply` fails with a confusing "failed to download openapi ...
+# connection refused" error after the background image builds already started.
+# Locally, select the cluster's context the same way bootstrap-local.sh does.
+# On AWS, never switch automatically — only fail with the fix.
+if [[ "$DEPLOY_MODE" == "aws" ]]; then
+  _ctx_hint="aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION:-us-east-1}"
+else
+  if [[ "${_provider:-kind}" == "kind" ]]; then
+    _want_ctx="kind-${CLUSTER_NAME}"
+    _ctx_hint="kind export kubeconfig --name ${CLUSTER_NAME}"
+  else
+    _want_ctx="rancher-desktop"
+    _ctx_hint="start Rancher Desktop, then kubectl config use-context rancher-desktop"
+  fi
+  if [[ "$(kubectl config current-context 2>/dev/null)" != "$_want_ctx" ]]; then
+    kubectl config use-context "$_want_ctx" &>/dev/null || \
+      die "kubectl context '${_want_ctx}' not found in your kubeconfig. Fix with: ${_ctx_hint}"
+    info "Switched kubectl context to ${_want_ctx}"
+  fi
+fi
+if ! _current_ctx=$(kubectl config current-context 2>/dev/null); then
+  die "kubectl has no current context set, so it cannot reach any cluster. Fix with: ${_ctx_hint}"
+fi
+kubectl cluster-info --request-timeout=10s &>/dev/null || \
+  die "kubectl context '${_current_ctx}' is not reachable. If that is the wrong cluster, fix with: ${_ctx_hint}"
+
 info "Starting AI platform bootstrap (Claude API, mode=${DEPLOY_MODE})..."
 echo ""
 
