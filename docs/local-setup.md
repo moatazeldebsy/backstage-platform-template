@@ -1,244 +1,96 @@
 # Local Setup (Kind)
 
-Run the full IDP platform on your laptop — no AWS account required.
+Run the full platform on your laptop. No AWS account needed.
 
 ## Prerequisites
 
 ```bash
-# macOS
 brew install kind kubectl helm docker
-
-# Verify
 kind version    # >= 0.27
-kubectl version --client
 helm version    # >= 3.14
 docker info     # Docker running
 ```
 
-> **macOS ARM64 note**: The cluster is pinned to K8s **1.33.1** (`kindest/node:v1.33.1`) — tested stable on macOS ARM64 with Docker Desktop.
-
-> **Python note (only if you run the observability tests)**: the exporters use
-> `X | None` type syntax, which needs **Python 3.10+**. macOS ships 3.9 as
-> `python3`, and running `pytest observability/tests` with it fails inside an
-> import — `observability/tests/conftest.py` catches that and says so. Use a
-> newer interpreter, e.g. `python3.13 -m pytest observability/tests`. Nothing
-> else in the local setup needs it: CI runs 3.12/3.13 and the exporter CronJobs
-> use `python:3.12-slim` / `python:3.13-slim`.
+The cluster is pinned to Kubernetes 1.33.1 (`kindest/node:v1.33.1`). Rancher
+Desktop also works: disable Traefik, use the dockerd engine, and set
+`KUBERNETES_PROVIDER=rancher-desktop` in `local/.env`.
 
 ## Machine requirements — and what to do if you don't have them {#machine-requirements-and-what-to-do-if-you-dont-have-them}
 
-The full platform is ~90 pods. What it actually consumes once settled, measured
-with `kubectl top` on a Rancher Desktop VM of 8 CPU / 13 GB (2026-08-22):
+Measured with `kubectl top` on an 8 CPU / 13 GB VM:
 
 | Layer | Installed by | CPU | Memory |
 |---|---|---:|---:|
 | Kubernetes itself (`kube-system`, ingress, storage) | always | ~630m | ~1.5 GB |
 | Observability (Prometheus, Grafana, OpenCost) | `bootstrap-local.sh` | ~280m | ~1.2 GB |
-| ↳ Loki + Promtail + Tempo | installed but **scaled to 0** — see [below](#loki-and-tempo-ship-disabled) | 0 | 0 |
 | GitOps + policy (ArgoCD, Kyverno, Gatekeeper, Argo Rollouts) | `bootstrap-local.sh` | ~170m | ~1.1 GB |
-| Your services + the 8 MCP servers (`services-dev`) | `bootstrap-local.sh` | ~105m | ~0.35 GB |
-| VM overhead (kubelet, containerd, guest OS) | — | — | ~2.3 GB |
-| **Langfuse (6 pods)** | `bootstrap-ai.sh` (on by default) | ~400m | **~2.2 GB** |
-| **KAgent runtime + 1 agent** | `bootstrap-ai.sh` | ~40m | ~0.5 GB |
-| ↳ each additional agent | `--agents` | ~5m | **~200 MB** |
+| Services + MCP servers (`services-dev`) | `bootstrap-local.sh` | ~105m | ~0.35 GB |
+| VM overhead | — | — | ~2.3 GB |
+| **Langfuse (6 pods)** | `bootstrap-ai.sh` | ~400m | **~2.2 GB** |
+| KAgent runtime + 1 agent | `bootstrap-ai.sh` | ~40m | ~0.5 GB |
+| ↳ each additional agent | `--agents` | ~5m | ~200 MB |
 | MLflow | `bootstrap-ai.sh` | ~50m | ~0.4 GB |
-| LiteLLM (model backend) | `bootstrap-ai.sh` (on by default; `--skip-litellm` opts out) | 150m requested | 768 Mi requested |
+| LiteLLM | `bootstrap-ai.sh` | 150m req. | 768 Mi req. |
 | Argo Workflows | `bootstrap-ai.sh` | ~30m | ~0.15 GB |
 
-Two numbers dominate and are worth knowing by name: inside Langfuse,
-`langfuse-clickhouse` is ~736 MB and `langfuse-web` ~908 MB. `langfuse-web` will
-not run under a 1 GB limit at all — Node sizes its heap from the container limit
-and OOMs at ~503 MB, so 2 GB is the floor.
-
-**LiteLLM is on by default, even locally.** Every model the AI Gateway serves points
-at it, so without it the AI Assistant and every agent can call tools but never get a
-model reply. It is a second proxy process after the gateway, so if memory is tight,
-drop Langfuse (`--skip-langfuse`, about 2 GB) before dropping LiteLLM.
-`--skip-litellm` still opts out if you only need MCP tools. `bootstrap-ai.sh`
-generates a `LITELLM_MASTER_KEY` into `local/.env` if there isn't one. See
-[ADR-0008](design/adr-0008-litellm-multiprovider-gateway.md).
-
-**Prometheus keeps 24 hours of history locally** (`retention: 24h`,
-`retentionSize: 6000MB` on an 8 Gi PVC, in `local/observability/prometheus-stack-values.yaml`),
-up from 6h. There is no long-term store in Kind; that data is lost if the PVC is deleted.
-
-**Both Kind nodes share one VM.** `free -m` inside either node reports the whole
-VM, not a per-node slice, so "the worker has 13 GB" is not a second 13 GB.
+Loki, Promtail and Tempo are installed but scaled to zero — see
+[below](#loki-and-tempo-ship-disabled). Prometheus keeps 24 hours of history locally.
 
 ### Adding it up
 
 | Selection | Memory | Fits in a 13 GB VM? |
 |---|---:|---|
-| Core only (`bootstrap-local.sh`) | ~6.9 GB | yes, comfortably |
+| Core only (`bootstrap-local.sh`) | ~6.9 GB | yes |
 | \+ Langfuse | ~9.1 GB | yes |
-| \+ Langfuse + KAgent with 1 agent | **~9.6 GB** | yes, ~3.3 GB spare |
-| Everything: + 8 more agents, MLflow, Argo Workflows | **~11.8 GB** | **no — ~1.2 GB spare, below the level where it degrades** |
-
-### The thresholds that actually matter
-
-These are the points at which a real cluster stopped working, not safety margins:
-
-| Signal | Observed |
-|---|---|
-| **< ~200 MB available** memory | etcd returns `DeadlineExceeded`, the API server starts answering every request with `Handler timeout`, and `kubectl` fails with `Unable to connect to the server: EOF`. Backstage shows `ERR_EMPTY_RESPONSE` because nginx-ingress runs *inside* the starving cluster. |
-| **> ~75% of VM CPU sustained** (600% of 800% on 8 cores) | Pods stick in `Terminating` for tens of minutes, controllers crashloop on their liveness probes, and dependent installs fail — a stuck `kagent-postgresql` is what makes the KAgent controller crashloop and Backstage 502 on `/api/modelconfigs`. |
-| **> ~90% of VM CPU** | The run does not complete. |
-
-Stop adding components when available memory drops below ~1.5 GB.
-
-```bash
-docker exec idp-mvp-worker free -m        # read "available", NOT "free"
-docker stats --no-stream | grep idp-mvp   # sustained >600% (of 800%) is the danger band
-kubectl get pods -A | grep Terminating    # the first visible symptom
-```
-
-`free` will look alarming (a few hundred MB) while several GB are still
-reclaimable cache. **`available` is the number to watch.**
-
-Note the asymmetry: **CPU binds during installation** — image pulls and several
-concurrent `helm --wait`s — while **memory binds at rest**. An install can die on
-a cluster that would have run the same pods perfectly well once settled. Install
-incrementally on a tight machine and let each step finish.
+| \+ Langfuse + KAgent with 1 agent | ~9.6 GB | yes, ~3.3 GB spare |
+| Everything (all agents, MLflow, Argo Workflows) | ~11.8 GB | **no** — too little headroom |
 
 ### VM sizing
 
-Set this in Docker Desktop → Settings → Resources, or Rancher Desktop → Virtual
-Machine. The VM gets roughly 80% of physical RAM, so the third column is what
-your machine actually needs:
+Set this in Docker Desktop → Settings → Resources (or Rancher Desktop → Virtual
+Machine). The VM gets about 80% of physical RAM.
 
-| Setup | VM CPU | VM memory | Physical RAM | Notes |
-|---|---:|---:|---:|---|
-| **Everything** | 8 | 16 GB | **24 GB** | All agents, Langfuse, MLflow, Argo Workflows. ~11.8 GB of workload plus room to build images. |
-| **Full stack, no Langfuse** | 8 | 13 GB | 16 GB | `bootstrap-ai.sh --skip-langfuse`. Drops the single most expensive layer. |
-| **Core + one AI component** | 8 | 13 GB | 16 GB | The realistic ceiling on a 16 GB machine: core plus **one** of Langfuse, KAgent + 2 agents, or MLflow. |
-| **Without AI/ML** | 4 | 8 GB | 12 GB | `bootstrap-local.sh` only; don't run `bootstrap-ai.sh`. |
-| **Core only** | 2 | 6 GB | 8 GB | Add `--skip-obs --skip-policies` (see below). |
+| Setup | VM CPU | VM memory | Physical RAM |
+|---|---:|---:|---:|
+| Everything | 8 | 16 GB | 24 GB |
+| Full stack without Langfuse (`--skip-langfuse`) | 8 | 13 GB | 16 GB |
+| Core + one AI component | 8 | 13 GB | 16 GB |
+| Without AI/ML | 4 | 8 GB | 12 GB |
+| Core only (`--skip-obs --skip-policies`) | 2 | 6 GB | 8 GB |
 
-**A 16 GB Mac cannot run the full platform.** It yields a ~13 GB VM against
-~11.8 GB of workload, and the ~1.2 GB left is under the degradation threshold
-above. That is not a tuning problem — install a subset:
+**A 16 GB Mac can't run the full platform.** Install a subset instead.
+`kubectl get nodes` reports the whole VM against each Kind node, so two nodes on a
+12 GB VM look like 24 GB; they aren't.
 
-```bash
-./scripts/bootstrap-ai.sh --langfuse --skip-kagent --skip-mlflow --skip-argo-workflows
-./scripts/bootstrap-ai.sh --agents idp --skip-mlflow --skip-argo-workflows
-```
-
-`--agents` **prunes**: re-running with a shorter list removes the agents you left
-out, so always pass the full set you want. `--agents list` prints what is
-available.
-
-Since the VM is carved out of your host, the recommended tier wants a **16 GB
-host at an absolute minimum, 24–32 GB to be comfortable** — a 16 GB laptop
-giving 12 GB to the VM leaves very little for the rest of macOS.
-
-> **Reading `kubectl get nodes` correctly**: it reports the CPU/memory of the
-> *VM* against each Kind node, so a 2-node cluster on a 6-CPU/12 GB VM looks like
-> 12 CPUs and 24 GB. It isn't — both nodes are containers sharing the one VM.
-> The real ceiling is whatever you gave Docker/Rancher Desktop.
-
-### Symptoms of an under-resourced cluster
-
-These all look like different bugs but share one cause — CPU starvation making
-pods miss their liveness probes, so kubelet restarts them in a loop:
-
-- `503 Service Temporarily Unavailable` from nginx on `grafana.idp.local` and friends, clearing on its own after ~30s
-- Pods with a high `RESTARTS` count but `Reason: Error` / exit code 137 (killed on liveness, *not* OOMKilled)
-- `etcd` election timeouts, or `lima-guestagent` dying, taking the whole cluster with it
-- Bootstrap steps timing out on `--wait` that succeed when re-run
-
-Confirm before you tune anything — if `nr_throttled` is a large fraction of
-`nr_periods`, the container is CPU-throttled and needs a higher limit or a
-bigger VM, not a more lenient probe:
-
-```bash
-kubectl top node
-kubectl exec -n monitoring deploy/prometheus-grafana -c grafana -- cat /sys/fs/cgroup/cpu.stat
-```
+**Warning signs:** watch *available* memory (`docker exec idp-mvp-worker free -m`).
+Below ~1.5 GB, stop adding components; below ~200 MB, etcd and the API server
+time out and every `*.idp.local` URL fails. Sustained CPU above ~75% of the VM
+leaves pods stuck in `Terminating` and controllers crash-looping on liveness
+probes. CPU is the limit during install, memory at rest, so install incrementally
+on a tight machine.
 
 ### Running on less
 
-Trim from the bottom of the value/cost list. Each flag is independent:
-
 ```bash
-# Don't run bootstrap-ai.sh at all         → saves ~3.2 GB (the single biggest win)
-./scripts/bootstrap-local.sh
-
-# Or install AI/ML piecemeal. Langfuse is the expensive part, not KAgent:
-#   Langfuse ~2.2 GB   ·   KAgent runtime + 1 agent ~0.5 GB   ·   MLflow ~0.4 GB
-./scripts/bootstrap-ai.sh --skip-langfuse  # keeps KAgent + MLflow + MCP servers
-
-# Finer-grained: keep KAgent but choose which agents run. Each agent is ONE pod
-# running a Python runtime, ~200 MB at idle. Memory is linear in the agent count,
-# but the real risk is the startup burst: on an 8-CPU machine the full set can
-# saturate the node so thoroughly that the agents never finish booting and the
-# control plane starts losing lease renewals.
-./scripts/bootstrap-ai.sh --agents list    # show what's available
-./scripts/bootstrap-ai.sh --agents idp     # just the IDP assistant (1 pod)
-./scripts/bootstrap-ai.sh --agents idp,qa  # a useful pair
-./scripts/bootstrap-ai.sh --agents none    # KAgent runtime + UI, no agent pods
-./scripts/bootstrap-ai.sh --agents all     # all nine, including the three that
-                                           # are not installed by default
-
-# Drop the metrics stack                   → saves ~1.6 GB
-#   (Backstage's Grafana/DORA/FinOps tabs go blank)
-./scripts/bootstrap-local.sh --skip-obs
-
-# Drop admission control                   → saves ~0.6 GB
-#   (Kyverno + Gatekeeper; policy-violation demos stop working)
-./scripts/bootstrap-local.sh --skip-policies
-
-# Leanest useful cluster: Backstage + ArgoCD + hello-service
-./scripts/bootstrap-local.sh --skip-obs --skip-policies --skip-dora
+./scripts/bootstrap-local.sh                         # skip bootstrap-ai.sh entirely: saves ~3.2 GB
+./scripts/bootstrap-ai.sh --skip-langfuse            # the most expensive AI piece: saves ~2.2 GB
+./scripts/bootstrap-ai.sh --agents idp               # one agent pod (--agents list, all, none)
+./scripts/bootstrap-local.sh --skip-obs              # no metrics stack: saves ~1.6 GB (Grafana/DORA/FinOps tabs go blank)
+./scripts/bootstrap-local.sh --skip-policies         # no Kyverno/Gatekeeper: saves ~0.6 GB
+./scripts/bootstrap-local.sh --skip-obs --skip-policies --skip-dora   # leanest: Backstage + ArgoCD + hello-service
 ```
 
-If you're below the "core only" tier, don't run the platform locally — use a
-cloud dev box, or deploy to AWS with `./scripts/bootstrap.sh`.
-
-### Choosing which KAgent agents run
-
-`bootstrap-ai.sh` installs six agents by default — `idp`, `qa`, `release`,
-`cost`, `platform`, `contract`. Three more ship in the repo but are **not**
-installed unless asked for: `incident`, `security`, `onboarding`.
-
-Each agent is one Deployment running the `kagent/app` Python image, so the
-count maps directly to CPU pressure. Narrow it with `--agents`:
-
-| Value | Result |
-|---|---|
-| *(omitted)* | The six defaults — unchanged behaviour |
-| `--agents idp` | One agent |
-| `--agents idp,qa` | Any comma-separated subset |
-| `--agents all` | All nine |
-| `--agents none` | KAgent runtime and UI install, zero agent pods |
-| `--agents list` | Print the available agents and exit |
-
-Two things worth knowing:
-
-- **There is one toolserver, and it is automatic.** Every agent references a
-  single `RemoteMCPServer` named `ai-gateway`, applied for you. It creates no
-  pods of its own; the AI Gateway it points at is one ~9Mi pod that multiplexes
-  all eight MCP servers. Agents stay genuinely independent — each still gets only
-  the tools in its own allowlist, so enabling one can never break another.
-- **Deselected agents are pruned.** Re-running with a shorter list deletes the
-  agents you dropped rather than leaving the previous run's pods consuming CPU.
-  An unknown agent name fails immediately, before anything is installed.
+`bootstrap-ai.sh` installs six agents by default (`idp`, `qa`, `release`, `cost`,
+`platform`, `contract`); `incident`, `security` and `onboarding` need
+`--agents all` or an explicit list. `--agents` **prunes**: re-running with a
+shorter list removes the others. If memory is tight, drop Langfuse before
+LiteLLM — without LiteLLM, agents can call tools but get no model replies.
 
 ### Loki and Tempo ship disabled
 
-The log and trace backends — **Loki**, **Promtail**, and **Tempo** — are
-installed as Helm releases but run **zero pods** locally. Prometheus, Grafana,
-and OpenCost are unaffected; only log aggregation and distributed tracing are
-off, so the Grafana **Loki** and **Tempo** datasources return nothing.
-
-This is a deliberate capacity decision. A single-node Kind cluster on a 8CPU/16GB
-machine already sits at roughly **380% CPU overcommit on limits** with the rest
-of the platform up. Adding these three starves the control plane rather than
-merely slowing it: components answer `/healthz` too slowly and get probe-killed,
-and `kube-controller-manager` / `kube-scheduler` lose leadership when their
-leases miss the 5s renewal deadline. The symptom is a cluster that looks like
-eight unrelated things are broken at once.
-
-To turn them back on — **give the node more CPU and memory first**:
+They run zero pods locally because a single-node Kind cluster already overcommits
+CPU, and adding them starves the control plane. To enable them, give the VM more
+resources first, then:
 
 | Component | Where | Change |
 |---|---|---|
@@ -246,489 +98,150 @@ To turn them back on — **give the node more CPU and memory first**:
 | Promtail | `local/observability/loki/promtail-values.yaml` | delete the `nodeSelector: {idp/disabled}` block |
 | Loki | `scripts/bootstrap-local.sh` (step 5c) | remove the `kubectl scale statefulset loki --replicas=0` line |
 
-Loki is the odd one out: its chart's `singleBinaryReplicas` helper hardcodes `1`
-unless object storage is in use, so `singleBinary.replicas` cannot express `0`
-and the scale-down has to happen after install.
-
-The URL banner only advertises the Loki and Tempo endpoints when their
-StatefulSets are actually scaled above zero, so it will start listing them once
-you re-enable them.
-
 ## Bootstrap (~10–15 min)
 
-> **First time? Run `setup.sh` and nothing else.** From the repo root:
-> ```bash
-> ./scripts/setup.sh     # choose "local" when prompted
-> ```
-> It personalises the placeholders, then calls `bootstrap-local.sh` for you and
-> offers to start Backstage. **Don't also run `bootstrap-local.sh` yourself** —
-> that just repeats the whole 15–20 minute install.
-
-Run the command below **only** for day-2 work on an existing setup — recreating
-the cluster after `--destroy`, or re-running a step that failed:
+**First time, run only `setup.sh`** and choose "local":
 
 ```bash
-./scripts/bootstrap-local.sh
+./scripts/setup.sh
 ```
 
-What it does (in order):
-
-| Step | What |
-|------|------|
-| 1 | Starts a local container registry on `localhost:5003` |
-| 2 | Creates a Kind cluster (`kind-idp-mvp`) with the registry wired in |
-| 3 | Creates platform namespaces and RBAC |
-| 4 | Installs nginx ingress controller (host ports 80/443) |
-| 4b | Installs metrics-server (required for CPU/memory in Backstage) |
-| 4c | Wires Backstage K8s Service + nginx Ingress |
-| 5 | Installs Prometheus + Grafana + AlertManager (`kube-prometheus-stack`) |
-| 5b | Installs OpenCost |
-| 6 | Builds and deploys `hello-service` via the golden-path Helm chart |
-| 7 | Writes `/etc/hosts` entries for `*.idp.local` and flushes DNS cache |
-| 8 | Installs ArgoCD |
-| 8b | (Optional) Installs Argo Workflows for ML pipeline orchestration (use `--install-argo-workflows` flag) |
-| 9 | Installs OPA/Gatekeeper and applies all five policy constraints |
-| 10 | Installs Prometheus Pushgateway + DORA exporter CronJob + catalog exporter CronJob |
-| 11 | Deploys Tech Insights Exporter CronJob (scorecard metrics → Pushgateway every 15 min) |
-| 12 | Wires AlertManager Slack webhook (if `SLACK_WEBHOOK_URL` is set) |
-| 13 | Applies ArgoCD `idp-services` ApplicationSet — auto-discovers `services/*` and deploys `hello-service`, `idp-mcp-server`, and `qa-mcp-server` to `services-dev`. `contract-mcp-server` is **excluded** from the ApplicationSet and is only deployed by `bootstrap-ai.sh`. Removes the bootstrap-deployed `hello-service` from the `services` namespace. |
-
-### Bootstrap flags
+It personalises the placeholders, creates the `.env` files, runs
+`bootstrap-local.sh` and offers to start Backstage. Use `bootstrap-local.sh`
+directly only for day-2 work, such as recreating the cluster after `--destroy`:
 
 ```bash
-./scripts/bootstrap-local.sh --skip-obs             # skip Prometheus + Grafana
-./scripts/bootstrap-local.sh --skip-gitops          # skip ArgoCD
-./scripts/bootstrap-local.sh --skip-policies        # skip OPA/Gatekeeper
-./scripts/bootstrap-local.sh --skip-dora            # skip DORA exporter
-./scripts/bootstrap-local.sh --install-argo-workflows # (optional) install Argo Workflows for ML pipeline orchestration
-./scripts/bootstrap-local.sh --start-backstage      # start Backstage (requires cluster already running)
+./scripts/bootstrap-local.sh                  # cluster + platform
+./scripts/bootstrap-local.sh --full           # + Backstage in one go
+./scripts/bootstrap-local.sh --start-backstage
 ```
 
-Flags can be combined: `--skip-obs --skip-gitops` cuts bootstrap time roughly in half. For which flags to reach for on a resource-constrained machine, and how much each one saves, see [Running on less](#running-on-less).
+It creates a local registry (`localhost:5003`), the Kind cluster, namespaces and
+RBAC, nginx ingress, metrics-server, Prometheus/Grafana/Alertmanager, OpenCost,
+ArgoCD, Gatekeeper and Kyverno, the Pushgateway and exporter CronJobs, and the
+`idp-services` ApplicationSet, which deploys `hello-service`, `idp-mcp-server` and
+`qa-mcp-server` to `services-dev`. It also writes the `*.idp.local` entries to
+`/etc/hosts`. All flags are in the [Scripts Reference](scripts-reference.md).
+
+### Environment files
+
+`setup.sh` creates both from their `.env.example` files:
+
+| File | Fill in |
+|---|---|
+| `local/.env` | `GITHUB_TOKEN`; for AI, `ANTHROPIC_API_KEY` (and optionally `OPENAI_API_KEY`) |
+| `local/backstage/.env` | `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET` for GitHub sign-in |
+
+`K8S_*`, `ARGOCD_AUTH_TOKEN` and `GRAFANA_TOKEN` are filled in by the bootstrap.
+
+## Start Backstage
+
+```bash
+./scripts/bootstrap-local.sh --start-backstage
+```
+
+Builds the image, starts Docker Compose, wires the ingress to the container,
+triggers a catalog export and prints every URL. Open
+**http://backstage.idp.local** (not `localhost:3000` — GitHub sign-in only works
+on the configured base URL).
+
+After changing code under `backstage/app/packages/`, run the same command again;
+config-only changes need just `docker compose -f local/backstage/docker-compose.yml restart backstage`.
+If you restart Docker Compose yourself, `--update-backstage-ip` rewires the ingress.
 
 ## Access services
 
-`/etc/hosts` entries are written automatically by `bootstrap-local.sh`. If you need to add them manually:
-
-```bash
-sudo sh -c "cat local/hosts-append.txt >> /etc/hosts"
-```
-
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Backstage** | http://backstage.idp.local (or http://localhost:3000) | — (guest mode) |
-| **AI Assistant** | http://backstage.idp.local/ai-assistant | — (integrated in Backstage; hidden until `bootstrap-ai.sh` runs — see [why](ai-assistant.md#where-the-ai-pages-come-from-and-why-theyre-hidden)) |
-| **hello-service** | http://hello-service.idp.local | — (managed by ArgoCD in `services-dev` as `hello-service-local-service-template`) |
-| **Grafana** | http://grafana.idp.local | `admin` / `admin` |
-| **ArgoCD** | http://argocd.idp.local | `admin` / *(see below)* |
-| **Prometheus** | http://prometheus.idp.local | — |
-| **AlertManager** | http://alertmanager.idp.local | — |
-| **Argo Rollouts** | http://argo-rollouts.idp.local | — (canary/progressive-delivery dashboard) |
-| **Tempo** (traces) | **Scaled to 0 by default** — see [Loki and Tempo ship disabled](#loki-and-tempo-ship-disabled). Once enabled: http://grafana.idp.local/explore → select the **Tempo** datasource | — (Tempo has **no UI of its own**) |
-| ↳ Tempo OTLP ingest | Once enabled: `POST http://tempo.idp.local/v1/traces` — an API endpoint, not a page. Opening it in a browser returns `405 method not allowed, supported: [POST]`, and `/` returns `404 page not found`; both mean Tempo is up. Health: `/ready` | — |
-| **Loki** (logs) | **Scaled to 0 by default** — see [Loki and Tempo ship disabled](#loki-and-tempo-ship-disabled). Once enabled: http://grafana.idp.local/explore → select the **Loki** datasource | — |
-| **OpenCost** | http://opencost.idp.local | — |
-| **Pushgateway** | http://pushgateway.idp.local | — |
-| **KAgent UI** | http://kagent.idp.local | — (agent management) |
-| **MLflow** | http://mlflow.idp.local | — (experiment tracking & model registry) |
-| **Argo Workflows** | http://argo-workflows.idp.local | — (if `--install-argo-workflows` flag used) |
-| **AI Search** | http://backstage.idp.local/ai-search | requires `bootstrap-ai.sh` + `VOYAGE_API_KEY` |
-| **AI Gateway** (admin console) | http://ai-gateway.idp.local — routes, MCP targets, model list, Chat/Tool Playgrounds | requires `bootstrap-ai.sh`; local only, no AWS Ingress (`--skip-gateway` opts out) |
-| **LiteLLM** (spend dashboard) | http://litellm.idp.local (also the **LiteLLM Spend** page in Backstage) | installed by `bootstrap-ai.sh` (`--skip-litellm` opts out) |
-| **AI Observability** / **Langfuse** | http://backstage.idp.local/langfuse · http://langfuse.idp.local | installed by `bootstrap-ai.sh` (`--skip-langfuse` opts out); admin password in the `langfuse-init` Secret |
-| **MCP servers** (8) | `http://<name>-mcp-server.idp.local/healthz` — `idp`, `qa`, `contract`, `github`, `cost`, `argocd`, `incident`, `security` | requires `bootstrap-ai.sh` |
-| **Approval Service** / **Agent Event Router** | http://approval-service.idp.local · http://agent-event-router.idp.local | requires `bootstrap-ai.sh --adp` |
-| **Local registry** | localhost:5003 | — (no auth) |
+| Backstage | http://backstage.idp.local | guest or GitHub |
+| hello-service | http://hello-service.idp.local | — |
+| Grafana | http://grafana.idp.local | `admin` / `admin` |
+| ArgoCD | http://argocd.idp.local | `admin` / see below |
+| Prometheus · Alertmanager | http://prometheus.idp.local · http://alertmanager.idp.local | — |
+| Argo Rollouts | http://argo-rollouts.idp.local | — |
+| OpenCost · Pushgateway | http://opencost.idp.local · http://pushgateway.idp.local | — |
+| KAgent UI | http://kagent.idp.local | AI stack |
+| AI Gateway console | http://ai-gateway.idp.local | AI stack |
+| LiteLLM | http://litellm.idp.local | AI stack |
+| Langfuse | http://langfuse.idp.local | AI stack; password in the `langfuse-init` Secret |
+| MLflow | http://mlflow.idp.local | AI stack |
+| MCP servers | `http://<name>-mcp-server.idp.local/healthz` | AI stack |
+| Approval Service · Event Router | http://approval-service.idp.local · http://agent-event-router.idp.local | `bootstrap-ai.sh --adp` |
+| Local registry | `localhost:5003` | — |
 
-ArgoCD initial admin password:
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d
-```
+AI pages in Backstage stay hidden until `bootstrap-ai.sh` has run — see
+[why](ai-assistant.md#where-the-ai-pages-come-from-and-why-theyre-hidden).
 
-Alternatively, use `kubectl port-forward` for any service:
 ```bash
-kubectl port-forward svc/hello-service 8080:80 -n services
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
 ## Optional third-party integrations
 
-**You do not need any third-party account to run this platform.** Every
-integration below is optional and fails soft: the portal boots, the cluster comes
-up, and the relevant tab renders an empty state rather than an error. Nothing is
-stubbed or mocked — the config, proxy wiring and secret plumbing are real, so if
-you *do* have an account, filling in one variable is all that's needed.
-
-Credentials are supplied by `local/backstage/.env` locally (start from
-`local/backstage/.env.example`, which documents each one) and by AWS Secrets
-Manager → External Secrets on EKS.
+**No third-party account is required.** Each integration fails soft: the tab shows
+an empty state instead of an error. Set credentials in `local/backstage/.env`
+locally (documented in `.env.example`), or in Secrets Manager on AWS.
 
 | Integration | What you need | Without it |
 |---|---|---|
-| **GitHub** (catalog, scaffolder) | PAT in `GITHUB_TOKEN`, scopes `repo`, `read:org`, `workflow`, `delete_repo` | Catalog import and scaffolding to real repos don't work — the rest of the portal is unaffected. In practice this is the one worth setting. |
-| **GitHub OAuth** | OAuth App → `AUTH_GITHUB_CLIENT_ID` / `AUTH_GITHUB_CLIENT_SECRET` | Guest mode only — no "Sign in with GitHub" |
-| **SonarCloud** / **Snyk** | Free-tier tokens → `SONAR_TOKEN` / `SNYK_TOKEN` | Security tab renders empty; scaffolded CI skips those steps and stays green |
-| **Datadog** | `DD_API_KEY` + `DD_APP_KEY` | Datadog tab renders empty. On AWS these also drive the Datadog Agent and APM |
-| **PagerDuty** | Read-only REST API key → `PAGERDUTY_TOKEN` | On-call tab renders empty. |
-| **Jira** | `JIRA_URL` + `JIRA_TOKEN` = Base64(`email:api_token`) | Issues tab renders empty. |
-| **Voyage AI** | `VOYAGE_API_KEY` (free tier: 200M tokens/month) | `/ai-search` returns HTTP 503. Everything else in the AI layer still works |
-| **Firebase Test Lab / GCP** | Service-account JSON, base64 → `GCP_SERVICE_ACCOUNT_KEY` | The mobile device-farm and Flutter test-suite templates scaffold fine but their CI can't authenticate |
-| **LambdaTest** | Username + access key → `LT_USERNAME` / `LT_ACCESS_KEY` | The device-farm, Appium and Playwright templates scaffold fine, but their LambdaTest jobs can't authenticate |
-| **BrowserStack** / **Sauce Labs** | Username + access key → `BROWSERSTACK_*` / `SAUCE_*` | Those device-farm providers scaffold fine but their CI can't authenticate |
-| **Grafana**, **ArgoCD** | — | Auto-populated by `bootstrap-local.sh`; no account needed |
+| **GitHub** | `GITHUB_TOKEN` (scopes `repo`, `read:org`, `workflow`, `delete_repo`) | No catalog import or scaffolding to real repos. The one worth setting |
+| GitHub OAuth | `AUTH_GITHUB_CLIENT_ID` / `_SECRET` | Guest mode only |
+| SonarCloud / Snyk | `SONAR_TOKEN` / `SNYK_TOKEN` | Security tab empty; scaffolded CI skips those steps |
+| Datadog | `DD_API_KEY` + `DD_APP_KEY` | Datadog tab empty |
+| PagerDuty | `PAGERDUTY_TOKEN` | On-Call tab empty |
+| Jira | `JIRA_URL` + `JIRA_TOKEN` = base64(`email:api_token`) | Jira tab empty |
+| Voyage AI | `VOYAGE_API_KEY` | `/ai-search` returns 503 |
+| Firebase Test Lab | `GCP_SERVICE_ACCOUNT_KEY` | Mobile test templates scaffold, but their CI can't authenticate |
+| LambdaTest / BrowserStack / Sauce Labs | `LT_*` / `BROWSERSTACK_*` / `SAUCE_*` | Device-farm CI can't authenticate |
 
-## Start Backstage
+## Deploy a service
 
-`bootstrap-local.sh` sets up the cluster and platform but does not start Backstage. Run this after the cluster is up:
+Scaffold one from **Create** in Backstage (or with `idp scaffold service --name my-svc --type nodejs`;
+add `--local` to generate offline). Merged GitOps changes are deployed by ArgoCD.
 
-```bash
-./scripts/bootstrap-local.sh --start-backstage
-```
-
-This single command:
-1. Builds the Backstage Docker image
-2. Starts the Docker Compose stack
-3. Waits for the container to join the `kind` network
-4. Wires the nginx ingress endpoint to the live container IP
-5. Seeds sample QA metrics into Pushgateway
-6. Triggers an immediate catalog export
-7. Prints the full access-URL summary
-
-Backstage is then available at http://backstage.idp.local (or http://localhost:3000 as a direct fallback).
-
-> **Note:** Backstage uses `dangerouslyDisableDefaultAuthPolicy: true` in `app-config.local.yaml` so the catalog loads and is accessible before sign-in completes (prevents 401 flash on first page load in Backstage v1.29+).
-
-### Known platform patches
-
-The Backstage image bundles two repo-local patches that are applied automatically — you do not need to do anything, but knowing they exist saves debugging time:
-
-| Patch | Location | Why it exists |
-|---|---|---|
-| `@material-table/core` v3 → `uuid` v10 default-export shim | `backstage/app/.yarn/patches/@material-table-core-npm-3.2.5-*.patch` | `uuid` v10 dropped its default export; without the patch, the catalog, api-docs, and techdocs pages crash with `Cannot read properties of undefined (reading 'v4')`. Verify with `grep "uuid.*v4" backstage/app/node_modules/@material-table/core/dist/utils/data-manager.js` — expect `(_uuid["default"] \|\| _uuid).v4()`. |
-| `vm2-shim` (replacing abandoned `vm2`) | `backstage/app/vm2-shim/` | `vm2` was pulled in transitively via `typescript-json-schema` → `@backstage/config-loader` and has no upstream security fix. The shim is a thin wrapper over Node's built-in `vm` module and is copied into the image before `yarn workspaces focus` runs. |
-
-Both patches are tracked in git and re-applied automatically by `yarn install` and by the multi-stage `backstage/Dockerfile`. If you ever see catalog tables fail to render or scaffolder actions crash on startup, re-run `yarn install` inside `backstage/app/` and rebuild the image.
-
-### Environment files (first time only)
+To deploy an image by hand, push it to the local registry and run the
+**Deploy Service to local Kind cluster** template, or:
 
 ```bash
-cp local/.env.example local/.env
-cp local/backstage/.env.example local/backstage/.env
-# Edit both and fill in:
-#   local/.env          → GITHUB_TOKEN, CLUSTER_NAME, AWS_REGION, ANTHROPIC_API_KEY (optional for AI), OPENAI_API_KEY (optional for OpenAI models)
-#   local/backstage/.env → AUTH_GITHUB_CLIENT_ID, AUTH_GITHUB_CLIENT_SECRET,
-#                          BACKSTAGE_AUTH_SECRET (any string locally)
-```
-
-**AI/ML Platform (Optional):**
-- `ANTHROPIC_API_KEY` — Required to enable Claude API for KAgent agents (used by `bootstrap-ai.sh`)
-- `OPENAI_API_KEY` — Required to enable OpenAI GPT-4o support via the `modelconfig-openai` CRD (used by `bootstrap-ai.sh`)
-
-If these are not set, the AI/ML platform still deploys but agents/models using those providers will fail gracefully.
-
-> K8s credentials (`K8S_CLUSTER_URL`, `K8S_SERVICE_ACCOUNT_TOKEN`, `K8S_CLUSTER_CA_DATA`) are written to `local/backstage/.env` automatically by `bootstrap-local.sh` via `get-k8s-credentials.sh`. No manual step needed if you bootstrapped with that script.
-
-### Troubleshooting observability after bootstrap
-
-**DORA metrics not appearing in Grafana / Pushgateway empty**
-
-The `dora-exporter` CronJob runs every 15 minutes. If metrics are absent immediately after bootstrap, trigger a manual run:
-
-```bash
-kubectl create job dora-now --from=cronjob/dora-exporter -n monitoring
-kubectl logs job/dora-now -n monitoring --follow
-```
-
-If the job fails with `python: can't open file '/scripts/dora-exporter.py'`, the ConfigMap was not populated. Re-run the bootstrap step:
-
-```bash
-kubectl create configmap dora-exporter-script \
-  --from-file=dora-exporter.py=local/observability/dora/dora-exporter.py \
-  -n monitoring --dry-run=client -o yaml | kubectl apply -f -
-```
-
-**Kubernetes tab shows "unknown" for CPU / Memory**
-
-Ensure `skipMetricsLookup: false` is set in `backstage/app-config.yaml` and that the metrics-server is running:
-
-```bash
-kubectl get pods -n kube-system | grep metrics-server
-kubectl top nodes
-```
-
-**catalog-exporter CrashLoopBackOff**
-
-The CronJob targets `backstage.default.svc.cluster.local:3000`. It will fail whenever Backstage is not running. Start Backstage first:
-
-```bash
-./scripts/bootstrap-local.sh --start-backstage
-```
-
-### Day-2 Backstage restart
-
-If you restart Docker Compose manually, re-run `--start-backstage` to rewire the nginx endpoint:
-
-```bash
-./scripts/bootstrap-local.sh --start-backstage
-```
-
-Or, if you only need to refresh the IP without reseeding metrics:
-
-```bash
-./scripts/bootstrap-local.sh --update-backstage-ip
-```
-
-### Manual backend bundle rebuild
-
-Only needed if you changed code under `backstage/app/packages/backend/src/`:
-
-```bash
-cd backstage/app && yarn install && yarn build:backend && cd ../..
-# Then re-run --start-backstage to pick up the new image
-./scripts/bootstrap-local.sh --start-backstage
-```
-
-## Deploy a service via Backstage
-
-### Scaffold a new service
-
-1. Open http://backstage.idp.local → **Create**
-2. Choose **Node.js Service** or **Python FastAPI Service**
-3. Fill in name, description, owner, GitHub repo
-4. Click **Create** — Backstage publishes the repo to GitHub and registers it in the catalog
-
-### Deploy to local Kind
-
-The platform includes a custom `idp:deploy-local` action and a dedicated template.
-
-**Prerequisites:**
-- Kind cluster and Backstage running (`./scripts/bootstrap-local.sh` then `./scripts/bootstrap-local.sh --start-backstage`)
-- Image pushed to local registry (see below)
-
-**Push the image:**
-```bash
-cd services/<name>
-docker build -t localhost:5003/<name>:latest .
-docker push localhost:5003/<name>:latest
-```
-
-**Deploy via Backstage:**
-1. Open http://backstage.idp.local → **Create**
-2. Choose **Deploy Service to local Kind cluster**
-3. Pick the service from the catalog, set image tag (`latest`)
-4. Click **Create**
-
-The action runs `helm upgrade --install` and logs pod status. It connects to Kind via a rewritten kubeconfig (`127.0.0.1` → `host.docker.internal`) mounted into the Backstage container.
-
-**Deploy via CLI (alternative):**
-```bash
-helm upgrade --install <name> ./helm/service-template \
-  --namespace services --create-namespace \
-  --set image.repository=localhost:5003/<name> \
-  --set image.tag=latest \
+docker build -t localhost:5003/<name>:latest services/<name> && docker push localhost:5003/<name>:latest
+helm upgrade --install <name> ./helm/service-template -n services --create-namespace \
+  --set image.repository=localhost:5003/<name> --set image.tag=latest \
   --values services/<name>/helm-values-local.yaml
 ```
 
-## Scaffold and test a new service locally (CLI path)
-
-```bash
-# 1. Scaffold — uses Backstage Scaffolder API when running, local generation otherwise
-idp scaffold service --name my-svc --type nodejs
-
-# Force local generation (offline / pre-Backstage)
-idp scaffold service --name my-svc --type nodejs --local
-
-# 2. Build and push the image
-cd services/my-svc
-docker build -t localhost:5003/my-svc:latest .
-docker push localhost:5003/my-svc:latest
-
-# 3. Deploy
-helm upgrade --install my-svc ./helm/service-template \
-  --namespace services --create-namespace \
-  --set image.repository=localhost:5003/my-svc \
-  --set image.tag=latest \
-  --values services/my-svc/helm-values-local.yaml
-
-# 4. Access
-# http://my-svc.idp.local  (after /etc/hosts entry)
-```
-
-## Local vs AWS — what's different
+### Local vs AWS
 
 | Concern | Local | AWS |
 |---------|-------|-----|
-| Ingress class | `nginx` | `alb` (but `ingress.enabled: false` by default — scaffolded services get no ALB unless opted in) |
-| Image pull | `localhost:5003/<name>` | `<account>.dkr.ecr.<region>.amazonaws.com/idp-mvp/<name>` |
-| Auth | none | OIDC (GitHub Actions), IRSA (pods) |
-| CD trigger | `idp:deploy-local` Backstage action | GitHub Actions push to `main` |
-| Observability | Prometheus in-cluster | CloudWatch + Grafana |
-| Helm values file | `helm-values-local.yaml` | `helm-values-aws.yaml` |
-| Persistent storage | hostPath / emptyDir | EBS (gp2/gp3) |
+| Ingress | `nginx`, `*.idp.local` | `alb` (off by default for scaffolded services) |
+| Images | `localhost:5003/<name>` | ECR `<cluster>/<name>` |
+| CD trigger | ArgoCD / `idp:deploy-local` | CI push to ECR + ArgoCD |
+| Values file | `helm-values-local.yaml` | `helm-values-aws.yaml` |
 
-The Helm chart (`helm/service-template`) is **identical** for both. Only the values file differs.
+The Helm chart (`helm/service-template`) is the same on both.
 
-## AI/ML Stack (Optional)
-
-After `bootstrap-local.sh` (and optionally `--start-backstage`) completes, boot the AI/ML platform:
+## AI/ML stack (optional)
 
 ```bash
-# Requires ANTHROPIC_API_KEY in local/.env (and optionally OPENAI_API_KEY for multi-model support)
-./scripts/bootstrap-ai.sh
+./scripts/bootstrap-ai.sh   # needs ANTHROPIC_API_KEY in local/.env
 ```
 
-What it installs:
-- **KAgent platform** — Kubernetes-native AI agents with `idp-assistant`, `qa-assistant`, `contract-assistant` agents
-- **MCP servers** — Model Context Protocol servers: `idp-mcp-server` (6 IDP tools), `qa-mcp-server` (QA tools), `contract-mcp-server` (contract testing tools)
-- **MLflow** — Experiment tracking and model registry at http://mlflow.idp.local
-- **OpenAI ModelConfig** — GPT-4o support if `OPENAI_API_KEY` is set; Claude Anthropic support if `ANTHROPIC_API_KEY` is set
-- **AI Observability** — Grafana dashboard with MCP tool metrics, latency, cost attribution per server
-- **AI Gateway** — one entry point for all MCP tool calls and model calls ([ADR-0007](design/adr-0007-ai-gateway.md))
-- **LiteLLM** *(on by default; `--skip-litellm` opts out)* — the model backend behind the gateway, with virtual keys and a spend dashboard at http://litellm.idp.local ([ADR-0008](design/adr-0008-litellm-multiprovider-gateway.md))
+Installs KAgent and its agents, the eight MCP servers behind the AI Gateway,
+LiteLLM, Langfuse, MLflow and Argo Workflows. Then restart Backstage
+(`--start-backstage`) to reveal the AI pages. Skip flags and agent selection are
+covered [above](#running-on-less) and in the [Scripts Reference](scripts-reference.md#bootstrap-aish-flags);
+usage is in [AI Assistant](ai-assistant.md). Remove just the AI layer with
+`./scripts/bootstrap-ai.sh --destroy`.
 
-### AI-Native Platform Features (Phase 7a Complete)
+## Troubleshooting observability after bootstrap
 
-#### Priority 1: AI Platform Foundations ✅
-- **OpenAI ModelConfig CRD** — Deploy agents using GPT-4o in addition to Claude
-- **AI Observability Dashboard** — Monitor MCP tool calls, latency, error rates in Grafana
-- **RAG Document Indexing** — AI search across TechDocs and runbooks via `/ai-search` page
+| Symptom | Fix |
+|---|---|
+| DORA metrics missing | The exporter runs every 15 min: `kubectl create job dora-now --from=cronjob/dora-exporter -n monitoring` |
+| K8s tab shows "unknown" CPU/memory | `kubectl get pods -n kube-system \| grep metrics-server`; `kubectl top nodes` |
+| `catalog-exporter` crash-loops | Expected while Backstage is down; start it |
 
-#### Priority 2: AI Service Lifecycle ✅
-- **Model Serving API Template** — Deploy Ollama (local) or vLLM (AWS) inference servers via Backstage
-- **AI Platform Scorecard** — Tech Insights checks for model cards, eval suites, observability (Bronze/Silver/Gold)
-- **Prompt Lifecycle Management** — System prompts in ConfigMaps for zero-downtime updates
-
-#### Priority 3: ML Workflows & Cost Attribution ✅
-- **Argo Workflows** — Multi-step ML pipeline orchestration (optional; use `--install-argo-workflows` flag in bootstrap-local.sh)
-- **Cost Attribution** — Team labels on agents, `ai_api_calls_total` metrics for cost tracking per model
-
-### Scaffold AI services
-
-After `bootstrap-ai.sh` completes, use the templates from Backstage:
-
-```bash
-# 1. AI Agent (KAgent-based)
-# Backstage → Create → AI Agent (KAgent)
-# Fill: name, owner, KAgent to deploy, tools to expose
-
-# 2. Model Serving API
-# Backstage → Create → Model Serving API
-# Fill: name, model name (llama3.2, mistral, etc.), target (local/aws)
-
-# 3. MCP Server (Model Context Protocol)
-# Backstage → Create → MCP Server
-# Fill: name, tools to expose, KAgent to link
-
-# 4. Contract Testing (with contract-mcp-server)
-# Backstage → Create → Enable Contract Testing
-# Select target service; scaffolds contract testing and deploys contract-mcp-server
-```
-
-### Monitor AI Platform
-
-```bash
-# View agent status
-kubectl get agents -n kagent
-
-# Monitor MCP server metrics
-kubectl logs -n services-dev deployment/idp-mcp-server | grep -i metric
-
-# Check Grafana AI dashboard
-# http://grafana.idp.local → search "AI Platform"
-
-# View cost attribution (if using labels)
-kubectl get agents -n kagent -L team
-```
-
-This installs KAgent (AI agent runtime), the IDP MCP Server, and MLflow.
-
-The AI Assistant at `/ai-assistant` is a **native React chat UI** (not an iframe) that talks directly to the KAgent A2A API via the Backstage proxy.
-
-| Service | URL | Notes |
-|---------|-----|-------|
-| KAgent UI | http://kagent.idp.local | Direct agent chat UI |
-| AI Assistant | http://backstage.idp.local/ai-assistant | Backstage-embedded native React chat UI |
-| AI Search | http://backstage.idp.local/ai-search | Semantic search (requires `VOYAGE_API_KEY`) |
-| IDP Assistant (A2A) | http://idp-assistant.idp.local | A2A agent endpoint |
-| MLflow UI | http://mlflow.idp.local | Experiment tracking |
-| IDP MCP Server health | http://idp-mcp-server.idp.local/healthz | MCP server status |
-
-**Skip flags** (combine freely):
-```bash
-./scripts/bootstrap-ai.sh --skip-mlflow   # skip MLflow
-./scripts/bootstrap-ai.sh --skip-kagent   # skip KAgent install
-./scripts/bootstrap-ai.sh --skip-mcp      # skip IDP MCP Server build
-```
-
-**Tear down AI/ML only** (core platform stays up):
-```bash
-# Local Kind/Rancher Desktop — removes only local/ ingresses and manifests
-./scripts/bootstrap-ai.sh --destroy
-
-# AWS/EKS — removes aws/ ingresses and MLflow AWS overlay
-./scripts/bootstrap-ai.sh --aws --destroy
-```
-
-> **Warning:** `bootstrap-ai.sh --destroy` scopes deletions to the active
-> environment (`--aws` flag). Running without `--aws` while `KUBECONFIG` points
-> at EKS will target AWS resources unintentionally.
-
-> **Certificate error on `kagent.idp.local` after `bootstrap-ai.sh`?** The
-> KAgent ingresses are HTTP-only as of commit `fe4fce2`. If you ran an earlier
-> version of this repo on the same machine, your browser may have cached HSTS
-> for `*.idp.local` from the old HTTPS-with-mkcert ingress and will keep
-> upgrading the request to HTTPS, against which nginx-ingress responds with a
-> fake default cert. Fix: open `chrome://net-internals/#hsts`, **Delete
-> domain security policies** for `kagent.idp.local` and
-> `idp-assistant.idp.local`, disable *Settings → Privacy → Always use secure
-> connections* (or exclude `*.idp.local`), and hard-reload. On a fresh clone
-> you'll never hit this.
-
-### Using the AI Assistant in Backstage
-
-Open http://backstage.idp.local/ai-assistant (or click **AI Assistant** in the
-sidebar). The assistant can:
-
-- Search the service catalog: *"find all Python services owned by qa-platform-team"*
-- Check metrics: *"show request rate for hello-service"*
-- List running deployments: *"what's deployed in the services namespace?"*
-- Scaffold a new service: *"scaffold a Python FastAPI service called demo, description demo API, owner group:default/platform-team"*
-
-For scaffolding, provide `name`, `description`, and `owner` in one message — the
-agent will call the scaffolder immediately without asking for confirmation.
-
-### Enabling AI Search (semantic / RAG)
-
-The `/ai-search` page provides semantic search over the catalog using Voyage AI
-embeddings stored in pgvector. To enable it, add your Voyage AI key to
-`local/backstage/.env` before starting Backstage:
-
-```bash
-VOYAGE_API_KEY=your-key-here   # free tier: 200M tokens/month — voyageai.com
-```
-
-The Postgres image used by Docker Compose (`pgvector/pgvector:pg17`) and
-`local/backstage/init-pgvector.sql` handle the vector extension and table
-automatically on first Postgres startup — no manual SQL step needed.
-
-Without `VOYAGE_API_KEY`, the page loads but search returns HTTP 503. All other
-features are unaffected.
-
-See [docs/ai-assistant.md](ai-assistant.md) for the full architecture and
-troubleshooting guide.
-
-## Known limitations (local)
-
-| Page | Status | Reason |
-|------|--------|--------|
-| `/kubernetes` standalone | Disabled | Requires entity context — use the Kubernetes tab on a catalog entity instead |
-| `/catalog-graph` | Disabled | Disabled pending fix |
-| `/ai-search` | Requires `VOYAGE_API_KEY` | Returns 503 without the key; all other features unaffected |
-| Cost Overview | Shows "OpenCost returned 500" if OpenCost is not running | Check `kubectl get pods -n opencost` |
-
-## Troubleshooting
-
-For a full catalogue of setup and day-2 issues with diagnosis commands and fixes, see [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+Everything else: [Troubleshooting](TROUBLESHOOTING.md).
 
 ## Teardown
 
@@ -736,13 +249,8 @@ For a full catalogue of setup and day-2 issues with diagnosis commands and fixes
 ./scripts/bootstrap-local.sh --destroy
 ```
 
-The destroy sequence runs in this order:
-
-1. **AI/ML teardown** — if `kagent`, `ml-platform`, or `services-dev` namespaces exist, calls `bootstrap-ai.sh --destroy` (local scope only; `aws/` manifests are never touched).
-2. **Scaffolded service cleanup** — auto-discovers every service in `services/` that is not a platform built-in (`hello-service`, `idp-mcp-server`, `qa-mcp-server`, `contract-mcp-server`). For each one:
-   - Deletes the ArgoCD Application (cascade-deletes all managed K8s resources)
-   - Uninstalls the Helm release from `services-dev` / `services`
-   - Removes the `services/<name>/` directory from the repo and commits + pushes it (`[skip ci]`)
-3. **Cluster deletion** — Kind: `kind delete cluster`; Rancher Desktop: deletes all platform namespaces.
-4. **Docker cleanup** — stops the Backstage compose stack, prunes images and volumes.
-5. **`/etc/hosts` cleanup** — removes all IDP hostname entries.
+In order: removes the AI layer, cleans up scaffolded services (deletes their
+ArgoCD apps and Helm releases, removes `services/<name>/` and commits), deletes
+the cluster, stops and prunes the Docker Compose stack, and removes the
+`/etc/hosts` entries. `kubernetes/teams/`, scaffolded GitHub repos and
+`test-suites/` are left alone.

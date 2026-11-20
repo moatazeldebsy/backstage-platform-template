@@ -83,7 +83,6 @@ const sidebars: SidebarsConfig = {
         doc('sre-reliability', 'SRE & Reliability'),
         doc('scaling-runbook', 'Scaling Runbook'),
         doc('TROUBLESHOOTING', 'Troubleshooting'),
-        doc('docker-recovery', 'Docker Recovery'),
         {
           type: 'category',
           label: 'Runbooks',
@@ -97,7 +96,7 @@ const sidebars: SidebarsConfig = {
             doc('runbooks/high-cpu', 'High CPU'),
             doc('runbooks/db-recovery', 'Database Recovery'),
             doc('runbooks/image-pull-backoff', 'ImagePullBackOff'),
-            doc('runbooks/kind-node-ip-mismatch', 'Kind Node IP Mismatch'),
+            doc('runbooks/kind-node-ip-mismatch', 'Kind Node IP Mismatch / Docker Restart'),
             doc('runbooks/cost-budget-exceeded', 'Cost Budget Exceeded'),
             doc('runbooks/kagent-guardrails', 'KAgent Guardrails'),
             doc('runbooks/regional-rebuild', 'Regional Rebuild'),

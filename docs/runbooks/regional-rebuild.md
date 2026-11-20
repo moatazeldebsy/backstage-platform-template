@@ -122,7 +122,7 @@ Step 5's bootstrap then finds `backend.hcl` and reuses this state.
 ### 4. Re-supply what Secrets Manager held
 
 Everything below lived only in the lost region. The full list is under
-[Required Credentials](../DEPLOYMENT_GUIDE.md#required-credentials).
+[Required Credentials](../PRE_DEPLOYMENT_CHECKLIST.md#what-you-need-before-deploying).
 
 | Input | Where it goes |
 |---|---|

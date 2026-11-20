@@ -110,7 +110,6 @@ nav:
     - SRE & Reliability: sre-reliability.md
     - Scaling Runbook: scaling-runbook.md
     - Troubleshooting: TROUBLESHOOTING.md
-    - Docker Recovery: docker-recovery.md
     - Runbooks:
       - runbooks/index.md
       - Incident Severity: runbooks/incident-severity.md
@@ -120,7 +119,7 @@ nav:
       - High CPU: runbooks/high-cpu.md
       - Database Recovery: runbooks/db-recovery.md
       - ImagePullBackOff: runbooks/image-pull-backoff.md
-      - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
+      - Kind Node IP Mismatch / Docker Restart: runbooks/kind-node-ip-mismatch.md
       - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
       - KAgent Guardrails: runbooks/kagent-guardrails.md
       - Regional Rebuild: runbooks/regional-rebuild.md

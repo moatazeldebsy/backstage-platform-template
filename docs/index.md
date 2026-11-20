@@ -60,7 +60,7 @@ locally and needs no cloud account.
 - [Troubleshooting](TROUBLESHOOTING.md): **start here when something is broken**
 - [SRE & Reliability](sre-reliability.md): SLOs, burn-rate alerts, PDBs, rollback
 - [Runbooks](runbooks/index.md) · [Scaling Runbook](scaling-runbook.md)
-- [Docker Recovery](docker-recovery.md) · [Post-Mortem Template](postmortem-template.md)
+- [Post-Mortem Template](postmortem-template.md)
 
 ### Reference
 
