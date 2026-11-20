@@ -4,11 +4,15 @@ repo_url: https://github.com/moatazeldebsy/backstage-platform-template
 repo_name: moatazeldebsy/backstage-platform-template
 edit_uri: edit/main/docs/
 
+# This file only drives the Backstage TechDocs tab (catalog-info.yaml:
+# techdocs-ref dir:.). The public GitHub Pages site is built with Docusaurus
+# from the same docs/ folder (website/, docs.yml), so keep the nav below in
+# step with website/sidebars.ts.
+#
 # Theme features and extensions are limited to what mkdocs-material and
-# mkdocs-techdocs-core ship, at the versions pinned in ci.yml (techdocs-build)
-# and docs.yml. The same mkdocs.yml renders the Backstage Docs tab, so a
-# feature that needs an extra pip plugin builds on GitHub Pages but breaks
-# TechDocs.
+# mkdocs-techdocs-core ship, at the versions pinned in ci.yml (techdocs-build).
+# Pages are shared with Docusaurus, so write plain Markdown: no admonitions,
+# content tabs or grid cards.
 theme:
   name: material
   font:
@@ -40,9 +44,6 @@ theme:
     - content.code.annotate
     - content.tabs.link
     - content.action.edit
-
-extra_css:
-  - stylesheets/extra.css
 
 plugins:
   - techdocs-core:
@@ -109,7 +110,6 @@ nav:
     - SRE & Reliability: sre-reliability.md
     - Scaling Runbook: scaling-runbook.md
     - Troubleshooting: TROUBLESHOOTING.md
-    - Docker Recovery: docker-recovery.md
     - Runbooks:
       - runbooks/index.md
       - Incident Severity: runbooks/incident-severity.md
@@ -119,7 +119,7 @@ nav:
       - High CPU: runbooks/high-cpu.md
       - Database Recovery: runbooks/db-recovery.md
       - ImagePullBackOff: runbooks/image-pull-backoff.md
-      - Kind Node IP Mismatch: runbooks/kind-node-ip-mismatch.md
+      - Kind Node IP Mismatch / Docker Restart: runbooks/kind-node-ip-mismatch.md
       - Cost Budget Exceeded: runbooks/cost-budget-exceeded.md
       - KAgent Guardrails: runbooks/kagent-guardrails.md
       - Regional Rebuild: runbooks/regional-rebuild.md

@@ -1,0 +1,233 @@
+/*
+ * Skin the docs like the Backstage portal itself (stock Material UI v4
+ * theme, same as website/static/demo/): near-black navigation with a teal
+ * active marker, #F8F8F8 page on white "paper", Backstage's documentation
+ * header band behind each page title, Helvetica/Roboto type.
+ */
+
+:root {
+  --bs-nav-bg: #171717;
+  --bs-nav-hover: #404040;
+  --bs-nav-text: #b5b5b5;
+  --bs-nav-selected: #ffffff;
+  --bs-nav-indicator: #9bf0e1;
+  --bs-nav-divider: #2b2b2b;
+  --bs-page: #f8f8f8;
+  --bs-paper: #ffffff;
+  --bs-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
+    0 1px 3px 0 rgba(0, 0, 0, 0.12);
+
+  --ifm-color-primary: #1f5493;
+  --ifm-color-primary-dark: #1c4c84;
+  --ifm-color-primary-darker: #1a477d;
+  --ifm-color-primary-darkest: #163a67;
+  --ifm-color-primary-light: #225ca2;
+  --ifm-color-primary-lighter: #2461a9;
+  --ifm-color-primary-lightest: #296ebf;
+  --ifm-link-color: #0a6ebe;
+
+  --ifm-font-family-base: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
+  --ifm-heading-font-weight: 700;
+  --ifm-code-font-size: 90%;
+  --ifm-background-color: var(--bs-page);
+  --ifm-background-surface-color: var(--bs-paper);
+  --ifm-global-radius: 4px;
+
+  --ifm-navbar-background-color: var(--bs-nav-bg);
+  --ifm-navbar-link-color: var(--bs-nav-text);
+  --ifm-navbar-link-hover-color: var(--bs-nav-selected);
+  --ifm-navbar-shadow: none;
+  --ifm-footer-background-color: var(--bs-nav-bg);
+
+  --docusaurus-highlighted-code-line-bg: rgba(31, 84, 147, 0.08);
+}
+
+/* Backstage's built-in dark theme */
+[data-theme='dark'] {
+  --bs-page: #333333;
+  --bs-paper: #424242;
+
+  --ifm-color-primary: #9cc9ff;
+  --ifm-color-primary-dark: #79b6ff;
+  --ifm-color-primary-darker: #68adff;
+  --ifm-color-primary-darkest: #3593ff;
+  --ifm-color-primary-light: #bfdcff;
+  --ifm-color-primary-lighter: #d0e5ff;
+  --ifm-color-primary-lightest: #ffffff;
+  --ifm-link-color: #9cc9ff;
+  --ifm-background-color: var(--bs-page);
+  --ifm-background-surface-color: var(--bs-paper);
+
+  --docusaurus-highlighted-code-line-bg: rgba(156, 201, 255, 0.12);
+}
+
+/* ---------- Top bar: same near-black as the portal sidebar ---------- */
+.navbar {
+  border-bottom: 1px solid var(--bs-nav-divider);
+}
+.navbar__title {
+  color: var(--bs-nav-indicator);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+.navbar__link {
+  font-weight: 700;
+}
+.navbar__link--active {
+  color: var(--bs-nav-selected);
+  box-shadow: inset 0 -3px 0 var(--bs-nav-indicator);
+}
+.navbar .clean-btn,
+.navbar__toggle {
+  color: var(--bs-nav-text);
+}
+.navbar .navbar-sidebar,
+.navbar-sidebar__brand {
+  background: var(--bs-nav-bg);
+}
+.navbar-sidebar .menu__link {
+  color: var(--bs-nav-text);
+}
+
+/* ---------- Docs sidebar: the portal's left nav ---------- */
+.theme-doc-sidebar-container {
+  background: var(--bs-nav-bg);
+  border-right: 0 !important;
+}
+.theme-doc-sidebar-menu .menu__link,
+.theme-doc-sidebar-menu .menu__caret {
+  color: var(--bs-nav-text);
+  border-radius: 0;
+}
+.theme-doc-sidebar-menu .menu__link:hover,
+.theme-doc-sidebar-menu .menu__caret:hover {
+  background: var(--bs-nav-hover);
+  color: var(--bs-nav-selected);
+}
+.theme-doc-sidebar-menu .menu__list-item-collapsible:hover {
+  background: var(--bs-nav-hover);
+}
+.theme-doc-sidebar-menu .menu__link--sublist-caret::after,
+.theme-doc-sidebar-menu .menu__caret::before {
+  filter: invert(0.75);
+}
+.theme-doc-sidebar-menu > .theme-doc-sidebar-item-category > .menu__list-item-collapsible > .menu__link {
+  color: var(--bs-nav-selected);
+  font-weight: 700;
+}
+.theme-doc-sidebar-menu .menu__link--active:not(.menu__link--sublist) {
+  background: var(--bs-nav-hover);
+  color: var(--bs-nav-selected);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--bs-nav-indicator);
+}
+.theme-doc-sidebar-menu .menu__link--active.menu__link--sublist {
+  color: var(--bs-nav-selected);
+}
+.theme-doc-sidebar-container button[title*='ollapse'] {
+  background: var(--bs-nav-bg);
+  border-color: var(--bs-nav-divider);
+  color: var(--bs-nav-text);
+}
+
+/* ---------- Page: white paper card on the grey page ---------- */
+.theme-doc-markdown {
+  background: var(--bs-paper);
+  box-shadow: var(--bs-shadow);
+  border-radius: 4px;
+  padding: 0 32px 24px;
+  overflow: hidden;
+}
+
+/* Title as Backstage's "documentation" header band */
+.theme-doc-markdown > header {
+  margin: 0 -32px 24px;
+  padding: 32px;
+  color: #fff;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1368 400' preserveAspectRatio='none'%3E%3Cpath d='M0 260 C 400 60 800 480 1368 160 L1368 0 L0 0Z' fill='white' fill-opacity='0.08'/%3E%3Cellipse cx='1100' cy='480' rx='520' ry='300' fill='white' fill-opacity='0.08'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, #01714b, #007b8f);
+  background-size: cover;
+}
+.theme-doc-markdown > header h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 2.25rem;
+  letter-spacing: -0.01em;
+}
+
+/* Material tables */
+.markdown table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: var(--bs-shadow);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.markdown table thead tr {
+  background: transparent;
+  border-bottom: 1px solid var(--ifm-table-border-color);
+}
+.markdown table th {
+  font-weight: 700;
+  text-align: left;
+}
+.markdown table th,
+.markdown table td {
+  border: 0;
+  border-bottom: 1px solid var(--ifm-table-border-color);
+}
+.markdown table tr:nth-child(2n) {
+  background: transparent;
+}
+@media (max-width: 996px) {
+  .markdown table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+.markdown img {
+  border-radius: 4px;
+}
+.markdown details {
+  margin-bottom: var(--ifm-spacing-vertical);
+}
+.markdown blockquote {
+  border-left-color: var(--ifm-color-primary);
+  background: rgba(31, 84, 147, 0.05);
+  padding: 12px 16px;
+  border-radius: 0 4px 4px 0;
+}
+
+.pagination-nav__link,
+.theme-doc-toc-mobile {
+  background: var(--bs-paper);
+  box-shadow: var(--bs-shadow);
+  border: 0;
+}
+
+@media (max-width: 996px) {
+  .theme-doc-markdown {
+    padding: 0 16px 16px;
+  }
+  .theme-doc-markdown > header {
+    margin: 0 -16px 16px;
+    padding: 24px 16px;
+  }
+  .theme-doc-markdown > header h1 {
+    font-size: 1.75rem;
+  }
+}
+@media (max-width: 480px) {
+  .navbar__brand {
+    min-width: 0;
+  }
+  .navbar__title {
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

@@ -1,6 +1,9 @@
 # Screenshots
 
-All shots are from live clusters — mostly a local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh`, plus a few from the AWS EKS path. No mock-ups.
+> **See it in the live demo:** every screen below, clickable and filled with demo data, at
+> [moatazeldebsy.github.io/backstage-platform-template/demo/](https://moatazeldebsy.github.io/backstage-platform-template/demo/).
+
+All shots are from live clusters — mostly a local Kind cluster brought up with `./scripts/setup.sh` + `./scripts/bootstrap-ai.sh`, plus a few from the AWS EKS path. Unlike the demo, nothing here is mocked.
 
 > Some tabs show live data from third-party integrations (SonarCloud, Datadog, PagerDuty, …) that will be empty on a fresh install until you add your own credentials — see [Optional third-party integrations](local-setup.md#optional-third-party-integrations).
 
