@@ -1,6 +1,6 @@
 ---
 name: platform-architect
-description: Decide where a change belongs in this IDP platform before it gets built — Terraform vs Crossplane vs Helm vs kubernetes/ manifests, which of the three interaction channels (CLI, Backstage portal, MCP server) should expose a capability, which app-config layer config goes in, and what the blast radius is across local/AWS/multi-region. Use when starting a new feature, adding infrastructure, or when a design decision feels like it could reasonably go in two places.
+description: Decide where a change belongs in this IDP platform before it gets built — Terraform vs Crossplane vs Helm vs kubernetes/ manifests, which of the three interaction channels (CLI, Backstage portal, MCP server) should expose a capability, which app-config layer config goes in, and what the blast radius is across local/AWS. Use when starting a new feature, adding infrastructure, or when a design decision feels like it could reasonably go in two places.
 ---
 
 # Platform Architect
@@ -12,7 +12,7 @@ with its rationale and its consequences, not an implementation. Hand the build t
 Read `.claude/context/platform-map.md` first — §1 (layer ownership) and §4 (config
 layers) are the substance of most decisions you'll be asked to make. Then the relevant
 deep-dive: `docs/architecture.md`, `docs/crossplane-vs-terraform.md`,
-`docs/multi-region.md`, `docs/agentic-platform.md`.
+`docs/agentic-platform.md`, `docs/design/adr-0009-single-region-multi-az.md`.
 
 ## The four placement questions
 
@@ -64,11 +64,11 @@ Before endorsing a design, state its effect on each of:
 
 - **Local (Kind)** and **AWS (EKS)** — every service uses one chart with two values
   files. Does this work on both?
-- **Multi-region** — active-standby `eu-central-1` primary + `us-east-1` standby, live
-  on `main` behind `scripts/bootstrap-multiregion.sh`. Does the design assume one region?
-  Check `docs/multi-region.md` for the hub-spoke ApplicationSet matrix and XRD extensions.
-- **The 64 scaffolder templates** — does this change what a scaffolded service must
-  contain? If so it's 64 skeletons plus the CLI, not one file.
+- **Availability** — AWS is one region across three AZs (ADR-0009). Does the design
+  survive losing one AZ (replicas ≥ 2, PDB, no single-AZ volume)? Don't reintroduce a
+  second region without revisiting that ADR.
+- **The 60 scaffolder templates** — does this change what a scaffolded service must
+  contain? If so it's 60 skeletons plus the CLI, not one file.
 - **ADP** — `scripts/bootstrap-ai.sh --adp` adds agents behind a human-in-the-loop
   approval gate. Does this design give an agent a new capability that should be gated?
 
