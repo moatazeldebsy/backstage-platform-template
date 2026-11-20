@@ -23,6 +23,10 @@ A Backstage developer portal, golden-path Helm chart, 59 scaffold templates, an 
 
 **▶ [Watch the 75-second teaser](https://github.com/user-attachments/assets/1f62cfc3-f645-4960-b0f7-9725324c9a13)** · **[Screenshots](docs/screenshots.md)**
 
+<a href="https://moatazeldebsy.github.io/backstage-platform-template/demo/"><img src="docs/assets/live-demo.png" alt="Try the platform, no cluster needed: a clickable Backstage demo" width="600"></a>
+
+**[Try the live demo →](https://moatazeldebsy.github.io/backstage-platform-template/demo/)** No cluster needed.
+
 </div>
 
 ## What you get
