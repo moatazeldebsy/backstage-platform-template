@@ -1,4 +1,9 @@
-/* Platform demo: hash router, page renderers and tiny inline-SVG charts.
+/* Static demo of the IDP's Backstage portal.
+ * Navigation, page list, titles, headers and tab filters mirror the real app:
+ *   backstage/app/packages/app/src/modules/nav/Sidebar.tsx  (sidebar order)
+ *   backstage/app/packages/app/src/extensions.tsx           (custom pages + entity tabs)
+ *   backstage/app/packages/app/src/entityFilters.ts         (which tabs an entity gets)
+ *   backstage/app/packages/app/src/App.tsx                  (stock plugins)
  * Plain script (no modules, no fetch) so it also works from file://. */
 (function () {
   'use strict';
@@ -23,11 +28,11 @@
     for (var i = 1; i < arguments.length; i++) out += fmt(arguments[i]) + strs[i];
     return raw(out);
   }
+  function $(sel) { return document.querySelector(sel); }
 
   /* ---------- deterministic data ---------- */
   function hash(s) {
-    var h = 2166136261;
-    s = String(s);
+    var h = 2166136261; s = String(s);
     for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
     return h >>> 0;
   }
@@ -40,7 +45,6 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  // Smooth random walk around base, optional linear trend (fraction over the range).
   function series(seed, n, base, spread, trend) {
     var r = rng(seed), out = [], prev = base;
     for (var i = 0; i < n; i++) {
@@ -50,72 +54,86 @@
     }
     return out;
   }
-  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  var TODAY = new Date(2026, 10, 20);
-  function dayLabels(n) {
-    var out = [];
-    for (var i = n - 1; i >= 0; i--) { var d = new Date(TODAY.getTime() - i * 864e5); out.push(MONTHS[d.getMonth()] + ' ' + d.getDate()); }
-    return out;
-  }
-  function weekLabels(n) { var out = []; for (var i = n - 1; i >= 0; i--) out.push('W' + (47 - i)); return out; }
-  function hourLabels(n) { var out = []; for (var i = n - 1; i >= 0; i--) out.push(((24 + 14 - i) % 24) + ':00'); return out; }
+  var NOW = new Date(2026, 10, 20, 14, 32, 10);
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDate(d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ', ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+  function ago(mins) { return fmtDate(new Date(NOW.getTime() - mins * 60000)); }
+  function iso(offsetSec) { var d = new Date(NOW.getTime() + offsetSec * 1000); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + String(100 + (hash(offsetSec) % 900)) + 'Z'; }
+  function dayLabels(n) { var out = []; for (var i = n - 1; i >= 0; i--) { var d = new Date(NOW.getTime() - i * 864e5); out.push((d.getMonth() + 1) + '/' + d.getDate()); } return out; }
 
   /* ---------- formatting ---------- */
-  function money(n, d) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
   function num(n, d) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+  function money(n, d) { return '$' + num(n, d == null ? 2 : d); }
   function pct(n, d) { return num(n, d == null ? 1 : d) + '%'; }
-  function dur(mins) { return mins < 60 ? Math.round(mins) + ' min' : mins < 1440 ? num(mins / 60, 1) + ' h' : num(mins / 1440, 1) + ' d'; }
+  function dur(m) { return m < 60 ? Math.round(m) + ' min' : num(m / 60, 1) + ' h'; }
   function hours(h) { return h < 24 ? num(h, 1) + ' h' : num(h / 24, 1) + ' d'; }
-  function initials(n) { return n.split(/[\s-]+/).map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase(); }
+  function initials(n) { return String(n).split(/[\s-]+/).map(function (p) { return p[0] || ''; }).join('').slice(0, 2).toUpperCase(); }
+  function cap(s) { s = String(s); return s.charAt(0).toUpperCase() + s.slice(1); }
 
-  /* ---------- icons (simple strokes, 24px grid) ---------- */
+  /* ---------- Material-style icons (filled, 24px) ---------- */
   var IC = {
-    home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
-    grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
-    users: 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM22 19v-1a4 4 0 0 0-3-3.9M16 5.1a3 3 0 0 1 0 5.8',
-    plus: 'M12 5v14M5 12h14',
-    plug: 'M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5',
-    book: 'M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z',
-    radar: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0M12 12l6-6',
-    chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
-    dollar: 'M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
-    alert: 'M12 3l10 18H2zM12 10v5M12 18h.01',
-    cap: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5M22 9v6',
-    trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
-    sparkle: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM19 3v4M17 5h4',
-    clipboard: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12l2 2 4-4',
-    chat: 'M4 5h16v11H9l-5 4z',
-    search: 'M11 11m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0M21 21l-5-5',
-    check: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5L16 9',
-    bot: 'M5 9h14v10H5zM12 5v4M9 13h.01M15 13h.01M9 16h6M2 13v3M22 13v3',
-    server: 'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01',
-    route: 'M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 15V9a4 4 0 0 1 4-4h6M18 9v6a4 4 0 0 1-4 4H8',
-    coins: 'M8 8m-6 0a6 3 0 1 0 12 0a6 3 0 1 0-12 0M2 8v4c0 1.7 2.7 3 6 3M2 12v4c0 1.7 2.7 3 6 3M16 13m-6 0a6 3 0 1 0 12 0a6 3 0 1 0-12 0M10 13v4c0 1.7 2.7 3 6 3s6-1.3 6-3v-4',
-    flask: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3M7 15h10',
-    trace: 'M3 6h8M6 12h10M9 18h12',
-    git: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9',
-    rollout: 'M4 6h10M4 12h16M4 18h6M17 3v6M20 15v6',
-    gauge: 'M12 14l4-4M3.3 17a9 9 0 1 1 17.4 0z',
-    bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4',
-    shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
-    cloud: 'M7 18a5 5 0 0 1-.6-10A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z',
-    eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
-    menu: 'M4 6h16M4 12h16M4 18h16',
-    sun: 'M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
-    moon: 'M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z',
-    send: 'M4 12l16-8-6 16-2-6z',
-    ok: 'M5 12l5 5 9-10',
-    x: 'M6 6l12 12M18 6L6 18',
-    layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
-    zap: 'M13 2L4 14h7l-1 8 9-12h-7z'
+    home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+    dashboard: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
+    search: 'M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+    add: 'M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z',
+    extension: 'M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z',
+    tree: 'M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z',
+    feed: 'M8 8H6v7c0 1.1.9 2 2 2h9v-2H8V8zm12-5h-8c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 8h-8V7h8v4zM4 12H2v7c0 1.1.9 2 2 2h9v-2H4v-7z',
+    admin: 'M16.5 12c1.38 0 2.49-1.12 2.49-2.5S17.88 7 16.5 7a2.5 2.5 0 0 0 0 5zM9 11c1.66 0 2.99-1.34 2.99-3S10.66 5 9 5C7.34 5 6 6.34 6 8s1.34 3 3 3zm7.5 3c-1.83 0-5.5.92-5.5 2.75V19h11v-2.25c0-1.83-3.67-2.75-5.5-2.75zM9 13c-2.33 0-7 1.17-7 3.5V19h7v-2.25c0-.85.33-2.34 2.37-3.47C10.5 13.1 9.66 13 9 13z',
+    gavel: 'M1 21h12v2H1zM5.245 8.07l2.83-2.827 14.14 14.142-2.828 2.828zM12.317 1l5.657 5.656-2.83 2.83-5.654-5.66zM3.825 9.485l5.657 5.657-2.828 2.828-5.657-5.657z',
+    chat: 'M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z',
+    timeline: 'M23 8c0 1.1-.9 2-2 2a1.7 1.7 0 0 1-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56A1.7 1.7 0 0 1 19 8c0-1.1.9-2 2-2s2 .9 2 2z',
+    campaign: 'M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z',
+    money: 'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
+    calc: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z',
+    feedback: 'M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z',
+    docs: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
+    trending: 'M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z',
+    insights: 'M21 8c-1.45 0-2.26 1.44-1.93 2.51l-3.55 3.56c-.3-.09-.74-.09-1.04 0l-2.55-2.55C12.27 10.45 11.46 9 10 9c-1.45 0-2.27 1.44-1.93 2.52l-4.56 4.55C2.44 15.74 1 16.55 1 18c0 1.1.9 2 2 2 1.45 0 2.26-1.44 1.93-2.51l4.55-4.56c.3.09.74.09 1.04 0l2.55 2.55C12.73 16.55 13.54 18 15 18c1.45 0 2.27-1.44 1.93-2.52l3.56-3.55c1.07.33 2.51-.48 2.51-1.93 0-1.1-.9-2-2-2zM15 9l.94-2.07L18 6l-2.06-.93L15 3l-.92 2.07L12 6l2.08.93zM3.5 11L4 9l2-.5L4 8l-.5-2L3 8l-2 .5L3 9z',
+    warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+    bot: 'M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z',
+    school: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z',
+    key: 'M12.65 10A5.99 5.99 0 0 0 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6a5.99 5.99 0 0 0 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
+    science: 'M19.8 18.4L14 10.67V6.5l1.35-1.69c.26-.33.03-.81-.39-.81H9.04c-.42 0-.65.48-.39.81L10 6.5v4.17L4.2 18.4c-.49.66-.02 1.6.8 1.6h14c.82 0 1.29-.94.8-1.6z',
+    person: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+    wave: 'M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm3.89 4.4L17.3 5l1.41 1.41-2.9 2.9-.81-.81V22h-2v-6h-2v6H9V9.5c-1.1 0-2-.9-2-2V2h2v5.5h1.5c.55 0 1.05.22 1.41.59l.48.48z',
+    trophy: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z',
+    target: 'M19.07 4.93l-1.41 1.41A8.01 8.01 0 0 1 20 12c0 4.42-3.58 8-8 8s-8-3.58-8-8c0-4.08 3.05-7.44 7-7.93v2.02C8.16 6.57 6 9.03 6 12c0 3.31 2.69 6 6 6s6-2.69 6-6c0-1.66-.67-3.16-1.76-4.24l-1.41 1.41C15.55 9.9 16 10.9 16 12c0 2.21-1.79 4-4 4s-4-1.79-4-4c0-1.86 1.28-3.41 3-3.86v2.14c-.6.35-1 .98-1 1.72 0 1.1.9 2 2 2s2-.9 2-2c0-.74-.4-1.38-1-1.72V2h-1C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10c0-2.76-1.12-5.26-2.93-7.07z',
+    help: 'M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z',
+    radar: 'M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z',
+    gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
+    star: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+    starO: 'M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z',
+    open: 'M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
+    edit: 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z',
+    group: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+    category: 'M12 2l-5.5 9h11L12 2zm5.5 11c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zM3 21.5h8v-8H3v8z',
+    widgets: 'M13 13v8h8v-8h-8zM3 21h8v-8H3v8zM3 3v8h8V3H3zm13.66-1.31L11 7.34 16.66 13l5.66-5.66-5.66-5.65z',
+    checkC: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+    checkO: 'M16.59 7.58L10 14.17l-3.59-3.58L5 12l5 5 8-8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z',
+    cancel: 'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z',
+    circleO: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z',
+    loading: 'M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z',
+    menu: 'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
+    chevron: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+    more: 'M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z',
+    send: 'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z',
+    history: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z',
+    newchat: 'M22 4c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2L2 16c0 1.1.9 2 2 2h14l4 4V4zm-5 7h-4v4h-2v-4H7V9h4V5h2v4h4v2z',
+    clear: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+    refresh: 'M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+    wrench: 'M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z',
+    library: 'M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z',
+    code: 'M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z'
   };
-  function icon(name, size) {
-    var s = size || 16;
-    return raw('<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + IC[name] + '"/></svg>');
+  function icon(name, size, cls) {
+    var s = size || 24;
+    return raw('<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"' + (cls ? ' class="' + cls + '"' : '') + '><path d="' + IC[name] + '"/></svg>');
   }
+  // Original stacked-layers mark, drawn for this demo (not the trademark file).
+  var LOGO = raw('<svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4l11 5.5L16 15 5 9.5z" fill="currentColor" opacity=".95"/><path d="M5 14.5L16 20l11-5.5M5 19.5L16 25l11-5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>');
 
   /* ---------- charts ---------- */
-  // Max that splits into four round steps, so gridline labels stay readable.
   function niceMax(v) {
     if (!(v > 0)) return 1;
     var st = v / 4, p = Math.pow(10, Math.floor(Math.log10(st))), n = st / p;
@@ -123,1516 +141,1625 @@
   }
   function tick(v) { return v >= 1000 ? num(v / 1000, 1) + 'k' : num(v, v % 1 === 0 ? 0 : (v * 10) % 1 === 0 ? 1 : 2); }
   function legend(items) {
-    return html`<div class="legend">${items.map(function (it, i) {
-      return html`<span><i style="background:${raw(it.color || 'var(--c' + (i + 1) + ')')}"></i>${it.name}</span>`;
-    })}</div>`;
+    return html`<div class="legend">${items.map(function (it, i) { return html`<span><i style="background:${raw(it.color || 'var(--c' + (i + 1) + ')')}"></i>${it.name}</span>`; })}</div>`;
   }
-  // series: [{name, values, color?, dash?}]
   function lineChart(ser, o) {
     o = o || {};
-    var W = 480, H = o.h || 170, L = 40, R = 8, T = 8, B = 22, n = ser[0].values.length;
-    var all = []; ser.forEach(function (s) { all = all.concat(s.values); });
-    if (o.threshold) all.push(o.threshold.value);
-    var min = o.min || 0, max = o.max || niceMax(Math.max.apply(null, all) * 1.05);
-    var yf = o.yFmt || tick;
+    var W = 560, H = o.h || 200, L = 40, R = 10, T = 10, B = 24, n = ser[0].values.length, all = [];
+    ser.forEach(function (s) { all = all.concat(s.values); });
+    var min = o.min || 0, max = o.max || niceMax(Math.max.apply(null, all) * 1.05), yf = o.yFmt || tick;
     function x(i) { return L + (W - L - R) * (n === 1 ? 0.5 : i / (n - 1)); }
     function y(v) { return T + (H - T - B) * (1 - (v - min) / (max - min)); }
     var s = '';
     for (var k = 0; k <= 4; k++) {
       var v = min + (max - min) * k / 4, yy = y(v).toFixed(1);
-      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)"/>';
-      s += '<text x="' + (L - 6) + '" y="' + (+yy + 4) + '" text-anchor="end">' + esc(yf(v)) + '</text>';
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)"/><text x="' + (L - 6) + '" y="' + (+yy + 4) + '" text-anchor="end">' + esc(yf(v)) + '</text>';
     }
     if (o.labels) {
-      var every = Math.ceil(n / 6);
-      o.labels.forEach(function (lb, i) {
-        if (i % every === 0 || i === n - 1) s += '<text x="' + x(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(lb) + '</text>';
-      });
+      var every = Math.ceil(n / 7);
+      o.labels.forEach(function (lb, i) { if (i % every === 0) s += '<text x="' + x(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(lb) + '</text>'; });
     }
     ser.forEach(function (sr, si) {
       var col = sr.color || 'var(--c' + (si + 1) + ')';
       var pts = sr.values.map(function (v, i) { return x(i).toFixed(1) + ',' + y(v).toFixed(1); });
-      if (si === 0 && o.area !== false) s += '<path d="M' + x(0).toFixed(1) + ',' + y(min).toFixed(1) + ' L' + pts.join(' L') + ' L' + x(n - 1).toFixed(1) + ',' + y(min).toFixed(1) + ' Z" fill="' + col + '" opacity="0.1"/>';
-      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"' + (sr.dash ? ' stroke-dasharray="5 4"' : '') + '/>';
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round"/>';
     });
-    if (o.threshold) {
-      var ty = y(o.threshold.value).toFixed(1);
-      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + ty + '" y2="' + ty + '" stroke="var(--bad)" stroke-dasharray="4 4"/>';
-      s += '<text x="' + (W - R) + '" y="' + (ty - 4) + '" text-anchor="end" style="fill:var(--bad)">' + esc(o.threshold.label) + '</text>';
-    }
-    var lg = ser.length > 1 || o.threshold ? legend(ser) : '';
-    return html`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label || 'Line chart'}">${raw(s)}</svg>${lg}`;
+    return html`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label || 'Line chart'}">${raw(s)}</svg>${ser.length > 1 ? legend(ser) : ''}`;
   }
-  // items: [{label, value, color?}]
-  function barChart(items, o) {
+  function stackedBars(labels, layers, o) {
     o = o || {};
-    var W = 480, H = o.h || 170, L = 40, R = 8, T = 8, B = 22, n = items.length;
-    var max = o.max || niceMax(Math.max.apply(null, items.map(function (i) { return i.value; })) * 1.05);
-    var yf = o.yFmt || tick;
-    var bw = (W - L - R) / n, s = '';
-    for (var k = 0; k <= 4; k++) {
-      var v = max * k / 4, yy = (T + (H - T - B) * (1 - k / 4)).toFixed(1);
-      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)"/><text x="' + (L - 6) + '" y="' + (+yy + 4) + '" text-anchor="end">' + esc(yf(v)) + '</text>';
-    }
-    var every = Math.ceil(n / 8);
-    items.forEach(function (it, i) {
-      var h = (H - T - B) * it.value / max, x = L + i * bw + bw * 0.18;
-      s += '<rect x="' + x.toFixed(1) + '" y="' + (H - B - h).toFixed(1) + '" width="' + (bw * 0.64).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' + (it.color || 'var(--c1)') + '"><title>' + esc(it.label + ': ' + yf(it.value)) + '</title></rect>';
-      if (i % every === 0) s += '<text x="' + (x + bw * 0.32).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(it.label) + '</text>';
+    var W = 760, H = o.h || 180, B = 22, n = labels.length, totals = labels.map(function (_, i) { return layers.reduce(function (a, l) { return a + l.values[i]; }, 0); });
+    var max = Math.max.apply(null, totals) * 1.1, bw = W / n, s = '';
+    labels.forEach(function (lb, i) {
+      var y0 = H - B;
+      layers.forEach(function (l, li) {
+        var h = (H - B - 6) * l.values[i] / max;
+        s += '<rect x="' + (i * bw + 2).toFixed(1) + '" y="' + (y0 - h).toFixed(1) + '" width="' + (bw - 4).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + (l.color || 'var(--c' + (li + 1) + ')') + '"><title>' + esc(l.name + ' ' + lb + ': $' + l.values[i].toFixed(2)) + '</title></rect>';
+        y0 -= h;
+      });
+      s += '<text x="' + (i * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + esc(lb) + '</text>';
     });
-    return html`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label || 'Bar chart'}">${raw(s)}</svg>`;
+    return html`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.label || 'Stacked bar chart'}">${raw(s)}</svg>${legend(layers)}`;
   }
   function sparkline(values, color) {
     var max = Math.max.apply(null, values), min = Math.min.apply(null, values), span = max - min || 1, n = values.length;
-    var pts = values.map(function (v, i) { return (i / (n - 1) * 100).toFixed(1) + ',' + (26 - (v - min) / span * 22).toFixed(1); }).join(' ');
-    return raw('<svg width="96" height="28" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="' + (color || 'var(--c1)') + '" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>');
+    var pts = values.map(function (v, i) { return (i / (n - 1) * 100).toFixed(1) + ',' + (18 - (v - min) / span * 14).toFixed(1); }).join(' ');
+    return raw('<svg width="88" height="22" viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>');
   }
-  function gauge(frac, label, text, color) {
-    var f = Math.max(0, Math.min(1, frac));
-    var col = color || (f < 0.2 ? 'var(--bad)' : f < 0.5 ? 'var(--warn)' : 'var(--ok)');
-    var arc = 'M12 62 A48 48 0 0 1 108 62';
-    return html`<div class="gauge"><svg class="chart" viewBox="0 0 120 72" role="img" aria-label="${label + ': ' + text}">
-      <path d="${arc}" fill="none" stroke="var(--neutral-soft)" stroke-width="10" stroke-linecap="round" pathLength="100"/>
-      ${f > 0 ? raw('<path d="' + arc + '" fill="none" stroke="' + col + '" stroke-width="10" stroke-linecap="round" pathLength="100" stroke-dasharray="' + (f * 100).toFixed(1) + ' 100"/>') : ''}
-      <text x="60" y="58" text-anchor="middle" style="font-size:17px;font-weight:700;fill:var(--text-strong)">${text}</text></svg>
-      <div class="g-label">${label}</div></div>`;
-  }
-  function donut(parts, center, o) {
-    o = o || {};
-    var total = parts.reduce(function (a, p) { return a + p.value; }, 0), acc = 0, s = '';
-    parts.forEach(function (p, i) {
-      var f = p.value / total * 100;
-      s += '<circle r="38" cx="50" cy="50" fill="none" stroke="' + (p.color || 'var(--c' + (i + 1) + ')') + '" stroke-width="14" pathLength="100" stroke-dasharray="' + f.toFixed(2) + ' ' + (100 - f).toFixed(2) + '" stroke-dashoffset="' + (-acc).toFixed(2) + '" transform="rotate(-90 50 50)"><title>' + esc(p.name) + '</title></circle>';
-      acc += f;
-    });
-    return html`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-      <svg viewBox="0 0 100 100" width="150" height="150" role="img" aria-label="${o.label || 'Donut chart'}">${raw(s)}
-        <text x="50" y="49" text-anchor="middle" style="font-size:13px;font-weight:700;fill:var(--text-strong)">${center[0]}</text>
-        <text x="50" y="62" text-anchor="middle" style="font-size:7px;fill:var(--text-muted)">${center[1]}</text></svg>
-      <div class="legend" style="flex-direction:column;gap:6px;margin:0">${parts.map(function (p, i) {
-        return html`<span><i style="background:${raw(p.color || 'var(--c' + (i + 1) + ')')}"></i>${p.name} · <strong>${o.fmt ? o.fmt(p.value) : p.value}</strong></span>`;
-      })}</div></div>`;
-  }
-  function hbars(rows) {
-    // rows: [{label, value, max, text, color?}]
-    return html`<div>${rows.map(function (r) {
-      var w = Math.min(100, r.value / r.max * 100);
-      return html`<div class="hbar-row"><span class="nowrap" style="overflow:hidden;text-overflow:ellipsis">${r.label}</span>
-        <div class="bar" role="img" aria-label="${r.label + ' ' + r.text}"><span style="width:${w.toFixed(1)}%;background:${raw(r.color || 'var(--brand)')}"></span></div>
-        <span class="num">${r.text}</span></div>`;
-    })}</div>`;
-  }
+  function hbar(v, max, color) { return html`<div class="bar" style="min-width:90px"><span style="width:${Math.min(100, v / max * 100).toFixed(1)}%;background:${raw(color || 'var(--ok)')}"></span></div>`; }
 
-  /* ---------- UI building blocks ---------- */
-  var OKS = /^(healthy|synced|ready|ok|resolved|done|finished|approved|pass|passed|success|true|elite|running)$/i;
-  var WARNS = /^(degraded|outofsync|out of sync|pending|warning|investigating|deploying|in progress|progressing|syncing|medium|high|paused|suspended|silver|bronze)$/i;
-  var BADS = /^(failed|error|firing|critical|missing|rejected|down|low|not ready|false|exhausted|crashloopbackoff|aborted)$/i;
-  function statusPill(text) {
-    var t = String(text);
-    var cls = OKS.test(t) ? 'ok' : BADS.test(t) ? 'bad' : WARNS.test(t) ? 'warn' : '';
-    return html`<span class="pill ${cls}"><span class="dot"></span>${t}</span>`;
+  /* ---------- building blocks ---------- */
+  function chip(text, cls) { return html`<span class="chip ${cls || ''}">${text}</span>`; }
+  var STATUS_CLS = { Synced: 'ok', Healthy: 'ok', Ready: 'ok', healthy: 'ok', active: 'ok', enabled: 'ok', FINISHED: 'ok', Resolved: 'ok',
+    OutOfSync: 'warn', Progressing: 'info', degraded: 'warn', Degraded: 'err', Missing: 'err', error: 'err', FAILED: 'err', RUNNING: 'info', 'Not ready': 'err', inactive: '', Unknown: '' };
+  function status(text) { return chip(text, 'sm dot ' + (STATUS_CLS[text] || '')); }
+  function lifecycleChip(l) { return chip(l, 'sm ' + (l === 'production' ? 'ok' : l === 'experimental' ? 'warn' : '')); }
+  function tierChip(t) { return t === 'none' ? chip('None', 'sm') : chip(cap(t), 'sm ' + t); }
+  function bandChip(b) { return chip(b, 'sm ' + ({ Elite: 'ok-dark', High: 'info', Medium: 'warn', Low: 'err-dark' }[b])); }
+  function card(title, body, extra, sub) {
+    return html`<section class="card">${title ? html`<div class="card-head"><h2>${title}${sub ? html`<span class="sub">${sub}</span>` : ''}</h2>${extra || ''}</div>` : ''}${body}</section>`;
   }
-  function pill(text, cls) { return html`<span class="pill ${cls || ''}">${text}</span>`; }
-  function tierPill(t) {
-    return t === 'none' ? pill('No tier') : html`<span class="pill ${t}">${t[0].toUpperCase() + t.slice(1)}</span>`;
+  function cardBody(title, body, extra) { return card(title, html`<div class="card-body" style="padding-top:0">${body}</div>`, extra); }
+  function statCard(value, label, color, desc) {
+    return html`<div class="card stat" style="border-top-color:${raw(color)}"><div class="num" style="color:${raw(color)}">${value}</div><div class="lab">${label}</div>${desc ? html`<div class="desc">${desc}</div>` : ''}</div>`;
   }
-  function card(title, body, extra, cls) {
-    return html`<section class="card ${cls || ''}">${title ? html`<div class="card-head"><h2>${title}</h2>${extra || ''}</div>` : ''}${body}</section>`;
+  function statCardTop(label, value, color, desc) {
+    return html`<div class="card stat" style="border-top-color:${raw(color)}"><div class="lab-top">${label}</div><div class="num" style="color:${raw(color)}">${value}</div>${desc ? html`<div class="desc">${desc}</div>` : ''}</div>`;
   }
-  function stat(label, value, sub, spark) {
-    return html`<div class="card stat"><div class="label">${label}</div><div class="value">${value}</div><div class="sub"><span>${sub || ''}</span>${spark || ''}</div></div>`;
-  }
-  function head(title, sub, actions, crumbs) {
-    return html`<div class="page-head"><div>${crumbs ? html`<div class="crumbs">${crumbs}</div>` : ''}<h1>${title}</h1>${sub ? html`<p>${sub}</p>` : ''}</div>${actions ? html`<div class="btn-row">${actions}</div>` : ''}</div>`;
-  }
-  function table(headers, rows, numCols) {
-    numCols = numCols || [];
-    return html`<div class="table-wrap"><table><thead><tr>${headers.map(function (h, i) {
+  function table(headers, rows, opts) {
+    opts = opts || {};
+    var numCols = opts.num || [];
+    return html`<div class="table-wrap"><table class="${opts.cls || ''}"><thead><tr>${headers.map(function (h, i) {
       return html`<th scope="col" class="${numCols.indexOf(i) >= 0 ? 'num' : ''}">${h}</th>`;
     })}</tr></thead><tbody>${rows.length ? rows.map(function (r) {
       return html`<tr>${r.map(function (c, i) { return html`<td class="${numCols.indexOf(i) >= 0 ? 'num' : ''}">${c}</td>`; })}</tr>`;
-    }) : html`<tr><td colspan="${headers.length}" class="muted">Nothing matches these filters.</td></tr>`}</tbody></table></div>`;
+    }) : html`<tr><td colspan="${headers.length}" class="empty-row">${opts.empty || 'No records to display'}</td></tr>`}</tbody></table></div>`;
   }
-  function tabs(base, list, cur) {
-    return html`<nav class="tabs" aria-label="Sections">${list.map(function (t) {
-      return html`<a href="#/${raw(base)}/${t[0]}" ${t[0] === cur ? raw('aria-current="page"') : ''}>${t[1]}</a>`;
-    })}</nav>`;
+  function pluginBar(label, ic) { return html`<div class="plugin-bar"><span class="pb-icon">${icon(ic || 'widgets', 20)}</span><span>${label}</span></div>`; }
+  function header(theme, title, subtitle, right) {
+    return html`<header class="header ${theme}"><div style="min-width:0"><h1>${title}</h1>${subtitle ? html`<div class="subtitle">${subtitle}</div>` : ''}</div>${right || ''}</header>`;
   }
-  function chips(bind, options, cur, allLabel) {
-    var opts = allLabel ? [['', allLabel]].concat(options) : options;
-    return html`<div class="chips" role="group">${opts.map(function (o) {
+  // A custom-pages plugin page: breadcrumb bar + themed Header + content.
+  function customPage(theme, title, subtitle, body, right) {
+    return html`${pluginBar('custom-pages')}${header(theme, title, subtitle, right)}<div class="content">${body}</div>`;
+  }
+  function demoChip() { return chip('Demo data', 'sm warn'); }
+  function chipButtons(key, options, cur, cls) {
+    return html`<div class="btn-row" role="group">${options.map(function (o) {
       var v = Array.isArray(o) ? o[0] : o, l = Array.isArray(o) ? o[1] : o;
-      return html`<button type="button" class="chip" data-action="set" data-key="${bind}" data-value="${v}" aria-pressed="${String(cur === v)}">${l}</button>`;
+      return html`<button type="button" class="chip ${cls || ''}" data-action="set" data-key="${key}" data-value="${v}" aria-pressed="${String(cur === v)}">${l}</button>`;
     })}</div>`;
   }
-  function select(bind, id, label, options, cur, allLabel) {
-    return html`<label class="sr-only" for="${id}">${label}</label><select class="input" id="${id}" data-bind="${bind}">
-      ${allLabel ? html`<option value="">${allLabel}</option>` : ''}${options.map(function (o) {
+  function selectField(label, id, key, options, cur, allLabel) {
+    return html`<div class="field"><label for="${id}">${label}</label><select class="input" id="${id}" data-bind="${key}">
+      ${allLabel != null ? html`<option value="">${allLabel}</option>` : ''}${options.map(function (o) {
         var v = Array.isArray(o) ? o[0] : o, l = Array.isArray(o) ? o[1] : o;
         return html`<option value="${v}" ${v === cur ? raw('selected') : ''}>${l}</option>`;
-      })}</select>`;
+      })}</select></div>`;
   }
-  function entLink(name) { return html`<a href="#/entity/${raw(encodeURIComponent(name))}">${name}</a>`; }
-  function teamLink(name) { return html`<a href="#/team/${raw(encodeURIComponent(name))}">${name}</a>`; }
 
-  /* ---------- domain helpers ---------- */
-  function comp(name) { return D.components.filter(function (c) { return c.name === name; })[0]; }
-  function team(name) { return D.teams.filter(function (t) { return t.name === name; })[0]; }
-  function tpl(name) { return D.templates.filter(function (t) { return t.n === name; })[0]; }
-  function isMobile(e) { return e.type === 'mobile'; }
-  function visibleChecks(e) {
-    return D.checks.filter(function (c) { return !c[3] || (c[3] === 'ai' && e.ai) || (c[3] === 'mobile' && isMobile(e)); });
+  /* ---------- catalog model ---------- */
+  var TEAM_TAGS = { 'platform-team': ['platform', 'kubernetes', 'golden-path'], 'ml-team': ['ml', 'ai'], 'backend-team': ['backend', 'go', 'nodejs', 'python'], 'data-team': ['data'],
+    'frontend-team': ['frontend', 'react', 'typescript', 'web'], 'android-team': ['android', 'mobile', 'kotlin'], 'ios-team': ['ios', 'mobile', 'swift'], 'qa-team': ['qa', 'testing'] };
+  function team(name) {
+    if (name === 'qa-platform-team') name = 'qa-team';
+    return D.teams.filter(function (t) { return t.name === name; })[0];
   }
+  function comp(name) { return D.components.filter(function (c) { return c.name === name; })[0]; }
+  function tpl(name) { return D.templates.filter(function (t) { return t.n === name; })[0]; }
+  function api(name) { return D.apis.filter(function (a) { return a.name === name; })[0]; }
+  function entityHref(kind, name) { return '#/catalog/default/' + kind.toLowerCase() + '/' + encodeURIComponent(name); }
+  function ownerLink(owner) {
+    var t = team(owner);
+    return html`<a class="cell-link" style="font-weight:400" href="${entityHref('group', t ? t.name : owner)}">${icon('group', 16)}${t ? t.display : owner}</a>`;
+  }
+  function systemLink(sys) { return sys ? html`<a class="cell-link" style="font-weight:400" href="${entityHref('system', sys)}">${icon('category', 16)}${sys.replace(/-/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); })}</a>` : ''; }
+  // Annotation-derived flags, standing in for entityFilters.ts.
+  function flags(c) {
+    var deployed = c.replicas > 0;
+    return {
+      deployed: deployed,
+      scorecard: c.type !== 'library',
+      security: c.score >= 8,
+      pagerduty: deployed && c.lifecycle === 'production' && (c.system === 'commerce' || c.name === 'hello-service' || c.name === 'idp-mcp-server'),
+      grafana: deployed,
+      jira: c.system === 'commerce' || c.system === 'data-platform' || c.name === 'hello-service',
+      langfuse: !!c.ai && c.type === 'service',
+      lambdatest: c.type === 'mobile' || c.tags.some(function (t) { return ['mobile', 'e2e', 'appium', 'playwright', 'devicefarm'].indexOf(t) >= 0; }),
+      slo: deployed || !!c.slo,
+      adrs: c.name === 'hello-service' || c.name === 'idp-mcp-server'
+    };
+  }
+  function entityTabs(c) {
+    var f = flags(c), t = [['', 'Overview'], ['docs', 'TechDocs'], ['apis', 'APIs']];
+    if (f.deployed) t.push(['kubernetes', 'Kubernetes']);
+    if (f.langfuse) t.push(['langfuse', 'Langfuse']);
+    if (f.deployed) t.push(['dora', 'DORA']);
+    if (f.scorecard) t.push(['scorecard', 'Scorecard']);
+    if (f.security) t.push(['security', 'Security']);
+    if (f.deployed) t.push(['datadog', 'Datadog']);
+    if (f.lambdatest) t.push(['lambdatest', 'LambdaTest']);
+    if (f.deployed) t.push(['trivy', 'Trivy']);
+    if (f.pagerduty) t.push(['on-call', 'On-Call']);
+    if (f.deployed || f.pagerduty) t.push(['incidents', 'Incidents']);
+    if (f.grafana) t.push(['grafana', 'Grafana']);
+    if (f.jira) t.push(['jira', 'Jira']);
+    if (f.slo) t.push(['slo', 'SLOs']);
+    t.push(['github-actions', 'GitHub Actions']);
+    if (f.adrs) t.push(['adrs', 'ADRs']);
+    return t;
+  }
+  function catalogEntities() {
+    var out = [];
+    D.components.forEach(function (c) { out.push({ kind: 'Component', name: c.name, type: c.type, owner: c.owner, system: c.system, lifecycle: c.lifecycle, desc: c.desc, tags: c.tags }); });
+    D.apis.forEach(function (a) { out.push({ kind: 'API', name: a.name, type: a.type, owner: a.owner, system: a.system, lifecycle: 'production', desc: a.desc, tags: [a.type] }); });
+    D.teams.forEach(function (t) { out.push({ kind: 'Group', name: t.name, title: t.display, type: 'team', owner: '', system: '', lifecycle: '', desc: t.mission, tags: TEAM_TAGS[t.name] || [] }); });
+    D.systems.forEach(function (s) { out.push({ kind: 'System', name: s.name, type: '', owner: s.owner, system: '', lifecycle: '', desc: s.desc, tags: [] }); });
+    D.resources.forEach(function (r) { out.push({ kind: 'Resource', name: r.name, type: r.kind.toLowerCase(), owner: r.owner, system: r.system, lifecycle: 'production', desc: r.desc, tags: ['crossplane'] }); });
+    D.templates.forEach(function (t) { out.push({ kind: 'Template', name: t.n, title: t.t, type: t.type, owner: t.o, system: '', lifecycle: '', desc: t.d, tags: t.tags }); });
+    return out;
+  }
+  // Scorecard (scorecard.ts): visible checks, pass/fail and tier.
+  var REMEDIATION = {
+    'has-owner': 'Set spec.owner in catalog-info.yaml.', 'has-techdocs': 'Add annotation backstage.io/techdocs-ref: dir:.',
+    'has-health-probes': 'Add annotation backstage.io/kubernetes-id (the Helm chart wires the probes).', 'has-runbook-url': 'Add annotation backstage.io/runbook-url linking to your service runbook.',
+    'has-api-definition': 'Declare providesApis in catalog-info.yaml or expose /openapi.json.', 'uses-pinned-image-tag': 'Set annotation backstage.io/image-tag to a SHA or version; avoid latest.',
+    'has-coverage-gate': 'Add "coverage" to idp.io/quality-gates annotation (skeleton CI already enforces 70%).', 'has-static-analysis': 'Add "static-analysis" to idp.io/quality-gates annotation.',
+    'has-vuln-scan': 'Add "vuln-scan" to idp.io/quality-gates annotation.', 'has-contract-tests': 'Run the enable-contract-testing scaffolder template, or add "contract" to idp.io/quality-gates.',
+    'has-e2e-tests': 'Run the playwright-e2e-suite scaffolder, or tag the entity with e2e/playwright.', 'has-model-card': 'Add annotation backstage.io/model-card-url documenting the model, its training data, and performance.',
+    'has-eval-suite': 'Add "llm-eval" to idp.io/quality-gates and run the deepeval-llm-eval-suite scaffolder.', 'has-ai-observability': 'Add annotation backstage.io/kubernetes-id to enable Grafana dashboards.',
+    'has-litellm-virtual-key': 'Run the ai-agent-kagent template with "Provision LiteLLM virtual key" enabled (ADR-0008).', 'has-budget-configured': 'Set annotation idp.io/litellm-budget-usd to your agreed monthly LLM spend ceiling.',
+    'has-sonar-scanning': 'Run the enable-security-scanning scaffolder, or add a sonarcloud.io/project-key annotation.', 'has-snyk-scanning': 'Run the enable-security-scanning scaffolder, or add a snyk.io/org-slug annotation.',
+    'has-trivy-scanning': 'See the Trivy tab — requires a github.com/project-slug annotation and CI to have run at least once.', 'has-code-signing': 'Run the mobile-code-signing scaffolder, then set annotation backstage.io/code-signing-setup: "true".',
+    'has-min-sdk-version': 'Set annotation backstage.io/mobile-min-sdk — Android API ≥24, or iOS ≥16.0.', 'has-accessibility-tests': 'Run the accessibility-suite scaffolder, then set annotation backstage.io/accessibility-tests: "true".',
+    'has-crashlytics-enabled': 'Wire up Firebase Crashlytics or Sentry, then set annotation backstage.io/crashlytics-enabled: "true".', 'has-app-size-budget': 'Set annotation backstage.io/app-size-budget-mb to your agreed binary size ceiling.'
+  };
+  function visibleChecks(e) { return D.checks.filter(function (c) { return !c[3] || (c[3] === 'ai' && e.ai) || (c[3] === 'mobile' && e.type === 'mobile'); }); }
   function checkResults(e) {
     var vis = visibleChecks(e), r = rng('checks:' + e.name);
     var order = vis.slice(1).map(function (c) { return [r(), c]; }).sort(function (a, b) { return a[0] - b[0]; }).map(function (x) { return x[1]; });
     order.unshift(vis[0]);
     var pass = {};
     order.forEach(function (c, i) { pass[c[0]] = i < e.score; });
-    return { checks: vis, pass: pass, count: Math.min(e.score, vis.length) };
+    return { checks: vis, pass: pass, count: Math.min(e.score, vis.length), firstFail: order[Math.min(e.score, order.length - 1)] };
   }
   function tierOf(e) {
     var th = e.ai ? D.tierThresholds.ai : D.tierThresholds.std, n = checkResults(e).count;
     return n >= th.gold ? 'gold' : n >= th.silver ? 'silver' : n >= th.bronze ? 'bronze' : 'none';
   }
-  function doraLevel(metric, v) {
+  function doraBand(metric, v) {
     var t = { df: [1, 1 / 7, 1 / 30], lt: [24, 168, 720], cfr: [5, 10, 15], mttr: [60, 1440, 10080] }[metric];
     var lv = metric === 'df' ? (v >= t[0] ? 0 : v >= t[1] ? 1 : v >= t[2] ? 2 : 3) : (v <= t[0] ? 0 : v <= t[1] ? 1 : v <= t[2] ? 2 : 3);
     return ['Elite', 'High', 'Medium', 'Low'][lv];
   }
-  function levelPill(l) { return pill(l, { Elite: 'ok', High: 'info', Medium: 'warn', Low: 'bad' }[l]); }
+  function overallBand(c) {
+    var order = ['Elite', 'High', 'Medium', 'Low'];
+    var worst = Math.max(order.indexOf(doraBand('df', c.dora.df)), order.indexOf(doraBand('lt', c.dora.lt)), order.indexOf(doraBand('cfr', c.dora.cfr)), order.indexOf(doraBand('mttr', c.dora.mttr)));
+    return order[worst];
+  }
   var BUDGET_OVERRIDE = { 'orders-service': 0.14, 'inventory-service': 0.03, 'notifications-service': 0.41, 'payments-api': 0.62 };
-  function sloState(e) {
-    var r = rng('slo:' + e.name);
-    var remain = BUDGET_OVERRIDE[e.name] != null ? BUDGET_OVERRIDE[e.name] : 0.45 + r() * 0.5;
-    var a = e.slo.avail, errBudget = 100 - a, sli = a + errBudget * remain * 0.9;
-    var l = e.slo.latency, lremain = Math.max(0, Math.min(1, remain + (r() - 0.4) * 0.3));
-    return { avail: { target: a, sli: sli, remain: remain, burn: (1 - remain) * (1.1 + r() * 0.6) },
-      latency: { target: l, sli: l + (100 - l) * lremain * 0.9, remain: lremain, burn: (1 - lremain) * (1 + r() * 0.5) } };
+  function sloRows(c) {
+    if (!c.slo) return [];
+    var r = rng('slo:' + c.name), rem = BUDGET_OVERRIDE[c.name] != null ? BUDGET_OVERRIDE[c.name] : 0.45 + r() * 0.5;
+    var lrem = Math.max(0, Math.min(1, rem + (r() - 0.4) * 0.3));
+    return [{ slo: 'Requests Latency', obj: c.slo.latency, rem: lrem }, { slo: 'Requests Availability', obj: c.slo.avail, rem: rem }];
   }
-  function k8sApps() {
-    return D.components.filter(function (c) { return c.replicas > 0; }).map(function (c) {
-      var bad = c.name === 'inventory-service', oos = c.name === 'notifications-service' || c.name === 'fraud-scoring';
-      return { name: c.name + '-local', parent: 'idp-services', project: 'services', sync: S.synced[c.name + '-local'] ? 'Synced' : oos ? 'OutOfSync' : 'Synced', health: bad ? 'Degraded' : 'Healthy', rev: 'main@' + hash(c.name).toString(16).slice(0, 7), ns: 'services-dev', comp: c.name };
-    });
-  }
-  function allArgoApps() {
-    return D.argoApps.map(function (a) { return Object.assign({}, a, S.synced[a.name] ? { sync: 'Synced' } : {}); }).concat(k8sApps());
-  }
+  function sloStatus(rem) { return rem < 0.2 ? chip('At risk', 'sm err') : rem < 0.5 ? chip('Warning', 'sm warn') : chip('Healthy', 'sm ok'); }
 
   /* ---------- state ---------- */
   var S = {
-    catalog: { q: '', kind: 'Component', owner: '', tier: '', system: '' },
-    create: { q: '', cat: '' },
-    form: {},
-    run: null,
-    learning: { topic: '', level: '', type: '' },
-    done: {},
-    chat: [],
-    chatDraft: '',
-    approvals: D.approvals.map(function (a) { return Object.assign({ status: 'pending' }, a); }),
-    approvalsTab: 'pending',
-    rollout: { step: 0, playing: false, aborted: false },
-    grafana: 'services',
-    aiQuery: 'how do I roll back a deployment',
-    apiTry: null,
-    mlExp: 0,
-    trace: 'tr-8f21',
-    alertState: '',
+    cat: { kind: 'Component', type: '', personal: 'all', owner: '', lifecycle: '', tag: '', q: '' },
+    apiCat: { type: '', personal: 'all', owner: '', lifecycle: '', q: '' },
+    starred: {},
+    tplf: { q: '', cat: '', tag: '', owner: '', starred: false },
+    forms: {},
+    tasks: {},
+    taskOrder: [],
+    showLogs: true,
+    chat: [], chatDraft: '', agent: 'platform-assistant', showHistory: false, pending: null,
+    approvals: D.approvals.map(function (a, i) { return Object.assign({ status: 'pending', requested: ago([4, 11, 26, 60][i] || 5) }, a); }).concat([
+      { id: 'APR-301', agent: 'release-agent', tool: 'sync_app', target: 'hello-service-staging', reason: 'Phase 9 verification of the HiTL gate', status: 'approved', decided_by: 'policy:auto-approve', requested: ago(2900), decided: ago(2900) },
+      { id: 'APR-298', agent: 'qa-assistant', tool: 'add_pr_comment', target: 'checkout-web#402', reason: 'Post k6 results on the PR', status: 'denied', decided_by: 'Jordan Blake', requested: ago(4300), decided: ago(4290) }]),
+    approvalsFilter: 'pending',
+    finops: { range: 'week', by: 'namespace' },
+    incFilter: 'All',
+    activityFilter: 'All',
+    scoreSort: 'score',
     synced: {},
-    syncing: {},
-    previews: D.previews.map(function (p) { return Object.assign({}, p); }),
-    survey: {},
-    surveySent: false,
-    extraComponents: 0
+    learning: { level: '', type: '', topic: '' },
+    done: {},
+    calc: { svc: 'web', cpu: '500', mem: '512', replicas: '2', ai: '10000', env: 'production' },
+    onboarding: 0, displayName: 'Alex Rivera',
+    survey: {}, surveyTeam: 'platform-team', surveySent: false,
+    aiQuery: 'how do I roll back a deployment',
+    searchQ: 'payments', searchType: 'all',
+    apiOpen: null, apiQ: '',
+    copilotRepo: '',
+    settingsTab: 'general',
+    importStep: 0, importUrl: 'https://github.com/moatazeldebsy/loyalty-points/blob/main/catalog-info.yaml',
+    docSearch: ''
   };
-  D.learningDone.forEach(function (t) { S.done[t] = true; });
-  try { var savedDone = JSON.parse(localStorage.getItem('idp-demo-learning') || 'null'); if (savedDone) S.done = savedDone; } catch (e) { /* storage unavailable */ }
+  try { var sd = JSON.parse(localStorage.getItem('idp-demo-learning') || 'null'); if (sd) S.done = sd; } catch (e) { /* storage unavailable */ }
 
-  /* ---------- navigation model ---------- */
-  var NAV = [
-    { group: 'Portal', items: [
-      ['home', 'Home', 'home'], ['catalog', 'Catalog', 'grid'], ['teams', 'Teams', 'users'], ['create', 'Create', 'plus'],
-      ['apis', 'API Explorer', 'plug'], ['techdocs', 'TechDocs', 'book'], ['tech-radar', 'Tech Radar', 'radar'], ['dora', 'DORA Metrics', 'chart'],
-      ['finops', 'FinOps', 'dollar'], ['incidents', 'Incidents', 'alert'], ['learning-center', 'Learning Center', 'cap'],
-      ['engineering-intelligence', 'Engineering Intelligence', 'trend'], ['copilot', 'Copilot Metrics', 'sparkle'], ['devex-survey', 'DevEx Survey', 'clipboard']] },
-    { group: 'AI', items: [
-      ['ai-assistant', 'AI Assistant', 'chat'], ['ai-search', 'AI Search', 'search'], ['approvals', 'Agent Approvals', 'check'],
-      ['kagent', 'KAgent Agents', 'bot'], ['mcp', 'MCP Servers', 'server'], ['ai-gateway', 'AI Gateway', 'route'],
-      ['litellm', 'LiteLLM Spend', 'coins'], ['mlflow', 'MLflow', 'flask'], ['langfuse', 'Langfuse Traces', 'trace']] },
-    { group: 'Operations', items: [
-      ['argocd', 'ArgoCD', 'git'], ['rollouts', 'Argo Rollouts', 'rollout'], ['grafana', 'Dashboards', 'gauge'], ['alerts', 'Alerts', 'bell'],
-      ['policies', 'Policy Violations', 'shield'], ['crossplane', 'Crossplane Claims', 'cloud'], ['previews', 'Preview Environments', 'eye']] }
+  /* ---------- navigation (Sidebar.tsx) ---------- */
+  // Every page that has a title + icon becomes a nav item; Home, Catalog and
+  // Create are pinned, the rest sort by title (localeCompare), Settings sits at the bottom.
+  var PINNED = [
+    { path: '', title: 'Home', icon: 'dashboard' },
+    { path: 'catalog', title: 'Catalog', icon: 'home' },
+    { path: 'create', title: 'Create', icon: 'add' }
   ];
-  var ROUTES = [];
-  NAV.forEach(function (g) { g.items.forEach(function (it) { ROUTES.push(it[0]); }); });
+  var REST = [
+    ['activity', 'Activity', 'feed'], ['admin', 'Admin', 'admin'], ['approvals', 'Agent Approvals', 'gavel'], ['ai-assistant', 'AI Assistant', 'chat'],
+    ['langfuse', 'AI Observability', 'timeline'], ['ai-search', 'AI Search', 'search'], ['announcements', 'Announcements', 'campaign'], ['apis', 'API Explorer', 'tree'],
+    ['api-docs', 'APIs', 'extension'], ['argocd', 'ArgoCD', 'tree'], ['copilot', 'Copilot Metrics', 'money'], ['calculator', 'Cost Calc', 'calc'],
+    ['finops', 'Cost Overview', 'money'], ['devex-survey', 'DevEx Survey', 'feedback'], ['docs', 'Docs', 'docs'], ['dora', 'DORA', 'trending'],
+    ['core4', 'DX Core 4', 'dashboard'], ['engineering-intelligence', 'Engineering Intelligence', 'insights'], ['incidents', 'Incidents', 'warning'],
+    ['kagent', 'KAgent', 'bot'], ['learning-center', 'Learning Center', 'school'], ['litellm-spend', 'LiteLLM Spend', 'key'], ['mlflow', 'MLflow', 'science'],
+    ['profile', 'My Profile', 'person'], ['onboarding', 'Onboarding', 'wave'], ['catalog-import', 'Register Existing Component', 'add'],
+    ['scorecard', 'Scorecard', 'trophy'], ['search-page', 'Search', 'search'], ['slo', 'SLOs', 'target'], ['support', 'Support', 'help'], ['tech-radar', 'Tech Radar', 'radar']
+  ].map(function (r) { return { path: r[0], title: r[1], icon: r[2] }; }).sort(function (a, b) { return a.title.localeCompare(b.title); });
+  var NAV_ALL = PINNED.concat(REST).concat([{ path: 'settings', title: 'Settings', icon: 'gear' }]);
 
-  function parts() {
-    return (location.hash.replace(/^#\/?/, '') || 'home').split('/').map(function (p) { try { return decodeURIComponent(p); } catch (e) { return p; } });
+  function parts() { return location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(function (p) { try { return decodeURIComponent(p); } catch (e) { return p; } }); }
+  function current() { return parts()[0] || ''; }
+  function navItem(it, cur) {
+    return html`<a class="nav-item" href="#/${it.path}" ${it.path === cur ? raw('aria-current="page"') : ''}>${icon(it.icon)}<span>${it.title}</span></a>`;
   }
-  function current() { return parts()[0]; }
-
   function renderSidebar() {
     var cur = current();
-    var map = { entity: 'catalog', team: 'teams' };
-    cur = map[cur] || cur;
-    var pending = S.approvals.filter(function (a) { return a.status === 'pending'; }).length;
-    $('#sidebar').innerHTML = html`<a class="brand" href="#/home"><span class="brand-mark">${icon('layers', 18)}</span><span>Developer Platform<small>Internal Developer Platform</small></span></a>
-      ${NAV.map(function (g) {
-        return html`<div class="nav-group"><div class="nav-group-title">${g.group}</div>${g.items.map(function (it) {
-          return html`<a class="nav-link" href="#/${it[0]}" ${it[0] === cur ? raw('aria-current="page"') : ''}>${icon(it[2])}<span>${it[1]}</span>${it[0] === 'approvals' && pending ? html`<span class="nav-badge" aria-label="${pending + ' pending'}">${pending}</span>` : ''}</a>`;
-        })}</div>`;
-      })}`.s;
+    if (cur === 'catalog' && parts()[1]) cur = 'catalog';
+    if (cur === 'search') cur = '__search';
+    $('#sidebar').innerHTML = html`<a class="logo" href="#/">${LOGO}<span>Backstage</span></a>
+      <button type="button" class="nav-item" data-action="open-search" ${cur === '__search' ? raw('aria-current="page"') : ''}>${icon('search')}<span>Search</span></button>
+      <div class="nav-divider"></div>
+      ${navItem(PINNED[0], cur)}
+      <div class="nav-divider"></div>
+      ${navItem(PINNED[1], cur)}${navItem(PINNED[2], cur)}
+      <div class="nav-divider"></div>
+      <div class="nav-scroll">${REST.map(function (it) { return navItem(it, cur); })}</div>
+      <div class="nav-divider"></div>
+      ${navItem(NAV_ALL[NAV_ALL.length - 1], cur)}`.s;
   }
 
-  /* ---------- pages: Portal ---------- */
+  /* ---------- Home (Platform Dashboard) ---------- */
+  var ORG_DORA = { df: 41, lt: 6.2, cfr: 6.4, mttr: 38 };
+  function doraCards(d, seed) {
+    var cards = [['DEPLOY FREQUENCY', num(d.df, 1) + '/day', 'deploys/day', doraBand('df', d.df), 'df'], ['LEAD TIME', hours(d.lt), 'commit → deploy', doraBand('lt', d.lt), 'lt'],
+      ['CHANGE FAILURE RATE', pct(d.cfr), '% of deploys', doraBand('cfr', d.cfr), 'cfr'], ['MTTR', dur(d.mttr), 'time to restore', doraBand('mttr', d.mttr), 'mttr']];
+    return html`<div class="grid g4">${cards.map(function (c) {
+      var col = c[3] === 'Elite' ? 'var(--ok-dark)' : c[3] === 'Low' ? 'var(--err-dark)' : c[3] === 'High' ? 'var(--info)' : 'var(--warn-dark)';
+      return html`<div class="card dora-card"><div class="lab">${c[0]}</div><div class="row"><div class="val">${c[1]}</div>${sparkline(series(seed + c[4], 12, 10, 3, c[4] === 'df' ? 0.3 : -0.2), col)}</div>
+        <div class="foot">${bandChip(c[3])}<span>${c[2]}</span></div></div>`;
+    })}</div>`;
+  }
   function pageHome() {
-    var me = D.user, mine = D.components.filter(function (c) { return c.owner === me.team; });
-    var open = D.incidents.filter(function (i) { return i.status !== 'resolved'; });
-    var pending = S.approvals.filter(function (a) { return a.status === 'pending'; });
-    var health = [
-      ['ArgoCD', 'Healthy', allArgoApps().length + ' apps · ' + allArgoApps().filter(function (a) { return a.sync !== 'Synced'; }).length + ' out of sync'], ['Prometheus + Alertmanager', 'Healthy', '4 alerts firing'],
-      ['AI Gateway', 'Degraded', '7 of 8 MCP targets up (security)'], ['LiteLLM', 'Healthy', '196 req/min'],
-      ['Crossplane', 'Degraded', '2 of 7 claims not ready'], ['Backstage', 'Healthy', 'catalog refresh 41 s ago']
-    ];
-    var dfS = series('home-df', 12, 41, 6, 0.3), ltS = series('home-lt', 12, 6.2, 1.2, -0.3), cfS = series('home-cfr', 12, 6.4, 1.4, -0.2), mtS = series('home-mttr', 12, 38, 8, -0.2);
-    return html`${head('Good afternoon, ' + me.name.split(' ')[0], 'Platform overview for ' + me.team + ' · Friday, Nov 20')}
-      <div class="grid g4">
-        ${stat('Components', D.components.length, 'in the catalog')}
-        ${stat('APIs', D.apis.length, 'OpenAPI, AsyncAPI, GraphQL')}
-        ${stat('Teams', D.teams.length, 'with cost budgets')}
-        ${stat('Templates', D.templates.length, 'golden paths')}
-      </div>
-      <div class="grid g4" style="margin-top:16px">
-        ${stat('Deploy frequency', '41/day', levelPill('Elite'), sparkline(dfS, 'var(--c1)'))}
-        ${stat('Lead time', '6.2 h', levelPill('Elite'), sparkline(ltS, 'var(--c2)'))}
-        ${stat('Change failure', '6.4%', levelPill('High'), sparkline(cfS, 'var(--c3)'))}
-        ${stat('MTTR', '38 min', levelPill('Elite'), sparkline(mtS, 'var(--c4)'))}
-      </div>
-      <div class="grid g3" style="margin-top:16px">
-        ${card('Platform health', html`<ul class="list">${health.map(function (h) {
-          return html`<li><div style="flex:1"><strong>${h[0]}</strong><div class="muted small">${h[2]}</div></div>${statusPill(h[1])}</li>`;
-        })}</ul>`)}
-        ${card('My services', html`<ul class="list">${mine.slice(0, 7).map(function (c) {
-          return html`<li><div style="flex:1;min-width:0">${entLink(c.name)}<div class="muted small">${c.lang} · ${c.lifecycle}</div></div>${tierPill(tierOf(c))}</li>`;
-        })}</ul>`, html`<a href="#/catalog" data-action="set" data-key="catalog.owner" data-value="${me.team}">All ${mine.length}</a>`)}
-        ${card('Needs your attention', html`<ul class="list">
-          ${open.map(function (i) { return html`<li><span class="icon" style="background:var(--bad-soft);color:var(--bad)">${icon('alert')}</span><div><a href="#/incidents/${i.id}">${i.id}</a> ${i.title}<div class="muted small">${i.sev} · ${i.status}</div></div></li>`; })}
-          ${pending.slice(0, 3).map(function (a) { return html`<li><span class="icon">${icon('check')}</span><div><a href="#/approvals">${a.id}</a> ${a.agent} wants to run <code>${a.tool}</code><div class="muted small">${a.target}</div></div></li>`; })}
-          <li><span class="icon" style="background:var(--warn-soft);color:var(--warn)">${icon('dollar')}</span><div><a href="#/team/backend-team/budget">backend-team</a> is at 107% of its monthly budget<div class="muted small">TeamBudgetExceeded firing</div></div></li>
-        </ul>`)}
-      </div>
-      ${card('Activity', html`<ul class="list">${D.activity.map(function (a) {
-        var ic = { deploy: 'rollout', ai: 'bot', gitops: 'git', scaffold: 'plus', alert: 'bell', security: 'shield', scorecard: 'trend', cost: 'dollar' }[a.kind];
-        var href = comp(a.target) ? '#/entity/' + a.target : team(a.target) ? '#/team/' + a.target : tpl(a.target) ? '#/create/' + a.target : '#/argocd';
-        return html`<li><span class="icon">${icon(ic)}</span><div style="flex:1;min-width:0"><strong>${a.who}</strong> ${a.what} <a href="${href}">${a.target}</a><div class="muted small">${a.detail}</div></div><span class="muted small nowrap">${a.t}</span></li>`;
-      })}</ul>`)}`;
+    return html`${pluginBar('custom-pages')}${header('home', 'Platform Dashboard', 'Internal Developer Platform · platform-wide overview')}
+      <div class="content">
+        <div class="grid g3">${statCard(D.components.length, 'Services in catalog', '#1976d2')}${statCard(D.apis.length, 'APIs in catalog', '#43a047')}${statCard(D.teams.length, 'Teams in catalog', '#8e24aa')}</div>
+        <h2 class="section-title" style="margin-top:28px">Platform DORA</h2>
+        ${doraCards(ORG_DORA, 'home')}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 14px"><h2 class="section-title" style="margin:0">Services</h2><a class="btn outlined" href="#/create">Create</a></div>
+        <div class="card">${table(['Name', 'Owner', 'Type', 'Lifecycle'], D.components.map(function (c) {
+          return [html`<a href="${entityHref('component', c.name)}"><strong>${c.name}</strong></a>`, 'group:default/' + c.owner, c.type, lifecycleChip(c.lifecycle)];
+        }))}</div>
+      </div>`;
   }
 
-  function catalogEntities() {
-    var out = [];
-    D.components.forEach(function (c) { out.push({ kind: 'Component', name: c.name, type: c.type, owner: c.owner, system: c.system, lifecycle: c.lifecycle, desc: c.desc, tags: c.tags, tier: tierOf(c), href: '#/entity/' + c.name }); });
-    D.apis.forEach(function (a) { out.push({ kind: 'API', name: a.name, type: a.type, owner: a.owner, system: a.system, lifecycle: 'production', desc: a.desc, tags: [a.type], href: '#/apis/' + a.name }); });
-    D.systems.forEach(function (s) { out.push({ kind: 'System', name: s.name, type: 'system', owner: s.owner, system: s.name, lifecycle: '-', desc: s.desc, tags: [], sys: true }); });
-    D.resources.forEach(function (r) { out.push({ kind: 'Resource', name: r.name, type: r.kind, owner: r.owner, system: r.system, lifecycle: 'production', desc: r.desc, tags: ['crossplane'], href: '#/crossplane' }); });
-    return out;
+  /* ---------- Catalog (stock catalog plugin) ---------- */
+  function userFilter(stateKey, ownedCount, starredCount, allCount, cur) {
+    return html`<div class="user-filter"><div class="uf-title">Personal</div>
+      <button type="button" class="uf-item" data-action="set" data-key="${stateKey}.personal" data-value="owned" aria-pressed="${String(cur === 'owned')}"><span>${icon('gear', 20)} Owned</span><span>${ownedCount}</span></button>
+      <button type="button" class="uf-item" data-action="set" data-key="${stateKey}.personal" data-value="starred" aria-pressed="${String(cur === 'starred')}"><span>${icon('star', 20)} Starred</span><span>${starredCount}</span></button>
+      <div class="uf-title" style="margin-top:14px">My Organization</div>
+      <button type="button" class="uf-item" data-action="set" data-key="${stateKey}.personal" data-value="all" aria-pressed="${String(cur === 'all')}"><span>All</span><span>${allCount}</span></button></div>`;
   }
+  function actionsCell(e) {
+    var key = e.kind + ':' + e.name, on = !!S.starred[key];
+    return html`<div class="actions"><a class="icon-btn" href="${e.kind === 'Template' ? '#/create/templates/default/' + e.name : entityHref(e.kind, e.name)}" aria-label="${'View ' + e.name}" title="View">${icon('open', 20)}</a>
+      <span class="icon-btn" aria-hidden="true" title="Edit (opens the source repo in the live portal)" style="opacity:.5">${icon('edit', 20)}</span>
+      <button type="button" class="icon-btn ${on ? 'on' : ''}" data-action="star" data-key="${key}" aria-pressed="${String(on)}" aria-label="${(on ? 'Remove ' : 'Add ') + e.name + (on ? ' from' : ' to') + ' favorites'}">${icon(on ? 'star' : 'starO', 20)}</button></div>`;
+  }
+  function entityIcon(kind) { return { Component: 'wrench', API: 'extension', Group: 'group', System: 'category', Resource: 'widgets', Template: 'library' }[kind] || 'widgets'; }
   function pageCatalog() {
-    var f = S.catalog, q = f.q.toLowerCase();
-    var rows = catalogEntities().filter(function (e) {
-      return (!f.kind || e.kind === f.kind) && (!f.owner || e.owner === f.owner) && (!f.system || e.system === f.system) &&
-        (!f.tier || e.tier === f.tier) && (!q || (e.name + ' ' + e.desc + ' ' + e.tags.join(' ')).toLowerCase().indexOf(q) >= 0);
+    var f = S.cat, all = catalogEntities().filter(function (e) { return e.kind === f.kind; });
+    var mine = all.filter(function (e) { return e.owner === D.user.team || (e.kind === 'Group' && e.name === D.user.team); });
+    var starred = all.filter(function (e) { return S.starred[e.kind + ':' + e.name]; });
+    var base = f.personal === 'owned' ? mine : f.personal === 'starred' ? starred : all;
+    var types = [], owners = [], lifecycles = [], tags = [];
+    all.forEach(function (e) {
+      if (e.type && types.indexOf(e.type) < 0) types.push(e.type);
+      if (e.owner && owners.indexOf(e.owner) < 0) owners.push(e.owner);
+      if (e.lifecycle && lifecycles.indexOf(e.lifecycle) < 0) lifecycles.push(e.lifecycle);
+      e.tags.forEach(function (t) { if (tags.indexOf(t) < 0) tags.push(t); });
     });
-    return html`${head('Catalog', 'Every component, API, system and resource, with its owner and scorecard tier.', html`<a class="btn primary" href="#/create">${icon('plus')} Create</a>`)}
-      <div class="filters">
-        <label class="sr-only" for="cat-q">Filter catalog</label>
-        <input class="input grow" id="cat-q" type="search" placeholder="Filter by name, description or tag" value="${f.q}" data-bind="catalog.q">
-        ${select('catalog.kind', 'cat-kind', 'Kind', ['Component', 'API', 'System', 'Resource'], f.kind, 'All kinds')}
-        ${select('catalog.owner', 'cat-owner', 'Owner', D.teams.map(function (t) { return t.name; }), f.owner, 'All owners')}
-        ${select('catalog.system', 'cat-system', 'System', D.systems.map(function (s) { return s.name; }), f.system, 'All systems')}
-        ${select('catalog.tier', 'cat-tier', 'Scorecard tier', [['gold', 'Gold'], ['silver', 'Silver'], ['bronze', 'Bronze'], ['none', 'No tier']], f.tier, 'All tiers')}
-        ${f.q || f.owner || f.tier || f.system || f.kind !== 'Component' ? html`<button class="btn sm" type="button" data-action="reset-catalog">Clear</button>` : ''}
-      </div>
-      ${card(rows.length + ' ' + (f.kind ? f.kind.toLowerCase() + (rows.length === 1 ? '' : 's') : 'entities'), table(['Name', 'Kind', 'Type', 'Owner', 'System', 'Lifecycle', 'Tier', 'Tags'], rows.map(function (e) {
-        return [e.sys ? html`<button class="btn sm" type="button" data-action="set" data-key="catalog.system" data-value="${e.name}" title="Show this system's entities">${e.name}</button>` : html`<a href="${e.href}"><strong>${e.name}</strong></a><div class="muted small">${e.desc}</div>`,
-          e.kind, e.type, html`<span class="nowrap">${teamLink(e.owner)}</span>`, html`<span class="nowrap">${e.system}</span>`, e.lifecycle === '-' ? '-' : pill(e.lifecycle, e.lifecycle === 'production' ? 'ok' : 'warn'),
-          e.kind === 'Component' ? tierPill(e.tier) : '-', e.tags.slice(0, 3).map(function (t) { return html`<span class="tag">${t}</span>`; })];
-      })))}`;
+    var q = f.q.toLowerCase();
+    var rows = base.filter(function (e) {
+      return (!f.type || e.type === f.type) && (!f.owner || e.owner === f.owner) && (!f.lifecycle || e.lifecycle === f.lifecycle) && (!f.tag || e.tags.indexOf(f.tag) >= 0) &&
+        (!q || (e.name + ' ' + (e.title || '') + ' ' + e.desc + ' ' + e.tags.join(' ')).toLowerCase().indexOf(q) >= 0);
+    });
+    var kindLabel = { Component: 'Components', API: 'APIs', Group: 'Groups', System: 'Systems', Resource: 'Resources', Template: 'Templates' }[f.kind];
+    var cols, cells;
+    if (f.kind === 'Group') {
+      cols = ['Name', 'Type', 'Description', 'Tags', 'Actions'];
+      cells = function (e) { return [html`<a class="cell-link" href="${entityHref('group', e.name)}">${icon('group', 18)}${e.title}</a>`, e.type, html`<span class="clamp">${e.desc}</span>`, tagChips(e.tags), actionsCell(e)]; };
+    } else {
+      cols = ['Name', 'System', 'Owner', 'Type', 'Lifecycle', 'Description', 'Tags', 'Actions'];
+      cells = function (e) {
+        return [html`<a class="cell-link" href="${e.kind === 'Template' ? '#/create/templates/default/' + e.name : entityHref(e.kind, e.name)}">${icon(entityIcon(e.kind), 16)}${e.name}</a>`, systemLink(e.system), e.owner ? ownerLink(e.owner) : '', e.type, e.lifecycle,
+          html`<span class="clamp" title="${e.desc}">${e.desc}</span>`, tagChips(e.tags), actionsCell(e)];
+      };
+    }
+    return html`${pluginBar('Catalog', 'home')}<div class="content">
+      <div class="page-title"><h1>My Organization Catalog</h1><a class="btn contained" href="#/create">Create</a></div>
+      <div class="catalog-layout">
+        <div class="filters">
+          ${selectField('Kind', 'f-kind', 'cat.kind', ['Component', 'API', 'Group', 'System', 'Resource', 'Template'], f.kind)}
+          ${selectField('Type', 'f-type', 'cat.type', types.sort(), f.type, 'all')}
+          ${userFilter('cat', mine.length, starred.length, all.length, f.personal)}
+          ${owners.length ? selectField('Owner', 'f-owner', 'cat.owner', owners.sort().map(function (o) { var t = team(o); return [o, t ? t.display : o]; }), f.owner, '') : ''}
+          ${lifecycles.length ? selectField('Lifecycle', 'f-life', 'cat.lifecycle', lifecycles.sort(), f.lifecycle, '') : ''}
+          ${selectField('Tags', 'f-tag', 'cat.tag', tags.sort(), f.tag, '')}
+        </div>
+        <section class="card">
+          <div class="card-head"><h2>All ${kindLabel} (${rows.length})</h2>
+            <div class="underline-search">${icon('search', 22)}<label class="sr-only" for="cat-q">Search</label><input id="cat-q" type="search" placeholder="Search" value="${f.q}" data-bind="cat.q">
+              ${f.q ? html`<button type="button" class="icon-btn sm" data-action="set" data-key="cat.q" data-value="" aria-label="Clear search">${icon('clear', 20)}</button>` : ''}</div></div>
+          ${table(cols, rows.map(cells), { cls: 'bs' })}
+        </section>
+      </div></div>`;
   }
+  function tagChips(tags) { return html`<div style="max-width:160px">${tags.map(function (t) { return chip(t, 'sm outlined'); })}</div>`; }
 
-  var ENTITY_TABS = [['overview', 'Overview'], ['cicd', 'CI/CD'], ['dora', 'DORA'], ['scorecard', 'Scorecard'], ['security', 'Security'], ['slos', 'SLOs'],
-    ['oncall', 'On-Call'], ['grafana', 'Grafana'], ['jira', 'Jira'], ['kubernetes', 'Kubernetes'], ['docs', 'Docs']];
-  function pageEntity(name, tab) {
-    var e = comp(name);
-    if (!e) return notFound('No component named "' + name + '" in the catalog.');
-    tab = tab || 'overview';
-    var fn = ENTITY_RENDER[tab];
-    if (!fn) return notFound('Unknown tab "' + tab + '".');
-    return html`${head(e.name, e.desc, html`<a class="btn" href="#/ai-assistant" data-action="ask" data-prompt="${'Show metrics for ' + e.name}">${icon('chat')} Ask AI</a>`,
-        html`<a href="#/catalog">Catalog</a> / Component / ${e.type}`)}
-      <div class="btn-row" style="margin:-8px 0 16px">${pill(e.lifecycle, e.lifecycle === 'production' ? 'ok' : 'warn')} ${tierPill(tierOf(e))} ${pill('owner: ' + e.owner, 'info')} ${pill('system: ' + e.system)} ${pill(e.lang)}</div>
-      ${tabs('entity/' + encodeURIComponent(e.name), ENTITY_TABS, tab)}${fn(e)}`;
+  /* ---------- Entity pages ---------- */
+  function entityHeader(theme, kindLine, name, meta, starKey) {
+    var on = !!S.starred[starKey];
+    return html`<header class="header ${theme}"><div style="min-width:0"><div class="overline">${kindLine}</div>
+        <div class="title-row"><h1>${name}</h1><button type="button" class="star" data-action="star" data-key="${starKey}" aria-pressed="${String(on)}" aria-label="${on ? 'Remove from favorites' : 'Add to favorites'}">${icon(on ? 'star' : 'starO', 30)}</button></div></div>
+      <div class="header-meta">${meta}<span class="icon-btn" style="color:#fff" aria-hidden="true">${icon('more')}</span></div></header>`;
   }
-  function doraSeries(e) {
-    return {
-      df: series('df:' + e.name, 12, e.dora.df * 7, e.dora.df * 1.6, 0.25),
-      lt: series('lt:' + e.name, 12, e.dora.lt, e.dora.lt * 0.25, -0.2),
-      cfr: series('cfr:' + e.name, 12, e.dora.cfr, e.dora.cfr * 0.35, -0.1),
-      mttr: series('mttr:' + e.name, 12, e.dora.mttr, e.dora.mttr * 0.3, -0.1)
-    };
+  function metaItem(label, value) { return html`<dl><dt>${label}</dt><dd>${value}</dd></dl>`; }
+  function entityTabsNav(base, list, cur) {
+    return html`<nav class="tabs" aria-label="Entity tabs">${list.map(function (t) {
+      return html`<a href="${base + (t[0] ? '/' + t[0] : '')}" ${t[0] === cur ? raw('aria-current="page"') : ''}>${t[1]}</a>`;
+    })}</nav>`;
   }
-  var ENTITY_RENDER = {
-    overview: function (e) {
-      var res = D.resources.filter(function (r) { return r.owner === e.owner && r.system === e.system; });
-      var r = rng('deploys:' + e.name);
-      return html`<div class="grid g3">
-        ${card('About', html`<dl class="kv"><dt>Description</dt><dd>${e.desc}</dd><dt>Owner</dt><dd>${teamLink(e.owner)}</dd><dt>System</dt><dd>${e.system}</dd>
-          <dt>Type</dt><dd>${e.type}</dd><dt>Language</dt><dd>${e.lang}</dd><dt>Version</dt><dd><code>${e.version}</code></dd>
-          <dt>Repository</dt><dd><code>github.com/moatazeldebsy/${e.name}</code></dd><dt>Tags</dt><dd>${e.tags.map(function (t) { return html`<span class="tag">${t}</span>`; })}</dd></dl>`, null, 'span2')}
-        ${card('Relations', html`<ul class="list">
-          <li><span class="icon">${icon('users')}</span><div>Owned by ${teamLink(e.owner)}</div></li>
-          <li><span class="icon">${icon('layers')}</span><div>Part of system <strong>${e.system}</strong></div></li>
-          ${(e.apis || []).map(function (a) { return html`<li><span class="icon">${icon('plug')}</span><div>Provides API <a href="#/apis/${a}">${a}</a></div></li>`; })}
-          ${res.slice(0, 2).map(function (x) { return html`<li><span class="icon">${icon('cloud')}</span><div>Depends on <a href="#/crossplane">${x.name}</a> (${x.kind})</div></li>`; })}
-        </ul>`)}
+  function pageEntity(kind, name, tab) {
+    kind = (kind || '').toLowerCase();
+    tab = tab || '';
+    if (kind === 'component') return pageComponent(name, tab);
+    if (kind === 'group') return pageGroup(name, tab);
+    if (kind === 'api') return pageApiEntity(name, tab);
+    if (kind === 'system' || kind === 'resource') return pageSimpleEntity(kind, name, tab);
+    return notFound();
+  }
+  function pageComponent(name, tab) {
+    var c = comp(name);
+    if (!c) return notFound('Entity was not found');
+    var tabsList = entityTabs(c), t = tabsList.filter(function (x) { return x[0] === tab; })[0];
+    if (!t) return notFound('This entity has no "' + tab + '" tab.');
+    var tm = team(c.owner), base = entityHref('component', c.name);
+    return html`${entityHeader('service', 'Component — ' + c.type, c.name, html`${metaItem('Owner', html`${icon('group', 16)}${tm ? tm.display : c.owner}`)}${metaItem('Lifecycle', c.lifecycle)}`, 'Component:' + c.name)}
+      ${entityTabsNav(base, tabsList, tab)}<div class="content">${TAB[tab || 'overview'](c)}</div>`;
+  }
+  function aboutCard(e, fields, links) {
+    return html`<section class="card"><div class="card-head"><h2>About</h2><div class="btn-row"><span class="icon-btn sm" aria-hidden="true">${icon('refresh', 20)}</span><span class="icon-btn sm" aria-hidden="true">${icon('edit', 20)}</span></div></div>
+      <div class="card-divider"></div>
+      <div class="about-links">${links.map(function (l) { return l[1] ? html`<a href="${l[1]}">${icon(l[2], 22)}${l[0]}</a>` : html`<span>${icon(l[2], 22)}${l[0]}</span>`; })}</div>
+      <div class="card-body about"><dl style="margin:0"><dt>Description</dt><dd>${e.desc}</dd></dl><div class="about-grid">${fields.map(function (f) { return html`<dl style="margin:0"><dt>${f[0]}</dt><dd>${f[1] || html`<span class="muted">No ${f[0].toLowerCase()}</span>`}</dd></dl>`; })}</div></div></section>`;
+  }
+  function relationsGraph(center, nodes) {
+    // nodes: [{label, kind, rel}] arranged around the center node.
+    var W = 620, H = 300, cx = W / 2, cy = H / 2, s = '';
+    var n = nodes.length;
+    nodes.forEach(function (nd, i) {
+      var a = (i / n) * Math.PI * 2 - Math.PI / 2, x = cx + Math.cos(a) * 225, y = cy + Math.sin(a) * 110;
+      s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(0) + '" y2="' + y.toFixed(0) + '" stroke="var(--text-3)" stroke-width="1"/>';
+      s += '<text x="' + ((cx + x) / 2).toFixed(0) + '" y="' + ((cy + y) / 2 - 4).toFixed(0) + '" text-anchor="middle" style="font-size:9px">' + esc(nd.rel) + '</text>';
+      s += '<g><rect x="' + (x - 78).toFixed(0) + '" y="' + (y - 14).toFixed(0) + '" width="156" height="28" rx="14" fill="var(--paper)" stroke="var(--divider)"/><text x="' + x.toFixed(0) + '" y="' + (y + 4).toFixed(0) + '" text-anchor="middle" style="font-size:11px;fill:var(--text)">' + esc(nd.kind + ':' + nd.label) + '</text></g>';
+    });
+    s += '<rect x="' + (cx - 86) + '" y="' + (cy - 16) + '" width="172" height="32" rx="16" fill="var(--primary)"/><text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" style="font-size:12px;font-weight:700;fill:var(--primary-contrast)">' + esc(center) + '</text>';
+    return html`<div class="graph-box"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${'Relations of ' + center}">${raw(s)}</svg></div>`;
+  }
+  var TAB = {
+    overview: function (c) {
+      var nodes = [{ label: c.owner, kind: 'group', rel: 'ownedBy' }, { label: c.system, kind: 'system', rel: 'partOf' }];
+      (c.apis || []).forEach(function (a) { nodes.push({ label: a, kind: 'api', rel: 'providesApi' }); });
+      D.resources.filter(function (r) { return r.owner === c.owner && r.system === c.system; }).slice(0, 2).forEach(function (r) { nodes.push({ label: r.name, kind: 'resource', rel: 'dependsOn' }); });
+      return html`<div class="grid g2">
+        ${aboutCard(c, [['Owner', ownerLink(c.owner)], ['System', systemLink(c.system)], ['Type', c.type], ['Lifecycle', c.lifecycle], ['Tags', html`${c.tags.map(function (t) { return chip(t, 'sm'); })}`]],
+          [['View Source', null, 'code'], ['View TechDocs', entityHref('component', c.name) + '/docs', 'docs']])}
+        ${card('Relations', html`<div class="card-body" style="padding-top:0">${relationsGraph(c.name, nodes)}</div>`)}
       </div>
-      <div class="grid g4" style="margin-top:16px">
-        ${stat('Deploys / day', num(e.dora.df, 1), levelPill(doraLevel('df', e.dora.df)))}
-        ${stat('Lead time', hours(e.dora.lt), levelPill(doraLevel('lt', e.dora.lt)))}
-        ${stat('Change failure', pct(e.dora.cfr), levelPill(doraLevel('cfr', e.dora.cfr)))}
-        ${stat('MTTR', dur(e.dora.mttr), levelPill(doraLevel('mttr', e.dora.mttr)))}
-      </div>
-      ${card('Recent deployments', table(['Version', 'Environment', 'Status', 'By', 'When'], [0, 1, 2, 3].map(function (i) {
-        var envs = ['dev', 'staging', 'prod', 'prod'];
-        return [html`<code>${i === 0 ? e.version : e.version.replace(/\d+$/, function (m) { return Math.max(0, +m - i); })}</code>`, envs[i], statusPill(i === 0 && e.name === 'inventory-service' ? 'Degraded' : 'Healthy'), D.people[Math.floor(r() * 12)], (i * 7 + 2 + Math.floor(r() * 5)) + ' h ago'];
-      })))}`;
-    },
-    cicd: function (e) {
-      var r = rng('ci:' + e.name), stages = ['Lint', 'Unit tests', 'SAST', 'Docker build', 'Trivy scan', 'Cosign sign', 'ArgoCD sync'];
-      var runs = [];
-      for (var i = 0; i < 8; i++) {
-        var fail = r() < 0.15 && i > 0;
-        runs.push([html`<code>#${1480 - i * 3}</code>`, i % 3 === 1 ? 'ci.yml' : 'build-and-deploy.yml', i % 4 === 2 ? 'feat/' + ['retry-budget', 'otel-spans', 'cache-ttl'][i % 3] : 'main',
-          html`<code>${hash(e.name + i).toString(16).slice(0, 7)}</code>`, statusPill(i === 0 && e.name === 'inventory-service' ? 'failed' : fail ? 'failed' : 'success'),
-          Math.floor(3 + r() * 6) + 'm ' + Math.floor(r() * 59) + 's', (i * 5 + 1) + ' h ago']);
-      }
-      var last = e.name === 'inventory-service' ? 2 : 7;
-      return html`${card('Latest pipeline · main', html`<div class="rollout-steps">${stages.map(function (s, i) {
-          return html`<span class="${i < last ? 'done' : i === last ? 'cur' : ''}">${i < last ? '✓ ' : ''}${s}</span>`;
-        })}</div><p class="muted small" style="margin-top:10px">GitHub Actions → lint/test/SAST → Docker build → Trivy + Cosign → GitOps promotion through ArgoCD.</p>`)}
-        ${card('Workflow runs', table(['Run', 'Workflow', 'Branch', 'Commit', 'Status', 'Duration', 'Started'], runs))}`;
-    },
-    dora: function (e) {
-      var s = doraSeries(e), wl = weekLabels(12);
-      return html`<div class="grid g4">
-        ${stat('Deploy frequency', num(e.dora.df, 1) + '/day', levelPill(doraLevel('df', e.dora.df)), sparkline(s.df))}
-        ${stat('Lead time for changes', hours(e.dora.lt), levelPill(doraLevel('lt', e.dora.lt)), sparkline(s.lt, 'var(--c2)'))}
-        ${stat('Change failure rate', pct(e.dora.cfr), levelPill(doraLevel('cfr', e.dora.cfr)), sparkline(s.cfr, 'var(--c3)'))}
-        ${stat('Time to restore', dur(e.dora.mttr), levelPill(doraLevel('mttr', e.dora.mttr)), sparkline(s.mttr, 'var(--c4)'))}
-      </div>
-      <div class="grid g2" style="margin-top:16px">
-        ${card('Deployments per week', barChart(s.df.map(function (v, i) { return { label: wl[i], value: Math.round(v) }; }), { label: 'Deployments per week' }))}
-        ${card('Lead time (hours, commit → prod)', lineChart([{ name: 'Lead time', values: s.lt }], { labels: wl, label: 'Lead time per week' }))}
-        ${card('Change failure rate (%)', lineChart([{ name: 'CFR', values: s.cfr, color: 'var(--c3)' }], { labels: wl, threshold: { value: 15, label: 'Medium/Low boundary' }, label: 'Change failure rate' }))}
-        ${card('Time to restore (minutes)', lineChart([{ name: 'MTTR', values: s.mttr, color: 'var(--c4)' }], { labels: wl, label: 'MTTR' }))}
-      </div>
-      <p class="muted small" style="margin-top:12px">Source: Prometheus <code>dora_*</code> series from the DORA exporter, keyed by <code>github.com/project-slug</code>.</p>`;
-    },
-    scorecard: function (e) {
-      var cr = checkResults(e), th = e.ai ? D.tierThresholds.ai : D.tierThresholds.std, t = tierOf(e);
-      var next = t === 'none' ? ['bronze', th.bronze] : t === 'bronze' ? ['silver', th.silver] : t === 'silver' ? ['gold', th.gold] : null;
-      var groups = [];
-      cr.checks.forEach(function (c) { if (groups.indexOf(c[1]) < 0) groups.push(c[1]); });
-      return html`<div class="grid g3">
-        ${card('Tier', html`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${tierPill(t)}<span class="muted">${cr.count} of ${cr.checks.length} checks passing</span></div>
-          <div class="bar" style="height:10px"><span style="width:${(cr.count / cr.checks.length * 100).toFixed(0)}%"></span></div>
-          <p class="muted small" style="margin-top:10px">${next ? 'Pass ' + (next[1] - cr.count) + ' more to reach ' + next[0][0].toUpperCase() + next[0].slice(1) + '.' : 'Top tier reached.'}
-          Thresholds${e.ai ? ' (AI entity)' : ''}: Bronze ${th.bronze} · Silver ${th.silver} · Gold ${th.gold}.</p>`)}
-        ${card('By group', hbars(groups.map(function (g) {
-          var gc = cr.checks.filter(function (c) { return c[1] === g; }), p = gc.filter(function (c) { return cr.pass[c[0]]; }).length;
-          return { label: g, value: p, max: gc.length, text: p + '/' + gc.length, color: p === gc.length ? 'var(--ok)' : 'var(--brand)' };
-        })), null, 'span2')}
-      </div>
-      ${groups.map(function (g) {
-        return card(g, html`<ul class="list">${cr.checks.filter(function (c) { return c[1] === g; }).map(function (c) {
-          var ok = cr.pass[c[0]];
-          return html`<li><span class="icon" style="${raw(ok ? 'background:var(--ok-soft);color:var(--ok)' : 'background:var(--bad-soft);color:var(--bad)')}">${icon(ok ? 'ok' : 'x')}</span>
-            <div style="flex:1"><strong>${c[2]}</strong> <code class="small">${c[0]}</code>${ok ? '' : html`<div class="muted small">Not passing. See the remediation hint on the Tech Insights check, or run the matching golden-path template from <a href="#/create">Create</a>.</div>`}</div>
-            ${pill(ok ? 'Pass' : 'Fail', ok ? 'ok' : 'bad')}</li>`;
-        })}</ul>`);
-      })}`;
-    },
-    security: function (e) {
-      var r = rng('sec:' + e.name), weak = 14 - e.score;
-      var sonar = { gate: e.score >= 8, bugs: Math.max(0, Math.round(weak * r())), vulns: Math.max(0, Math.round(weak * 0.4 * r())), smells: Math.round(20 + weak * 9 * r()), cov: Math.min(94, 52 + e.score * 2.6 + r() * 5), dup: 1 + r() * 4 };
-      var snyk = [Math.max(0, weak - 9) > 0 ? 1 : 0, Math.round(Math.max(0, weak - 5) * r()), Math.round(2 + weak * r()), Math.round(3 + 6 * r())];
-      if (e.name === 'inventory-service') snyk[1] = 2;
-      var trivy = [0, Math.round(Math.max(0, weak - 6) * r()), Math.round(1 + weak * 0.6 * r()), Math.round(4 + 8 * r())];
-      function sevRow(v) { return html`<div class="btn-row">${pill(v[0] + ' critical', v[0] ? 'bad' : '')} ${pill(v[1] + ' high', v[1] ? 'warn' : '')} ${pill(v[2] + ' medium')} ${pill(v[3] + ' low')}</div>`; }
-      return html`<div class="grid g3">
-        ${card('SonarCloud', html`<div style="margin-bottom:12px">${pill('Quality gate: ' + (sonar.gate ? 'Passed' : 'Failed'), sonar.gate ? 'ok' : 'bad')}</div>
-          <dl class="kv"><dt>Bugs</dt><dd>${sonar.bugs}</dd><dt>Vulnerabilities</dt><dd>${sonar.vulns}</dd><dt>Code smells</dt><dd>${sonar.smells}</dd>
-          <dt>Coverage</dt><dd>${pct(sonar.cov)}</dd><dt>Duplication</dt><dd>${pct(sonar.dup)}</dd></dl>`, html`<span class="muted">sonarcloud.io/project-key</span>`)}
-        ${card('Snyk (dependencies)', html`${sevRow(snyk)}<ul class="list" style="margin-top:10px">
-          ${snyk[1] ? html`<li><div><strong>${e.lang === 'Go' ? 'golang.org/x/net' : e.lang === 'Python' ? 'urllib3 1.26.18' : 'express 4.19.2'}</strong><div class="muted small">HTTP request smuggling · fix available</div></div></li>` : ''}
-          <li><div><strong>${e.lang === 'Go' ? 'google.golang.org/grpc' : e.lang === 'Python' ? 'jinja2 3.1.3' : 'path-to-regexp 0.1.7'}</strong><div class="muted small">ReDoS · medium · upgrade to latest minor</div></div></li></ul>`, html`<span class="muted">snyk.io/org-slug</span>`)}
-        ${card('Trivy (image)', html`${sevRow(trivy)}<p class="muted small" style="margin-top:10px">Image <code>ghcr.io/moatazeldebsy/${e.name}:${e.version}</code>, scanned in CI ${Math.floor(1 + r() * 20)} h ago. Image signed with Cosign.</p>`)}
+      <div class="grid g2 mt">
+        ${card('Links', html`<div class="card-body" style="padding-top:0">${[['Repository', 'github.com/moatazeldebsy/' + c.name], ['Runbook', 'docs/runbooks/pod-crash-loop.md'], ['Grafana', 'grafana.idp.local/d/idp-services?var-service=' + c.name]].map(function (l) {
+          return html`<div class="list-row" style="padding:10px 0">${icon('open', 18)}<div><strong>${l[0]}</strong><div class="muted small">${l[1]}</div></div></div>`;
+        })}</div>`)}
+        ${card('Has subcomponents', table(['Name', 'Owner', 'Type', 'Lifecycle', 'Description'], [], { empty: 'No subcomponent is part of this component' }))}
       </div>`;
     },
-    slos: function (e) {
-      if (!e.slo) return html`<div class="notice info">No SLOs defined for ${e.name}. Use the <a href="#/create/slo-definition">Define SLOs</a> template to add availability and latency objectives (Sloth generates the rules).</div>`;
-      var s = sloState(e), dl = dayLabels(30);
-      function sliSeries(k, st) { return series('sli:' + k + e.name, 30, st.sli, (100 - st.target) * 0.3, 0).map(function (v) { return Math.min(100, v); }); }
-      function block(k, label, st) {
-        return card(label + ' · target ' + st.target + '%', html`<div class="grid g3">
-          ${gauge(st.remain, 'Error budget remaining', pct(st.remain * 100, 0))}
-          <div><dl class="kv"><dt>SLI (30d)</dt><dd><strong>${num(st.sli, 3)}%</strong></dd><dt>Target</dt><dd>${st.target}%</dd><dt>Burn rate (1h)</dt><dd>${num(st.burn, 2)}×</dd>
-            <dt>Status</dt><dd>${st.remain < 0.2 ? pill('At risk', 'bad') : st.remain < 0.5 ? pill('Watch', 'warn') : pill('Healthy', 'ok')}</dd></dl></div>
-          <div>${lineChart([{ name: 'SLI', values: sliSeries(k, st) }], { labels: dl, min: Math.floor(st.target - (100 - st.target)), max: 100, threshold: { value: st.target, label: 'target' }, yFmt: function (v) { return num(v, 2); }, h: 150, label: label + ' SLI' })}</div>
-        </div>`);
+    docs: function (c) { return docsReader(c.name, 'component', null, true); },
+    apis: function (c) {
+      var provided = (c.apis || []).map(api).filter(Boolean);
+      var consumed = D.apis.filter(function (a) { return a.provider !== c.name && (hash(c.name + a.name) % 4 === 0); });
+      function rows(list) { return list.map(function (a) { return [html`<a class="cell-link" href="${entityHref('api', a.name)}">${icon('extension', 16)}${a.name}</a>`, systemLink(a.system), ownerLink(a.owner), a.type, 'production', a.desc]; }); }
+      return html`${card('Provided APIs', table(['Name', 'System', 'Owner', 'Type', 'Lifecycle', 'Description'], rows(provided), { cls: 'bs', empty: 'This component does not provide any APIs.' }))}
+        <div class="mt">${card('Consumed APIs', table(['Name', 'System', 'Owner', 'Type', 'Lifecycle', 'Description'], rows(consumed), { cls: 'bs', empty: 'This component does not consume any APIs.' }))}</div>`;
+    },
+    kubernetes: function (c) {
+      var bad = c.name === 'inventory-service', r = rng('k8s:' + c.name), pods = [];
+      for (var i = 0; i < c.replicas; i++) pods.push([html`<span class="mono">${c.name}-${hash(c.name).toString(16).slice(0, 9)}-${hash(c.name + i).toString(36).slice(0, 5)}</span>`, bad ? 'Running' : 'Running', bad ? '0/1' : '1/1', bad ? 7 + i : Math.floor(r() * 2), bad ? chip('CrashLoopBackOff', 'sm err') : chip('OK', 'sm ok'), Math.floor(5 + r() * 40) + '%', Math.floor(20 + r() * 50) + '%']);
+      return html`<section class="card"><div class="card-head"><div><div class="muted small">CLUSTER</div><h2>local-kind</h2></div>${bad ? chip('1 pod with errors', 'err') : chip('No pods with errors', 'ok')}</div>
+        <div class="card-divider"></div><div class="card-body">
+          <h3 style="font-size:16px;margin-bottom:4px">${c.name}</h3><div class="muted small" style="margin-bottom:12px">Deployment · namespace services-dev · ${c.replicas} pods</div>
+          ${table(['ID', 'Phase', 'Containers ready', 'Total restarts', 'Status', 'CPU usage %', 'Memory usage %'], pods, { num: [3, 5, 6] })}
+          <div class="muted small" style="margin-top:12px">HorizontalPodAutoscaler: min ${c.replicas}, max ${c.replicas * 3}, target CPU 70% · PodDisruptionBudget: minAvailable 1</div>
+        </div></section>`;
+    },
+    langfuse: function (c) {
+      var r = rng('lf:' + c.name), rows = [];
+      for (var i = 0; i < 6; i++) rows.push([html`<span class="mono">${hash(c.name + i).toString(16).slice(0, 8)}</span>`, ['chat.completion', 'tool.call', 'agent.turn'][i % 3], i % 2 ? 'user:default/arivera' : '—', num(0.8 + r() * 5, 1) + 's', money(0.001 + r() * 0.02, 4), (i * 7 + 2) + ' min ago']);
+      return html`<div class="grid g3">${statCardTop('Traces', num(120 + Math.floor(r() * 900)), '#1976d2', 'last 7 days')}${statCardTop('LLM Cost', money(4 + r() * 30), '#8e24aa', 'last 7 days')}${statCardTop('Avg latency', num(1 + r() * 3, 1) + 's', '#f57c00', 'p50')}</div>
+        <div class="mt">${card('Recent traces', table(['Trace', 'Operation', 'User', 'Latency', 'Cost', 'When'], rows))}</div>
+        <p class="muted small mt16">Traces are matched on <code>langfuse.com/service-name: ${c.name}</code>.</p>`;
+    },
+    dora: function (c) {
+      return html`${doraCards(c.dora, 'e:' + c.name)}
+        <div class="mt">${card('Performance Bands', table(['Metric', 'Elite', 'High', 'Medium', 'Low'], [
+          ['Deploy Frequency', '≥ 1/day', '≥ 1/week', '≥ 1/month', '< 1/month'], ['Lead Time', '< 1 day', '< 1 week', '< 1 month', '≥ 1 month'],
+          ['Change Failure Rate', '≤ 5%', '≤ 10%', '≤ 15%', '> 15%'], ['MTTR', '< 1 hour', '< 1 day', '< 1 week', '≥ 1 week']]))}</div>`;
+    },
+    scorecard: function (c) {
+      var cr = checkResults(c), th = c.ai ? D.tierThresholds.ai : D.tierThresholds.std, t = tierOf(c);
+      var col = { gold: 'var(--gold)', silver: 'var(--silver)', bronze: 'var(--bronze)', none: 'var(--text-3)' }[t];
+      var msg = { gold: '🎉 Gold tier — full shift-left adoption. Consider mutation testing next.', silver: 'Silver tier — add contract and end-to-end tests to reach Gold.', bronze: 'Bronze tier — wire coverage, static analysis and vuln scanning into CI next.', none: 'No tier yet — start with ownership, TechDocs and probes.' }[t];
+      var groups = [];
+      cr.checks.forEach(function (ch) { if (groups.indexOf(ch[1]) < 0) groups.push(ch[1]); });
+      return html`<div style="display:flex;gap:20px;align-items:center;margin-bottom:12px"><div class="tier-badge" style="background:${raw(col)}">${icon('trophy', 44)}</div>
+          <div><h2 style="font-size:28px">${t === 'none' ? 'No tier' : cap(t) + ' tier'}</h2><div style="font-size:16px;color:var(--text-2)">${cr.count} of ${cr.checks.length} checks passing</div>
+          <div class="small muted">Thresholds — Bronze ≥${th.bronze}, Silver ≥${th.silver}, Gold ≥${th.gold}</div></div></div>
+        <p style="font-size:15px;color:var(--text-2)">${msg}</p>
+        ${groups.map(function (g) {
+          return html`<h3 style="font-size:18px;font-weight:400;margin:24px 0 12px">${g}</h3><div class="card">${table(['Status', 'Check', 'How to fix if failing'], cr.checks.filter(function (ch) { return ch[1] === g; }).map(function (ch) {
+            var ok = cr.pass[ch[0]];
+            return [html`<span class="${ok ? 'check-ok' : 'check-fail'}" role="img" aria-label="${ok ? 'Passing' : 'Failing'}">${icon(ok ? 'checkC' : 'cancel', 26)}</span>`, html`<strong>${ch[2]}</strong><div class="muted small">${ch[0]}</div>`, ok ? '—' : REMEDIATION[ch[0]]];
+          }))}</div>`;
+        })}
+        <p class="muted small mt16">Checks are defined in <code>scorecard.ts</code>; see <code>docs/shift-left.md</code>.</p>`;
+    },
+    security: function (c) {
+      var r = rng('sec:' + c.name), weak = 14 - c.score;
+      var s = { cov: Math.min(94, 52 + c.score * 2.6 + r() * 5), bugs: Math.round(weak * r()), vulns: Math.round(weak * 0.4 * r()), hot: Math.round(weak * 0.6 * r()), smells: Math.round(20 + weak * 9 * r()) };
+      var snyk = [weak > 9 ? 1 : 0, Math.round(Math.max(0, weak - 5) * r()) + (c.name === 'inventory-service' ? 2 : 0), Math.round(2 + weak * r()), Math.round(3 + 6 * r())];
+      function cell(v, l, col) { return html`<div style="text-align:center"><div style="font-size:30px;color:${raw(col || 'var(--text)')}">${v}</div><div class="muted small">${l}</div></div>`; }
+      return html`<div class="grid g2">
+        ${card('SonarCloud', html`<div class="card-body" style="padding-top:0"><div style="margin-bottom:16px">${chip('Quality Gate: ' + (c.score >= 9 ? 'Passed' : 'Failed'), c.score >= 9 ? 'ok' : 'err')}</div>
+          <div class="grid g5 gap16">${cell(pct(s.cov), 'Coverage')}${cell(s.bugs, 'Bugs')}${cell(s.vulns, 'Vulnerabilities', s.vulns ? 'var(--err-dark)' : '')}${cell(s.hot, 'Security hotspots')}${cell(s.smells, 'Code smells')}</div>
+          <div class="btn-row mt16"><span class="btn outlined sm" aria-disabled="true">Open in SonarCloud ↗</span></div></div>`, null, 'sonarcloud.io/project-key: moatazeldebsy_' + c.name)}
+        ${card('Snyk monitor', html`<div class="card-body" style="padding-top:0"><div class="grid g4 gap16">${cell(snyk[0], 'Critical', snyk[0] ? 'var(--err-dark)' : '')}${cell(snyk[1], 'High', snyk[1] ? 'var(--warn-dark)' : '')}${cell(snyk[2], 'Medium')}${cell(snyk[3], 'Low')}</div>
+          <div class="btn-row mt16"><span class="btn outlined sm" aria-disabled="true">Open project in Snyk ↗</span><span class="btn sm" aria-disabled="true">Org dashboard ↗</span></div></div>`, null, 'snyk.io/org-slug: moatazeldebsy')}
+      </div>`;
+    },
+    datadog: function (c) {
+      return html`<div class="btn-row" style="margin-bottom:16px">${demoChip()}<span class="muted small">Set <code>DD_API_KEY</code> and <code>DD_APP_KEY</code> to load live monitors.</span></div>
+        <div class="grid g2">
+          ${card('Monitors', table(['Monitor', 'State'], [['High p99 latency', chip('OK', 'sm ok')], ['Error rate > 1%', chip('OK', 'sm ok')], ['Pod restart loop', chip(c.name === 'inventory-service' ? 'Alert' : 'Warn', 'sm ' + (c.name === 'inventory-service' ? 'err' : 'warn'))]]), html`<span class="btn outlined sm" aria-disabled="true">Open Datadog Dashboard ↗</span>`, 'service:' + c.name)}
+          ${card('SLO', html`<div class="card-body" style="padding-top:0"><strong>Availability — 99.9% of requests succeed</strong><div class="muted small" style="margin:6px 0 10px">30-day window · 99.94% achieved</div>${hbar(94, 100)}</div>`)}
+        </div>`;
+    },
+    lambdatest: function (c) {
+      return html`<div class="btn-row" style="margin-bottom:16px">${demoChip()}<span class="muted small">Annotate <code>lambdatest.com/project-name</code> to link a real project.</span></div>
+        ${card('Mobile Device Farm', table(['Build', 'Name', 'Status', 'Platform', 'Device', 'Duration'], [
+          [40122, c.name + ' #218', chip('completed', 'sm ok'), 'Android', 'Pixel 6-13', '14m 02s'], [40118, c.name + ' #217', chip('completed', 'sm ok'), 'Android', 'Galaxy S21-12', '13m 15s'], [40109, c.name + ' #216', chip('failed', 'sm err'), 'iOS', 'iPhone 14-16', '10m 31s']]))}
+        <div class="mt">${card('LambdaTest', table(['Test', 'Name', 'Status', 'Browser', 'Platform'], [
+          [90311, 'checkout flow — happy path', chip('passed', 'sm ok'), 'Chrome 126', 'Windows 11'], [90310, 'checkout flow — expired card', chip('passed', 'sm ok'), 'Chrome 126', 'Windows 11'], [90309, 'visual baseline — cart', chip('failed', 'sm err'), 'Safari 17', 'macOS Ventura']]))}</div>`;
+    },
+    trivy: function (c) {
+      var r = rng('trivy:' + c.name), weak = 14 - c.score, sev = [0, Math.round(Math.max(0, weak - 6) * r()), Math.round(1 + weak * 0.6 * r()), Math.round(4 + 8 * r())];
+      var cols = ['var(--err-dark)', 'var(--warn-dark)', '#f9a825', 'var(--text-2)'];
+      return html`<div class="grid g4">${['Critical', 'High', 'Medium', 'Low'].map(function (l, i) { return statCardTop(l, sev[i], cols[i]); })}</div>
+        <div class="mt">${card('Open code scanning alerts', table(['Rule', 'Severity', 'Package', 'Fixed version'], sev[1] ? [['CVE-2026-31337', chip('high', 'sm warn'), c.lang === 'Go' ? 'golang.org/x/net' : 'openssl', c.lang === 'Go' ? '0.33.0' : '3.0.15-r1']] : [], { empty: 'No high or critical alerts.' }),
+          html`<span class="btn outlined sm" aria-disabled="true">Open in GitHub ↗</span>`, 'ghcr.io/moatazeldebsy/' + c.name + ':' + c.version)}</div>`;
+    },
+    'on-call': function (c) {
+      var p = D.people[hash(c.name) % D.people.length];
+      return html`<div class="grid g2">
+        ${card('On-Call Now', html`<div class="card-body" style="padding-top:0"><div class="list-row" style="padding:8px 0"><div class="avatar">${initials(p)}</div><div><strong>${p}</strong><div class="muted small">Level 1 · until Mon 09:00</div></div></div>
+          <div class="list-row" style="padding:8px 0"><div class="avatar">${initials(team(c.owner).lead)}</div><div><strong>${team(c.owner).lead}</strong><div class="muted small">Level 2 · escalation</div></div></div></div>`)}
+        ${card('Open Incidents', table(['Title', 'Status', 'Urgency', 'Created'], c.name === 'inventory-service' ? [['inventory-service pods in CrashLoopBackOff', chip('triggered', 'sm err'), 'high', ago(140)]] : [], { empty: 'No open incidents.' }))}
+      </div>`;
+    },
+    incidents: function (c) {
+      var rows = incidents().filter(function (i) { return i.service === c.name; });
+      return card('Incident history', table(['Incident', 'Severity', 'Started', 'Duration', 'State'], rows.map(function (i) {
+        return [html`<span style="color:var(--link)">${i.id}</span>`, chip(i.sev, 'sm err-dark'), i.started, i.duration, html`<span style="color:${raw(i.state === 'Resolved' ? 'var(--ok-text)' : 'var(--err-dark)')}">${i.state}</span>`];
+      }), { empty: 'No incidents recorded for this service.' }));
+    },
+    grafana: function (c) {
+      var rows = D.alerts.filter(function (a) { return a.state === 'firing' && a.labels.indexOf(c.name) >= 0; });
+      return html`${card('Firing Alerts', table(['Alert', 'Severity', 'Since', 'Summary'], rows.map(function (a) { return [a.name, chip(a.sev, 'sm ' + (a.sev === 'critical' ? 'err' : 'warn')), a.since, html`<span class="mono small">${a.labels}</span>`]; }), { empty: 'No firing alerts for service=' + c.name + '.' }))}
+        <p class="muted small mt16">Selector: <code>grafana/alert-label-selector: service=${c.name}</code></p>`;
+    },
+    jira: function (c) {
+      var key = c.name.split('-').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 3) || 'IDP';
+      var r = rng('jira:' + c.name), titles = ['Add retry budget to downstream calls', 'Flaky integration test on CI', 'Upgrade base image to distroless', 'Expose p99 latency metric', 'Document runbook URL', 'Rate limit per client'];
+      return card('Open Issues — ' + key, table(['Key', 'Summary', 'Type', 'Priority', 'Status', 'Assignee'], titles.map(function (t, i) {
+        return [html`<span style="color:var(--link)">${key}-${120 + i * 7}</span>`, t, ['Story', 'Bug', 'Task'][Math.floor(r() * 3)], ['High', 'Medium', 'Low'][Math.floor(r() * 3)], ['To Do', 'In Progress', 'In Review'][Math.floor(r() * 3)], D.people[Math.floor(r() * D.people.length)]];
+      })));
+    },
+    slo: function (c) {
+      var rows = sloRows(c);
+      return html`${card('SLO Definition', table(['SLO', 'Objective', 'Error Budget Remaining', 'Status'], rows.map(function (s) {
+          return [s.slo, s.obj + '%', html`<div style="display:flex;gap:10px;align-items:center">${hbar(s.rem, 1, s.rem < 0.2 ? 'var(--err)' : s.rem < 0.5 ? 'var(--warn)' : 'var(--ok)')}<span class="mono">${pct(s.rem * 100)}</span></div>`, sloStatus(s.rem)];
+        }), { empty: 'Add idp.io/slo-availability-target and idp.io/slo-latency-target annotations.' }))}
+        <div class="mt">${card('SLO Configuration', table(['Setting', 'Value'], [['Service', c.name], ['SLO engine', html`Sloth ↗`], ['Availability target', c.slo ? c.slo.avail + '%' : 'Not configured'], ['Latency target', c.slo ? c.slo.latency + '%' : 'Not configured'], ['Alert tiers', 'Page (critical burn rate) · Ticket (slow burn rate)']]))}</div>
+        <p class="muted small mt16">Apply with <code>sloth generate -i observability/slo/... | kubectl apply -f -</code>; matched on <code>idp.io/sloth-service</code>.</p>`;
+    },
+    'github-actions': function (c) {
+      var r = rng('gha:' + c.name), rows = [];
+      for (var i = 0; i < 8; i++) {
+        var fail = (i === 0 && c.name === 'inventory-service') || r() < 0.12;
+        rows.push([html`<span style="color:var(--link)">${8123400 + 931 - i * 37}</span>`, ['chore: bump dependencies', 'feat: add retry budget', 'fix: handle empty payload', 'ci: cache go modules', 'docs: update runbook', 'refactor: split handlers', 'test: add contract tests', 'feat: expose p99 metric'][i],
+          html`<div><strong>${i % 3 === 2 ? 'feat/otel-spans' : 'main'}</strong><div class="muted small mono">${hash(c.name + i).toString(16).slice(0, 7)}</div></div>`, i % 2 ? 'ci.yml' : 'build-and-deploy.yml',
+          html`<span style="display:inline-flex;gap:6px;align-items:center;color:${raw(fail ? 'var(--err-dark)' : 'var(--ok-text)')}">${icon(fail ? 'cancel' : 'checkC', 18)}${fail ? 'Failed' : 'Completed'}</span>`,
+          html`<span class="icon-btn sm" aria-hidden="true">${icon('refresh', 20)}</span>`]);
       }
-      return html`${block('a', 'Availability', s.avail)}${block('l', 'Latency (p99 < 300 ms)', s.latency)}
-        <p class="muted small" style="margin-top:12px">From <code>sloth_slo_info{sloth_service="${e.name}"}</code> and <code>slo:sli_error:ratio_rate5m</code>.</p>`;
+      return card('All workflow runs', table(['ID', 'Message', 'Source', 'Workflow', 'Status', 'Actions'], rows, { cls: 'bs' }), null, 'moatazeldebsy/' + c.name);
     },
-    oncall: function (e) {
-      var r = rng('oncall:' + e.name), p = D.people, i0 = Math.floor(r() * p.length);
-      return html`<div class="grid g3">
-        ${card('On call now', html`<div style="display:flex;gap:12px;align-items:center"><div class="avatar" aria-hidden="true">${initials(p[i0])}</div><div><strong>${p[i0]}</strong><div class="muted small">${e.owner} primary · until Mon 09:00</div></div></div>
-          <div class="btn-row" style="margin-top:14px"><button class="btn sm" type="button" data-action="toast" data-msg="Demo only: no page was sent.">Page on-call</button></div>`)}
-        ${card('Escalation policy', html`<ol style="margin:0;padding-left:20px"><li>${p[i0]} (primary) · 5 min</li><li>${p[(i0 + 1) % p.length]} (secondary) · 15 min</li><li>${team(e.owner) ? team(e.owner).lead : p[0]} (team lead)</li></ol>`)}
-        ${card('Upcoming shifts', html`<ul class="list">${[1, 2, 3].map(function (k) { return html`<li><div style="flex:1">${p[(i0 + k) % p.length]}</div><span class="muted small">${['Mon 09:00', 'Mon 30 Nov', 'Mon 7 Dec'][k - 1]}</span></li>`; })}</ul>`)}
-      </div>
-      ${card('Recent incidents', table(['Incident', 'Severity', 'Status', 'Started'], D.incidents.filter(function (i) { return i.service === e.name; }).map(function (i) {
-        return [html`<a href="#/incidents/${i.id}">${i.id}</a> ${i.title}`, i.sev, statusPill(i.status), i.started];
-      })))}`;
-    },
-    grafana: function (e) {
-      var hl = hourLabels(24), base = e.replicas * 40 + 20;
-      var rps = series('rps:' + e.name, 24, base, base * 0.25), err = series('err:' + e.name, 24, e.dora.cfr / 10, 0.25), p95 = series('p95:' + e.name, 24, 120 + e.dora.lt * 3, 30);
-      if (e.name === 'inventory-service') err = err.map(function (v, i) { return i > 20 ? v + 4 : v; });
-      return html`<div class="notice info">Panels from the <strong>IDP Services</strong> Grafana dashboard filtered by <code>service=${e.name}</code>.</div>
-        <div class="grid g3">
-          ${card('Requests / s', lineChart([{ name: 'rps', values: rps }], { labels: hl, h: 150, label: 'Requests per second' }))}
-          ${card('Error rate (%)', lineChart([{ name: '5xx %', values: err, color: 'var(--c5)' }], { labels: hl, h: 150, threshold: { value: 1, label: 'alert' }, label: 'Error rate' }))}
-          ${card('p95 latency (ms)', lineChart([{ name: 'p95', values: p95, color: 'var(--c2)' }], { labels: hl, h: 150, label: 'p95 latency' }))}
-        </div>
-        ${card('Alerts for this service', table(['Alert', 'State', 'Labels'], D.alerts.filter(function (a) { return a.labels.indexOf(e.name) >= 0; }).map(function (a) {
-          return [a.name, statusPill(a.state), html`<code>${a.labels}</code>`];
-        })))}`;
-    },
-    jira: function (e) {
-      var key = e.name.split('-').map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 3) + (e.name.length % 10);
-      var r = rng('jira:' + e.name), sts = ['To Do', 'In Progress', 'In Review', 'Done'], types = ['Story', 'Bug', 'Task'];
-      var titles = ['Add retry budget to downstream calls', 'Flaky integration test on CI', 'Upgrade base image to distroless', 'Expose p99 latency metric', 'Document runbook URL', 'Rate limit per client', 'Migrate to OTel SDK 1.30', 'Fix memory leak in cache warmup'];
-      var issues = titles.map(function (t, i) { return [key + '-' + (120 + i * 7), t, types[Math.floor(r() * 3)], sts[Math.floor(r() * 4)], D.people[Math.floor(r() * 12)], ['High', 'Medium', 'Low'][Math.floor(r() * 3)]]; });
-      return html`<div class="grid g4">${sts.map(function (s) { return stat(s, issues.filter(function (x) { return x[3] === s; }).length, 'issues'); })}</div>
-        ${card('Open issues · project ' + key, table(['Key', 'Summary', 'Type', 'Status', 'Assignee', 'Priority'], issues.map(function (x) {
-          return [html`<code>${x[0]}</code>`, x[1], x[2], pill(x[3], x[3] === 'Done' ? 'ok' : x[3] === 'In Progress' ? 'info' : x[3] === 'In Review' ? 'warn' : ''), x[4], x[5]];
-        })), html`<span class="muted">jira/project-key: ${key}</span>`)}`;
-    },
-    kubernetes: function (e) {
-      if (!e.replicas) return html`<div class="notice info">${e.name} is a ${e.type}; it has no Kubernetes workloads.</div>`;
-      var r = rng('k8s:' + e.name), bad = e.name === 'inventory-service', pods = [];
-      for (var i = 0; i < e.replicas; i++) {
-        var id = hash(e.name + i).toString(36).slice(0, 5);
-        pods.push([html`<code>${e.name}-${hash(e.name).toString(16).slice(0, 5)}-${id}</code>`, statusPill(bad ? 'CrashLoopBackOff' : 'Running'), bad ? 7 + i : Math.floor(r() * 2), (bad ? '38m' : Math.floor(2 + r() * 9) + 'd'), Math.floor(40 + r() * 160) + 'm', Math.floor(90 + r() * 300) + 'Mi']);
-      }
-      return html`<div class="grid g4">
-        ${stat('Pods', (bad ? 0 : e.replicas) + ' / ' + e.replicas, 'ready')}
-        ${stat('Namespace', 'services-dev', 'backstage.io/kubernetes-id')}
-        ${stat('HPA', e.replicas + ' → ' + e.replicas * 3, 'target CPU 70%')}
-        ${stat('PDB', 'minAvailable 1', 'allowed disruptions ' + (bad ? 0 : 1))}
-      </div>
-      ${bad ? html`<div class="notice" style="margin-top:16px">Pods are crash-looping: <code>Error: REDIS_URL is not set</code>. See <a href="#/incidents/INC-2042">INC-2042</a> and the <a href="#/techdocs/runbooks">pod-crash-loop runbook</a>.</div>` : ''}
-      ${card('Pods', table(['Pod', 'Status', 'Restarts', 'Age', 'CPU', 'Memory'], pods, [2, 4, 5]))}`;
-    },
-    docs: function (e) {
-      return card(e.name + ' docs', html`<div class="prose"><p>${e.desc}</p><h2>Run locally</h2>
-        <pre><code>${e.lang === 'Go' ? 'go test ./... && go run ./src' : e.lang === 'Python' ? 'pip install -r requirements.txt\nuvicorn app.main:app --reload' : e.lang === 'Java' ? './gradlew bootRun' : 'npm ci && npm run dev'}</code></pre>
-        <h2>Deploy</h2><p>Merging to <code>main</code> builds and signs the image, then ArgoCD syncs <code>${e.name}-local</code> from <code>services/${e.name}/helm-values-local.yaml</code> using the shared <code>helm/service-template</code> chart.</p>
-        <h2>Runbooks</h2><ul>${D.runbooks.slice(0, 4).map(function (rb) { return html`<li><a href="#/techdocs/runbooks">${rb[1]}</a></li>`; })}</ul></div>`,
-        html`<a href="#/techdocs/${e.name === 'hello-service' ? 'hello-service' : 'getting-started'}">Open in TechDocs</a>`);
+    adrs: function (c) {
+      var adrs = [['0001-record-architecture-decisions.md', 'Record architecture decisions', 'We will keep ADRs in docs/adrs as Markdown, numbered and immutable once accepted.'],
+        ['0002-use-the-shared-helm-chart.md', 'Use the shared Helm chart', 'Deploy through helm/service-template only; per-service overrides live in helm-values-*.yaml.'],
+        ['0003-expose-prometheus-metrics.md', 'Expose Prometheus metrics', 'Every service exposes /metrics with RED metrics so DORA and SLO tooling work without per-service setup.']];
+      var sel = adrs[0];
+      return html`<div class="grid" style="grid-template-columns:minmax(0,280px) minmax(0,1fr)">${card('Architecture Decision Records', html`<div>${adrs.map(function (a, i) { return html`<div class="list-row" style="padding:12px 16px">${icon('docs', 20)}<div><strong>${a[1]}</strong><div class="muted small">${a[0]}</div></div></div>`; })}</div>`)}
+        ${card(sel[1], html`<div class="card-body prose" style="padding-top:0"><p><strong>Status:</strong> Accepted · <strong>Date:</strong> 2026-03-02</p><h2 style="font-size:20px">Context</h2><p>We need a lightweight, reviewable record of significant decisions.</p><h2 style="font-size:20px">Decision</h2><p>${sel[2]}</p></div>`)}</div>`;
     }
   };
 
-  function pageTeams() {
-    return html`${head('Teams', 'Groups in the catalog, with owned components and monthly cost budgets.')}
-      <div class="grid g-auto">${D.teams.map(function (t) {
-        var owned = D.components.filter(function (c) { return c.owner === t.name; }).length, u = t.spend / t.budget;
-        return html`<section class="card"><div class="card-head"><h2><a href="#/team/${t.name}">${t.display}</a></h2>${u > 1 ? pill('Over budget', 'bad') : u > 0.8 ? pill('80%+', 'warn') : ''}</div>
-          <p class="muted small">${t.mission}</p>
-          <dl class="kv"><dt>Lead</dt><dd>${t.lead}</dd><dt>Members</dt><dd>${t.members}</dd><dt>Components</dt><dd>${owned}</dd><dt>Budget</dt><dd>${money(t.spend)} of ${money(t.budget)}</dd></dl>
-          <div class="bar" style="margin-top:10px"><span style="width:${Math.min(100, u * 100).toFixed(0)}%;background:${raw(u > 1 ? 'var(--bad)' : u > 0.8 ? 'var(--warn)' : 'var(--ok)')}"></span></div></section>`;
-      })}</div>`;
-  }
-  function pageTeam(name, tab) {
+  function pageGroup(name, tab) {
     var t = team(name);
-    if (!t) return notFound('No team named "' + name + '".');
-    tab = tab || 'overview';
-    var owned = D.components.filter(function (c) { return c.owner === t.name; });
+    if (!t) return notFound('Entity was not found');
+    if (tab && tab !== 'budget') return notFound('This entity has no "' + tab + '" tab.');
+    var base = entityHref('group', t.name), owned = D.components.filter(function (c) { return c.owner === t.name; });
     var body;
     if (tab === 'budget') {
-      var days = 20, daily = series('bd:' + t.name, days, t.spend / days, t.spend / days * 0.3);
-      var scale = t.spend / daily.reduce(function (a, b) { return a + b; }, 0), cum = [], acc = 0;
-      daily.forEach(function (v) { acc += v * scale; cum.push(acc); });
-      var forecast = t.spend / 20 * 30, u = t.spend / t.budget;
-      var budgetLine = cum.map(function (_, i) { return t.budget * (i + 1) / 30; });
-      var cats = [{ name: 'Compute', value: Math.round(t.spend * 0.58) }, { name: 'Storage', value: Math.round(t.spend * 0.14) }, { name: 'Network', value: Math.round(t.spend * 0.09) }, { name: 'AI / LLM', value: Math.round(t.spend * 0.19) }];
-      body = html`<div class="grid g3">
-          ${card('Budget utilisation', gauge(u, 'of ' + money(t.budget) + ' / month', pct(u * 100, 0), u > 1 ? 'var(--bad)' : u > 0.8 ? 'var(--warn)' : 'var(--ok)'))}
-          ${card('November', html`<dl class="kv"><dt>Spent so far</dt><dd><strong>${money(t.spend)}</strong></dd><dt>Budget</dt><dd>${money(t.budget)}</dd><dt>Remaining</dt><dd>${money(Math.max(0, t.budget - t.spend))}</dd>
-            <dt>Forecast (month end)</dt><dd>${money(forecast)} ${forecast > t.budget ? pill('over', 'bad') : pill('within', 'ok')}</dd><dt>Annotation</dt><dd><code>idp.io/cost-budget-monthly-usd: "${t.budget}"</code></dd></dl>`)}
-          ${card('By category', donut(cats, [money(t.spend), 'this month'], { fmt: money, label: 'Spend by category' }))}
-        </div>
-        ${card('Cumulative spend vs budget pace', lineChart([{ name: 'Actual', values: cum }, { name: 'Budget pace', values: budgetLine, color: 'var(--text-muted)', dash: true }], { labels: dayLabels(days), yFmt: function (v) { return '$' + num(v, 0); }, label: 'Cumulative spend' }))}
-        ${card('Cost by component', hbars(owned.map(function (c, i) { var v = t.spend * (0.15 + rng(c.name)() * 0.4) / Math.max(1, owned.length) * 2; return { label: c.name, value: v, max: t.spend, text: money(v) }; })))}
-        <p class="muted small" style="margin-top:12px">From <code>idp_team_actual_cost_usd_monthly{team="${t.name}"}</code> pushed by the tech-insights exporter from OpenCost. AlertManager fires TeamBudgetWarning at 80% and TeamBudgetExceeded at 100%.</p>`;
+      var u = t.spend / t.budget, col = u > 1 ? 'var(--err)' : u > 0.8 ? 'var(--warn)' : 'var(--ok)';
+      body = html`<div class="grid g3">${statCardTop('Spent', money(t.spend, 0), col, 'month-to-date')}${statCardTop('Monthly budget', money(t.budget, 0), '#1976d2', html`<code>idp.io/cost-budget-monthly-usd: "${t.budget}"</code>`)}
+          ${statCardTop('Utilisation', pct(u * 100, 0), col, u > 1 ? 'TeamBudgetExceeded firing' : u > 0.8 ? 'TeamBudgetWarning firing' : 'within budget')}</div>
+        <div class="card mt"><div class="card-body">${hbar(t.spend, t.budget, col)}<div class="muted small" style="margin-top:8px">${money(t.spend, 0)} of ${money(t.budget, 0)} · forecast ${money(t.spend / 20 * 30, 0)} at month end</div></div></div>
+        <div class="mt">${card('Budget Configuration', table(['Setting', 'Value'], [['Team', t.name], ['Monthly budget', money(t.budget, 0)], ['Cost namespaces', html`<code>${t.namespace}</code> <span class="muted small">(idp.io/cost-namespace)</span>`],
+          ['Alert thresholds', 'Warning at 80% · Critical at 100%'], ['Data source', 'OpenCost → Pushgateway (every 15 min)']]))}</div>`;
     } else {
-      body = html`<div class="grid g3">
-        ${card('About', html`<p>${t.mission}</p><dl class="kv"><dt>Lead</dt><dd>${t.lead}</dd><dt>Members</dt><dd>${t.members}</dd><dt>Namespace</dt><dd><code>${t.namespace}</code></dd><dt>Slack</dt><dd>${t.slack}</dd></dl>`)}
-        ${card('Members', html`<ul class="list">${D.people.slice(0, Math.min(6, t.members)).map(function (p, i) {
-          var person = i === 0 ? t.lead : D.people[(hash(t.name) + i) % D.people.length];
-          return html`<li><div class="avatar" aria-hidden="true">${initials(person)}</div><div>${person}<div class="muted small">${i === 0 ? 'Team lead' : 'Engineer'}</div></div></li>`;
-        })}</ul>`)}
-        ${card('Maturity', (function () {
-          var sc = D.teamScores[t.name];
-          return hbars(D.dimensions.map(function (d, i) { return { label: d, value: sc[i], max: 100, text: String(sc[i]) }; }));
-        })())}
+      var types = {};
+      owned.forEach(function (c) { types[c.type] = (types[c.type] || 0) + 1; });
+      var members = [t.lead].concat(D.people.filter(function (p) { return p !== t.lead; }).filter(function (p, i) { return (hash(t.name + p) % 3 === 0); }).slice(0, Math.max(2, Math.min(5, t.members - 1))));
+      body = html`<div class="grid g2">
+        ${card(t.display, html`<div class="card-body" style="padding-top:0"><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div class="avatar lg">${initials(t.display)}</div><div style="min-width:0;overflow-wrap:anywhere">
+          <div>${icon('group', 18)} ${t.name}@moatazeldebsy.dev</div><div class="muted" style="margin-top:6px">Parent group: <a href="${entityHref('group', 'platform-team')}">${t.name === 'platform-team' ? '—' : 'engineering'}</a></div><div class="muted small" style="margin-top:6px">${t.mission}</div></div></div></div>`)}
+        ${card('Ownership', html`<div class="card-body" style="padding-top:0"><div class="grid g3 gap16">${Object.keys(types).length ? Object.keys(types).map(function (k) {
+          return html`<div class="card stat" style="border-top-color:var(--c1);box-shadow:none;background:var(--paper-2)"><div class="num" style="font-size:30px">${types[k]}</div><div class="lab">${k.toUpperCase()}</div></div>`;
+        }) : html`<p class="muted">No owned entities.</p>`}</div></div>`)}
       </div>
-      ${card('Owned components', table(['Name', 'Type', 'Lifecycle', 'Tier', 'Deploys/day'], owned.map(function (c) {
-        return [entLink(c.name), c.type, c.lifecycle, tierPill(tierOf(c)), num(c.dora.df, 1)];
-      }), [4]))}`;
+      <div class="mt">${card('Members (' + members.length + ')', html`<div class="card-body" style="padding-top:0"><div class="grid g4 gap16">${members.map(function (m) {
+        return html`<div style="display:flex;gap:12px;align-items:center;min-width:0"><div class="avatar">${initials(m)}</div><div style="min-width:0;overflow-wrap:anywhere"><strong>${m}</strong><div class="muted small">${m.split(' ')[0].toLowerCase()}@moatazeldebsy.dev</div></div></div>`;
+      })}</div></div>`)}</div>`;
     }
-    return html`${head(t.display, t.mission, null, html`<a href="#/teams">Teams</a> / Group`)}${tabs('team/' + t.name, [['overview', 'Overview'], ['budget', 'Budget']], tab)}${body}`;
+    return html`${entityHeader('other', 'Group — team', t.display, metaItem('Members', String(t.members)), 'Group:' + t.name)}${entityTabsNav(base, [['', 'Overview'], ['budget', 'Budget']], tab)}<div class="content">${body}</div>`;
+  }
+  function pageApiEntity(name, tab) {
+    var a = api(name);
+    if (!a) return notFound('Entity was not found');
+    if (tab && tab !== 'definition') return notFound('This entity has no "' + tab + '" tab.');
+    var base = entityHref('api', a.name), body;
+    if (tab === 'definition') {
+      var spec = a.type === 'openapi' ? 'openapi: 3.0.3\ninfo:\n  title: ' + a.name + '\n  version: ' + a.version + '\npaths:\n' + a.endpoints.map(function (e) { return '  ' + e[1] + ':\n    ' + e[0].toLowerCase() + ':\n      summary: ' + e[2] + '\n      responses:\n        "200":\n          description: OK'; }).join('\n')
+        : a.type === 'asyncapi' ? 'asyncapi: 2.6.0\ninfo:\n  title: ' + a.name + '\n  version: ' + a.version + '\nchannels:\n  orders.v1:\n    publish:\n      message:\n        oneOf:\n' + a.endpoints.map(function (e) { return '          - name: ' + e[1].split('/ ')[1] + '   # ' + e[2]; }).join('\n')
+        : 'type Query {\n' + a.endpoints.map(function (e) { return '  ' + e[1] + ': SearchResult  # ' + e[2]; }).join('\n') + '\n}';
+      body = card(a.name, html`<div class="card-body" style="padding-top:0"><pre>${spec}</pre></div>`, chip(a.type, 'sm outlined'));
+    } else {
+      body = html`<div class="grid g2">${aboutCard(a, [['Owner', ownerLink(a.owner)], ['System', systemLink(a.system)], ['Type', a.type], ['Lifecycle', 'production'], ['Tags', chip(a.type, 'sm')]], [['View Source', null, 'code'], ['View Definition', base + '/definition', 'docs']])}
+        ${card('Providers', table(['Name', 'Owner', 'Lifecycle'], [[html`<a class="cell-link" href="${entityHref('component', a.provider)}">${icon('wrench', 16)}${a.provider}</a>`, ownerLink(a.owner), 'production']], { cls: 'bs' }))}</div>`;
+    }
+    return html`${entityHeader('apis', 'API — ' + a.type, a.name, html`${metaItem('Owner', html`${icon('group', 16)}${team(a.owner).display}`)}${metaItem('Lifecycle', 'production')}`, 'API:' + a.name)}${entityTabsNav(base, [['', 'Overview'], ['definition', 'Definition']], tab)}<div class="content">${body}</div>`;
+  }
+  function pageSimpleEntity(kind, name, tab) {
+    var e = kind === 'system' ? D.systems.filter(function (s) { return s.name === name; })[0] : D.resources.filter(function (r) { return r.name === name; })[0];
+    if (!e || tab) return notFound('Entity was not found');
+    var children = kind === 'system' ? D.components.filter(function (c) { return c.system === e.name; }) : [];
+    var body = html`<div class="grid g2">${aboutCard(e, [['Owner', ownerLink(e.owner)], ['Type', kind === 'system' ? '' : e.kind.toLowerCase()], ['Domain', kind === 'system' ? 'engineering' : ''], ['Lifecycle', kind === 'resource' ? 'production' : '']], [['View Source', null, 'code']])}
+      ${kind === 'system' ? card('Has components', table(['Name', 'Owner', 'Type', 'Lifecycle'], children.map(function (c) { return [html`<a class="cell-link" href="${entityHref('component', c.name)}">${c.name}</a>`, ownerLink(c.owner), c.type, c.lifecycle]; }), { cls: 'bs' }))
+        : card('Crossplane claim', table(['Field', 'Value'], [['Kind', e.kind], ['Template', html`<a href="#/create/templates/default/${e.provider}">${e.provider}</a>`], ['Namespace', e.ns], ['Synced', String(e.synced)], ['Ready', e.ready ? 'True' : 'False'], ['Connection secret', html`<code>${e.secret}</code>`]].concat(e.reason ? [['Reason', e.reason]] : [])))}</div>`;
+    return html`${entityHeader('other', cap(kind), e.name, metaItem('Owner', html`${icon('group', 16)}${team(e.owner).display}`), cap(kind) + ':' + e.name)}${entityTabsNav(entityHref(kind, e.name), [['', 'Overview']], '')}<div class="content">${body}</div>`;
   }
 
-  var TPL_CATS = [['service', 'Services'], ['website', 'Frontend'], ['test-suite', 'Test suites'], ['resource', 'Cloud resources'], ['infrastructure', 'Infrastructure'],
-    ['platform-capability', 'Platform capabilities'], ['template', 'AI & ML'], ['ai-agent', 'AI & ML'], ['mobile', 'Mobile'], ['library', 'Mobile']];
-  function tplCat(t) { var m = TPL_CATS.filter(function (c) { return c[0] === t.type; })[0]; return m ? m[1] : 'Other'; }
+  /* ---------- Create (scaffolder plugin) ---------- */
+  var TPL_THEME = { service: 'linear-gradient(90deg,#006d8f,#0049a1)', website: 'linear-gradient(90deg,#c9284d,#710dc2)', library: 'linear-gradient(90deg,#7a5a00,#b48a00)' };
+  function tplBackground(type) { return TPL_THEME[type] || 'linear-gradient(90deg,#2b7a5f,#3f6f5f)'; }
+  function scaffolderBar(cur) {
+    return html`${pluginBar('Create', 'add')}<nav class="subtabs" aria-label="Scaffolder">${[['create', 'Templates'], ['create/tasks', 'Tasks'], ['create/actions', 'Actions']].map(function (t) {
+      return html`<a href="#/${t[0]}" ${t[0] === cur ? raw('aria-current="page"') : ''}>${t[1]}</a>`;
+    })}<span aria-disabled="true" title="Available in the live portal">Template Editor</span><span aria-disabled="true" title="Available in the live portal">Templating Extensions</span></nav>`;
+  }
   function pageCreate() {
-    var cats = [];
-    TPL_CATS.forEach(function (c) { if (cats.indexOf(c[1]) < 0) cats.push(c[1]); });
-    var q = S.create.q.toLowerCase();
+    var f = S.tplf, q = f.q.toLowerCase(), cats = [], tags = [];
+    D.templates.forEach(function (t) { if (cats.indexOf(t.type) < 0) cats.push(t.type); t.tags.forEach(function (g) { if (tags.indexOf(g) < 0) tags.push(g); }); });
     var list = D.templates.filter(function (t) {
-      return (!S.create.cat || tplCat(t) === S.create.cat) && (!q || (t.n + ' ' + t.t + ' ' + t.d + ' ' + t.tags.join(' ')).toLowerCase().indexOf(q) >= 0);
+      return (!f.starred || S.starred['Template:' + t.n]) && (!f.cat || t.type === f.cat) && (!f.tag || t.tags.indexOf(f.tag) >= 0) && (!f.owner || t.o === f.owner) &&
+        (!q || (t.n + ' ' + t.t + ' ' + t.d + ' ' + t.tags.join(' ')).toLowerCase().indexOf(q) >= 0);
     });
-    return html`${head('Create', D.templates.length + ' golden-path templates. Pick one to scaffold a repo, a test suite or a cloud resource.')}
-      <div class="filters"><label class="sr-only" for="tpl-q">Search templates</label>
-        <input class="input grow" id="tpl-q" type="search" placeholder="Search templates (e.g. kafka, playwright, agent)" value="${S.create.q}" data-bind="create.q">
-      </div>
-      <div style="margin-bottom:18px">${chips('create.cat', cats, S.create.cat, 'All')}</div>
-      ${list.length ? cats.map(function (c) {
-        var items = list.filter(function (t) { return tplCat(t) === c; });
-        if (!items.length) return '';
-        return html`<div class="cat-title"><h2>${c}</h2><span class="muted">${items.length}</span></div>
-          <div class="grid g-auto">${items.map(function (t) {
-            return html`<article class="card tpl"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${t.t}</h3>${pill(t.type, 'info')}</div>
-              <p>${t.d}</p><div>${t.tags.slice(0, 4).map(function (g) { return html`<span class="tag">${g}</span>`; })}</div>
-              <a class="btn sm primary" href="#/create/${t.n}">Choose</a></article>`;
-          })}</div>`;
-      }) : html`<div class="card empty">No templates match "${S.create.q}".</div>`}`;
+    var starredCount = D.templates.filter(function (t) { return S.starred['Template:' + t.n]; }).length;
+    return html`${scaffolderBar('create')}<div class="content">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><a class="btn outlined" href="#/catalog-import">Register Existing Component</a></div>
+      <div class="catalog-layout">
+        <div class="filters">
+          <div class="underline-search" style="margin-bottom:24px">${icon('search', 22)}<label class="sr-only" for="tpl-q">Search templates</label><input id="tpl-q" type="search" placeholder="Search" value="${f.q}" data-bind="tplf.q"></div>
+          <div class="user-filter"><div class="uf-title">Personal</div>
+            <button type="button" class="uf-item" data-action="toggle-tpl-starred" aria-pressed="${String(f.starred)}"><span>${icon('star', 20)} Starred</span><span>${starredCount}</span></button>
+            <div class="uf-title" style="margin-top:14px">My Organization</div>
+            <button type="button" class="uf-item" data-action="set" data-key="tplf.starred" data-value="" aria-pressed="${String(!f.starred)}"><span>All</span><span>${D.templates.length}</span></button></div>
+          ${selectField('CATEGORIES', 'tpl-cat', 'tplf.cat', cats.sort(), f.cat, '')}
+          ${selectField('Tags', 'tpl-tag', 'tplf.tag', tags.sort(), f.tag, '')}
+          ${selectField('Owner', 'tpl-owner', 'tplf.owner', [['platform-team', 'Platform Team'], ['qa-platform-team', 'QA Platform Team']], f.owner, '')}
+        </div>
+        <div>
+          <h1 style="font-size:32px;margin-bottom:20px">Templates</h1>
+          ${list.length ? html`<div class="tpl-grid">${list.map(function (t) {
+            var key = 'Template:' + t.n, on = !!S.starred[key], tm = team(t.o);
+            return html`<article class="tpl-card"><div class="tpl-head" style="background-image:${raw(tplBackground(t.type))}"><div class="t-type">${t.type}</div><h3>${t.t}</h3>
+                <div class="t-icons"><span aria-hidden="true">${icon('docs', 22)}</span><button type="button" data-action="star" data-key="${key}" aria-pressed="${String(on)}" aria-label="${(on ? 'Unstar ' : 'Star ') + t.t}">${icon(on ? 'star' : 'starO', 24)}</button></div></div>
+              <div class="tpl-body"><p>${t.d}</p><div class="card-divider"></div><div>${t.tags.map(function (g) { return chip(g, 'sm'); })}</div><div class="card-divider"></div>
+                <a href="#/docs/default/system/internal-developer-platform/golden-paths" style="display:flex;gap:8px;align-items:center">${icon('docs', 20)} View TechDocs</a></div>
+              <div class="tpl-foot"><span class="owner">${icon('person', 20)}${tm ? tm.display : t.o}</span><a class="btn outlined sm" href="#/create/templates/default/${t.n}">Choose</a></div></article>`;
+          })}</div>` : html`<div class="card card-body muted">No templates found that match your filter.</div>`}
+        </div></div></div>`;
   }
-  function pageTemplate(name, sub) {
-    var t = tpl(name);
-    if (!t) return notFound('No template named "' + name + '".');
-    if (sub === 'run') return pageRun(t);
-    var f = S.form[name] || (S.form[name] = { name: defaultName(t), owner: D.user.team, desc: '', target: 'local', service: 'hello-service' });
-    var isSuite = t.type === 'test-suite' || t.type === 'platform-capability';
-    return html`${head(t.t, t.d, null, html`<a href="#/create">Create</a> / ${t.n}`)}
-      <div class="grid g3">
-        <section class="card span2"><form data-submit="scaffold" data-tpl="${t.n}" novalidate>
-          ${isSuite ? html`<div class="field"><label for="f-service">Target service</label>
-            <select class="input" id="f-service" data-bind-quiet="form.${t.n}.service">${D.components.map(function (c) { return html`<option ${c.name === f.service ? raw('selected') : ''}>${c.name}</option>`; })}</select>
-            <span class="hint">Opens a PR adding the suite to this service's repository.</span></div>` : ''}
-          <div class="field"><label for="f-name">${isSuite ? 'Suite name' : 'Name'}</label>
-            <input class="input" id="f-name" required pattern="[a-z][a-z0-9-]{2,40}" value="${f.name}" data-bind-quiet="form.${t.n}.name" aria-describedby="f-name-hint">
-            <span class="hint" id="f-name-hint">Lowercase letters, digits and hyphens.</span></div>
-          <div class="field"><label for="f-owner">Owner</label><select class="input" id="f-owner" data-bind-quiet="form.${t.n}.owner">${D.teams.map(function (tm) { return html`<option value="${tm.name}" ${tm.name === f.owner ? raw('selected') : ''}>group:default/${tm.name}</option>`; })}</select></div>
-          <div class="field"><label for="f-desc">Description</label><textarea class="input" id="f-desc" data-bind-quiet="form.${t.n}.desc" placeholder="What does it do?">${f.desc}</textarea></div>
-          <fieldset class="field" style="border:0;padding:0;margin:0 0 14px"><legend style="font-weight:600;font-size:13px;margin-bottom:6px;color:var(--text-strong)">Deploy target</legend>
-            <div class="btn-row">${[['local', 'Local (Kind / Rancher Desktop)'], ['aws', 'AWS (EKS)']].map(function (o) {
-              return html`<label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="radio" name="target" value="${o[0]}" ${f.target === o[0] ? raw('checked') : ''} data-bind-quiet="form.${t.n}.target">${o[1]}</label>`;
-            })}</div></fieldset>
-          <p class="muted small" id="form-error" role="alert"></p>
-          <div class="btn-row"><button class="btn primary" type="submit">${icon('zap')} Create</button><a class="btn" href="#/create">Back</a></div>
-        </form></section>
-        ${card('What you get', html`<ul class="list">${(isSuite ? ['Test suite under test-suites/<name>/', 'CI job wired into the target repo', 'Tech Insights metrics pushed to Pushgateway', 'Pull request against the target service'] :
-          t.type === 'resource' ? ['Claim or Terraform module for the resource', 'Connection secret in your namespace', 'Pull request for review', 'Catalog Resource entity'] :
-            ['GitHub repo with CI (lint, test, SAST, Trivy, Cosign)', 'helm-values-local.yaml and helm-values-aws.yaml', 'catalog-info.yaml with scorecard annotations', 'ArgoCD Application via the idp-services ApplicationSet']).map(function (x) {
-          return html`<li><span class="icon">${icon('ok')}</span><div>${x}</div></li>`;
-        })}</ul><div style="margin-top:8px">${t.tags.map(function (g) { return html`<span class="tag">${g}</span>`; })}</div>`)}
-      </div>`;
-  }
+  function isSuite(t) { return t.type === 'test-suite' || t.type === 'platform-capability'; }
   function defaultName(t) {
     var m = { 'go-service': 'inventory-sync', 'python-service': 'loyalty-points', 'nodejs-service': 'gift-cards', 'jvm-service': 'tax-calculator', 'react-frontend': 'account-web' };
-    return m[t.n] || (t.type === 'test-suite' ? t.n.replace(/-suite$|-test-suite$/, '') + '-tests' : 'my-' + t.n.split('-')[0]);
+    return m[t.n] || (isSuite(t) ? t.n.replace(/-test-suite$|-suite$/, '') + '-tests' : 'my-' + t.n.split('-')[0]);
   }
-  function runSteps(t, v) {
-    var repo = 'moatazeldebsy/' + v.name;
-    if (t.type === 'test-suite' || t.type === 'platform-capability') return [
-      ['Fetch skeleton', ['fetch:template skeleton-addon/test-suites/' + v.name]], ['Render files', ['Rendered 9 files', 'Wrote .github/workflows/' + v.name + '.yml']],
-      ['Open pull request', ['publish:github:pull-request → ' + 'moatazeldebsy/' + v.service, 'PR #' + (400 + hash(v.name) % 90) + ' opened: "test: add ' + v.name + '"']],
-      ['Push Tech Insights metrics', ['idp:tech-insights → pushgateway.idp.local', 'has-e2e-tests=1 has-coverage-gate=1']]];
-    if (t.type === 'resource') return [
-      ['Render claim', ['fetch:template → services/' + v.service + '/claims/' + v.name + '.yaml']], ['Validate', ['kubeconform: 1 resource valid', 'Kyverno policy check: pass']],
-      ['Open GitOps PR', ['PR #' + (600 + hash(v.name) % 90) + ' opened against platform repo']], ['ArgoCD sync', ['idp-services synced claim', 'Claim ' + v.name + ': Synced=True Ready=True']]];
-    return [
-      ['Fetch skeleton', ['fetch:template ./skeleton → workspace', 'Rendered 27 files for ' + t.t]],
-      ['Publish to GitHub', ['publish:github → github.com/' + repo, 'Branch protection enabled on main', 'Secrets set: GHCR_TOKEN, SONAR_TOKEN']],
-      ['Register in catalog', ['catalog:register → ' + repo + '/catalog-info.yaml', 'Component ' + v.name + ' owned by ' + v.owner]],
-      ['Open GitOps PR', ['services/' + v.name + '/helm-values-' + v.target + '.yaml', 'PR #' + (700 + hash(v.name) % 90) + ' "feat: onboard ' + v.name + '" auto-merged (values only)']],
-      ['ArgoCD sync', ['ApplicationSet idp-services generated ' + v.name + '-' + (v.target === 'aws' ? 'aws' : 'local'), 'Sync OK · Health Progressing', 'Health Healthy (1/1 pods ready)']],
-      ['Push Tech Insights', ['idp:tech-insights → 9 checks evaluated', 'Scorecard tier: Silver']]];
-  }
-  function pageRun(t) {
-    var run = S.run;
-    if (!run || run.tpl !== t.n) {
-      return html`${head(t.t, 'No run in progress.', null, html`<a href="#/create">Create</a> / <a href="#/create/${t.n}">${t.n}</a> / run`)}<div class="card empty"><p>Start a run from the template form.</p><a class="btn primary" href="#/create/${t.n}">Open form</a></div>`;
+  function pageTemplateForm(name) {
+    var t = tpl(name);
+    if (!t) return notFound('Template not found');
+    var f = S.forms[name] || (S.forms[name] = { step: 0, name: defaultName(t), owner: D.user.team, desc: '', target: 'local', service: 'hello-service', error: '' });
+    var steps = ['Provide some simple information', 'Choose a location', 'Review'];
+    var body;
+    if (f.step === 0) {
+      body = html`${isSuite(t) ? html`<div class="field"><label for="f-service">Target service *</label><select class="input" id="f-service" data-bind-quiet="forms.${t.n}.service">${D.components.map(function (c) { return html`<option ${c.name === f.service ? raw('selected') : ''}>${c.name}</option>`; })}</select><span class="hint">The suite is added to this service's repository through a pull request.</span></div>` : ''}
+        <div class="field"><label for="f-name">Name *</label><input class="input" id="f-name" value="${f.name}" data-bind-quiet="forms.${t.n}.name" aria-describedby="f-name-hint"><span class="hint" id="f-name-hint">Unique name of the ${isSuite(t) ? 'test suite' : 'component'} — lowercase letters, digits and hyphens.</span></div>
+        <div class="field"><label for="f-desc">Description</label><input class="input" id="f-desc" value="${f.desc}" data-bind-quiet="forms.${t.n}.desc"><span class="hint">Help others understand what this is for.</span></div>
+        <div class="field"><label for="f-owner">Owner *</label><select class="input" id="f-owner" data-bind-quiet="forms.${t.n}.owner">${D.teams.map(function (tm) { return html`<option value="${tm.name}" ${tm.name === f.owner ? raw('selected') : ''}>group:default/${tm.name}</option>`; })}</select><span class="hint">Owner of the component</span></div>`;
+    } else if (f.step === 1) {
+      body = html`<div class="field"><label for="f-host">Host</label><input class="input" id="f-host" value="github.com" readonly></div>
+        <div class="field"><label for="f-repo">Repository</label><input class="input" id="f-repo" value="${isSuite(t) ? 'moatazeldebsy/' + f.service : 'moatazeldebsy/' + f.name}" readonly></div>
+        <div class="field"><span class="flabel">Deploy target</span><div class="seg" role="group">${[['local', 'Local (Kind)'], ['aws', 'AWS (EKS)']].map(function (o) {
+          return html`<button type="button" data-action="set" data-key="forms.${t.n}.target" data-value="${o[0]}" aria-pressed="${String(f.target === o[0])}">${o[1]}</button>`;
+        })}</div></div>`;
+    } else {
+      body = table(['Field', 'Value'], [['Name', f.name], ['Description', f.desc || '—'], ['Owner', 'group:default/' + f.owner]].concat(isSuite(t) ? [['Target service', f.service]] : []).concat([['Repository', 'github.com/moatazeldebsy/' + (isSuite(t) ? f.service : f.name)], ['Deploy target', f.target === 'aws' ? 'AWS (EKS)' : 'Local (Kind)']]), { cls: 'plain' });
     }
-    var steps = run.steps, v = run.values, isService = !(t.type === 'test-suite' || t.type === 'platform-capability' || t.type === 'resource');
-    return html`${head('Run: ' + t.t, run.done ? 'Finished in ' + (steps.length * 1.4).toFixed(1) + ' s' : 'Running…', null, html`<a href="#/create">Create</a> / <a href="#/create/${t.n}">${t.n}</a> / run`)}
-      <div class="grid g3">
-        ${card('Steps', html`<ol class="steps">${steps.map(function (s, i) {
-          var st = i < run.step ? 'done' : i === run.step && !run.done ? 'running' : '';
-          return html`<li><span class="step-ic ${st}" aria-hidden="true">${st === 'done' ? '✓' : ''}</span><span style="flex:1">${s[0]}</span><span class="muted small">${st === 'done' ? 'done' : st === 'running' ? 'running' : 'waiting'}</span></li>`;
-        })}</ol>`)}
-        ${card('Log', html`<div class="log" id="run-log" aria-live="polite">${run.lines.map(function (l) { return html`<div class="${l[0]}">${l[1]}</div>`; })}</div>`, null, 'span2')}
-      </div>
-      ${run.done ? card('Output', html`<div class="notice info" style="border-color:var(--ok);background:var(--ok-soft)"><strong>${isService ? 'Pull request opened and ArgoCD synced.' : 'Pull request opened.'}</strong> ${v.name} is ready.</div>
-        <div class="btn-row">
-          ${isService ? html`<a class="btn primary" href="#/entity/${v.name}">Open ${v.name} in the catalog</a><a class="btn" href="#/argocd">View in ArgoCD</a>` : html`<a class="btn primary" href="#/entity/${v.service}">Open ${v.service}</a>`}
-          <span class="btn" aria-disabled="true" title="Demo only">PR #${(700 + hash(v.name) % 90)} on github.com/moatazeldebsy</span>
-          <a class="btn" href="#/create">Create another</a></div>`) : ''}`;
+    return html`${scaffolderBar('create')}<div class="content">
+      <div class="page-title"><div><h1>Create a new component</h1><div class="muted" style="margin-top:4px">Create new software components using standard templates in your organization</div></div></div>
+      <section class="card"><div class="card-head"><h2>${t.t}<span class="sub">${t.d}</span></h2></div><div class="card-divider"></div>
+        <div class="stepper-head">${steps.map(function (s, i) {
+          return html`${i ? html`<span class="line"></span>` : ''}<span class="st ${i === f.step ? 'active' : ''}"><span class="vstep ${i < f.step ? 'done' : i === f.step ? 'active' : ''}"><span class="num">${i < f.step ? '✓' : i + 1}</span></span>${s}</span>`;
+        })}</div>
+        <form class="card-body" data-submit="tpl-next" data-tpl="${t.n}" novalidate style="max-width:760px">${body}
+          <div class="err-text" role="alert" id="form-error">${f.error}</div>
+          <div class="btn-row" style="margin-top:8px"><button type="button" class="btn" data-action="tpl-back" data-key="${t.n}" ${f.step === 0 ? raw('disabled') : ''}>Back</button>
+            <button type="submit" class="btn contained">${f.step === 2 ? 'Create' : 'Next'}</button></div></form></section></div>`;
   }
-  function startRun(t, values) {
-    S.run = { tpl: t.n, values: values, steps: runSteps(t, values), step: 0, lines: [['dim', '$ scaffolder run ' + t.n + ' --name ' + values.name]], done: false, sub: 0 };
-    var run = S.run;
+  function taskSteps(t, v) {
+    if (isSuite(t)) return ['Fetch Template', 'Open Pull Request on ' + v.service, 'Push Tech Insights Metrics'];
+    if (t.type === 'resource') return ['Fetch Template', 'Render ' + (t.n.indexOf('crossplane') >= 0 ? 'Crossplane Claim' : 'Terraform Module'), 'Open Platform GitOps PR'];
+    return ['Resolve Platform URLs', 'Fetch Template', 'Publish to GitHub'].concat(v.target === 'aws' ? ['Provision ECR Repository'] : []).concat(['Configure CI/CD Secrets', 'Register in Local Catalog', 'Prepare Platform GitOps Values', 'Open Platform GitOps PR', 'Register in Catalog']);
+  }
+  function taskLog(step, v, t) {
+    var map = {
+      'Resolve Platform URLs': ['info: Platform repo moatazeldebsy/backstage-platform-template', 'info: Registry localhost:5003'],
+      'Fetch Template': ['info: Fetching template content from remote URL', 'info: Listing files and directories in template', 'info: Processing 27 template files/directories with input values'],
+      'Publish to GitHub': ['info: Creating repository moatazeldebsy/' + v.name, 'info: Pushing initial commit to main', 'info: Enabled branch protection on main'],
+      'Provision ECR Repository': ['info: Created ECR repository idp-mvp/' + v.name],
+      'Configure CI/CD Secrets': ['info: Fetching Actions public key for moatazeldebsy/' + v.name + '...', 'info: Secret IDP_PLATFORM_TOKEN set on moatazeldebsy/' + v.name, 'info: Done. Set 2/2 secrets'],
+      'Register in Local Catalog': ['info: Registered component:default/' + v.name],
+      'Prepare Platform GitOps Values': ['info: Wrote services/' + v.name + '/helm-values-' + v.target + '.yaml'],
+      'Open Platform GitOps PR': ['info: Opened PR #' + (700 + hash(v.name) % 90) + ' "feat: onboard ' + v.name + '"', 'info: Auto-merge enabled (helm-values only)'],
+      'Register in Catalog': ['info: Location registered: github.com/moatazeldebsy/' + v.name + '/blob/main/catalog-info.yaml'],
+      'Push Tech Insights Metrics': ['info: Pushed has-e2e-tests=1 to pushgateway.idp.local']
+    };
+    return map[step] || (step.indexOf('Open Pull Request') === 0 ? ['info: Opened PR #' + (400 + hash(v.name) % 90) + ' on moatazeldebsy/' + v.service + ': "test: add ' + v.name + '"'] : ['info: Rendered ' + (t.n.indexOf('crossplane') >= 0 ? 'services/' + v.service + '/claims/' + v.name + '.yaml' : 'terraform/modules/' + v.name)]);
+  }
+  function startTask(t, v) {
+    var id = (hash(v.name + Date.now()).toString(16) + '0000').slice(0, 8) + '-' + hash(v.name).toString(16).slice(0, 4) + '-475c-92aa-' + hash(t.n).toString(16).padStart(8, '0').slice(0, 8) + '1cc0';
+    var task = { id: id, tpl: t.n, values: v, steps: taskSteps(t, v), step: 0, done: false, lines: [], durations: [], started: ago(0), clock: 0 };
+    S.tasks[id] = task; S.taskOrder.unshift(id);
     function tick() {
-      if (S.run !== run) return;
-      var s = run.steps[run.step];
-      if (run.sub === 0) run.lines.push(['', '▸ ' + s[0]]);
-      if (run.sub < s[1].length) { run.lines.push(['dim', '  ' + s[1][run.sub]]); run.sub++; }
-      else { run.lines.push(['ok', '  ✓ ' + s[0] + ' done']); run.step++; run.sub = 0; }
-      if (run.step >= run.steps.length) {
-        run.done = true;
-        run.lines.push(['ok', '✓ Run completed']);
-        var isService = !(t.type === 'test-suite' || t.type === 'platform-capability' || t.type === 'resource');
-        if (isService) registerEntity(values, t);
-      } else setTimeout(tick, 380);
+      var name = task.steps[task.step], secs = 1 + (hash(name + v.name) % 6);
+      task.lines.push(iso(task.clock) + ' Beginning step ' + name);
+      taskLog(name, v, t).forEach(function (l) { task.lines.push(iso(task.clock) + ' ' + l); });
+      task.clock += secs;
+      task.lines.push(iso(task.clock) + ' Finished step ' + name);
+      task.durations.push(secs);
+      task.step++;
+      if (task.step >= task.steps.length) {
+        task.done = true;
+        if (!isSuite(t) && t.type !== 'resource') registerEntity(v, t);
+      } else setTimeout(tick, 650);
       refreshIf('create');
     }
-    setTimeout(tick, 300);
+    setTimeout(tick, 400);
+    return id;
   }
   function registerEntity(v, t) {
     if (comp(v.name)) return;
     var lang = { 'go-service': 'Go', 'python-service': 'Python', 'nodejs-service': 'Node.js', 'jvm-service': 'Java', 'ruby-service': 'Ruby', 'react-frontend': 'React' }[t ? t.n : ''] || 'Go';
     D.components.push({ name: v.name, type: t && t.type === 'website' ? 'website' : 'service', owner: v.owner, system: 'commerce', lifecycle: 'experimental', lang: lang,
-      desc: v.desc || 'Scaffolded from the ' + (t ? t.t : 'Go Service') + ' template a moment ago.', tags: [lang.toLowerCase(), 'golden-path', 'new'], score: 7,
+      desc: v.desc || 'Scaffolded from the ' + (t ? t.t : 'Go Service') + ' template.', tags: [lang.toLowerCase(), 'golden-path'], score: 7,
       slo: { avail: 99.5, latency: 99.0 }, dora: { df: 1, lt: 0.4, cfr: 0, mttr: 0 }, replicas: 1, version: '0.1.0' });
   }
-
-  function pageApis(sel) {
-    var a = D.apis.filter(function (x) { return x.name === sel; })[0] || null;
-    if (sel && !a) return notFound('No API named "' + sel + '".');
-    a = a || D.apis[0];
-    var mcls = { GET: 'ok', POST: 'info', PUT: 'warn', DELETE: 'bad', PUB: 'warn', QUERY: 'info' };
-    return html`${head('API Explorer', 'OpenAPI, AsyncAPI and GraphQL definitions registered in the catalog.')}
-      <div class="docs-layout">
-        <nav class="card docs-nav" aria-label="APIs" style="padding:8px">${D.apis.map(function (x) {
-          return html`<a href="#/apis/${x.name}" ${x === a ? raw('aria-current="page"') : ''}>${x.name}<div class="muted small">${x.type} · ${x.owner}</div></a>`;
-        })}</nav>
-        <div>
-          ${card(a.name + ' ' + a.version, html`<p>${a.desc}</p><dl class="kv"><dt>Type</dt><dd>${pill(a.type, 'info')}</dd><dt>Provided by</dt><dd>${entLink(a.provider)}</dd><dt>Owner</dt><dd>${teamLink(a.owner)}</dd><dt>System</dt><dd>${a.system}</dd></dl>`)}
-          ${card('Definition', html`<ul class="list">${a.endpoints.map(function (ep, i) {
-            var key = a.name + ':' + i;
-            return html`<li style="flex-wrap:wrap"><span class="pill ${mcls[ep[0]] || ''}" style="min-width:58px;justify-content:center">${ep[0]}</span>
-              <div style="flex:1;min-width:160px"><code>${ep[1]}</code><div class="muted small">${ep[2]}</div></div>
-              <button class="btn sm" type="button" data-action="try-api" data-key="${key}">Try it</button>
-              ${S.apiTry === key ? html`<pre style="width:100%;margin:8px 0 0"><code>${sampleResponse(a, ep)}</code></pre>` : ''}</li>`;
-          })}</ul>`)}
-        </div>
-      </div>`;
+  function pageTask(id) {
+    var task = S.tasks[id];
+    if (!task) return html`${scaffolderBar('create/tasks')}<div class="content"><div class="card card-body">Task not found. Tasks only exist for this browser session in the demo. <a href="#/create">Back to templates</a></div></div>`;
+    var t = tpl(task.tpl), v = task.values, pctDone = task.step / task.steps.length * 100, service = !isSuite(t) && t.type !== 'resource';
+    return html`${scaffolderBar('create/tasks')}<div class="content">
+      <div class="page-title"><h1>${t.t}</h1><span class="icon-btn" aria-hidden="true">${icon('more')}</span></div>
+      <section class="card"><div class="progress-line" role="progressbar" aria-valuenow="${Math.round(pctDone)}" aria-valuemin="0" aria-valuemax="100" aria-label="Task progress"><span style="width:${pctDone.toFixed(0)}%"></span></div>
+        <div class="hstepper">${task.steps.map(function (s, i) {
+          var st = i < task.step ? 'done' : i === task.step && !task.done ? 'running' : 'pending';
+          return html`<div class="hstep ${st}"><span class="s-ic">${icon(st === 'done' ? 'checkO' : st === 'running' ? 'loading' : 'circleO', 26)}</span><div class="s-label">${s}</div>${st === 'done' ? html`<div class="s-time">${task.durations[i]} seconds</div>` : ''}</div>`;
+        })}</div>
+        ${task.done ? html`<div class="card-divider"></div><div class="card-body btn-row">${service ? html`<a class="btn outlined" href="${entityHref('component', v.name)}">${icon('open', 18)}Open in catalog</a><a class="btn outlined" href="#/argocd">${icon('tree', 18)}ArgoCD</a>` : html`<a class="btn outlined" href="${entityHref('component', v.service)}">${icon('open', 18)}Open ${v.service}</a>`}
+          <span class="btn outlined" aria-disabled="true">${icon('code', 18)}Repository</span></div>` : ''}
+      </section>
+      <section class="card mt"><div class="card-body" style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn grey" ${task.done ? raw('disabled') : ''} data-action="toast" data-msg="Cancel is disabled in the demo">Cancel</button>
+        <button type="button" class="btn outlined" data-action="toggle-logs">${S.showLogs ? 'Hide logs' : 'Show logs'}</button>
+        <a class="btn contained" href="#/create/templates/default/${t.n}" ${task.done ? '' : raw('aria-disabled="true" tabindex="-1" style="pointer-events:none;opacity:.5"')}>Start over</a></div></section>
+      ${S.showLogs ? html`<section class="card mt"><div class="logview" id="task-log" aria-live="polite">${task.lines.map(function (l, i) {
+        var m = l.match(/^(\S+) (info:)?(.*)$/);
+        return html`<div><span class="ln">${i + 1}</span><span>${m[1]} ${m[2] ? html`<span class="lvl">info</span>:` : ''}${m[3]}</span></div>`;
+      })}</div></section>` : ''}</div>`;
   }
-  function sampleResponse(a, ep) {
-    if (ep[1].indexOf('health') >= 0 || ep[1].indexOf('readyz') >= 0) return 'HTTP/1.1 200 OK\n{ "status": "ok" }';
-    if (ep[1].indexOf('metrics') >= 0) return 'HTTP/1.1 200 OK\n# TYPE http_requests_total counter\nhttp_requests_total{code="200"} 182734';
-    if (a.type === 'asyncapi') return '{\n  "type": "' + ep[1].split('/ ')[1] + '",\n  "orderId": "ord_8KQ2",\n  "occurredAt": "2026-11-20T13:04:11Z"\n}';
-    if (a.type === 'graphql') return '{\n  "data": { "search": { "total": 128, "items": [{ "sku": "SKU-1042", "title": "Trail running shoe" }] } }\n}';
-    if (a.name === 'idp-mcp-api') return 'HTTP/1.1 200 OK\n{ "jsonrpc": "2.0", "id": 1, "result": { "tools": [ { "name": "catalog_search" }, "… 11 more" ] } }';
-    if (a.name === 'hello-service-api') return 'HTTP/1.1 200 OK\n{ "message": "Hello, ' + (ep[1].indexOf('{name}') >= 0 ? 'Alex' : 'world') + '!" }';
-    return 'HTTP/1.1 ' + (ep[0] === 'POST' ? '201 Created' : '200 OK') + '\n{\n  "id": "' + (a.name.indexOf('pay') >= 0 ? 'pay_' : 'ord_') + '7Hf2K9",\n  "status": "' + (ep[0] === 'POST' ? 'accepted' : 'captured') + '",\n  "amount": { "value": 4999, "currency": "EUR" }\n}';
+  function pageTasks() {
+    return html`${scaffolderBar('create/tasks')}<div class="content"><div class="page-title"><h1>List template tasks</h1></div>
+      ${card('Tasks', table(['Task ID', 'Template', 'Created', 'Owner', 'Status'], S.taskOrder.map(function (id) {
+        var tk = S.tasks[id];
+        return [html`<a href="#/create/tasks/${id}">${id}</a>`, tpl(tk.tpl).t, tk.started, 'user:default/arivera', tk.done ? chip('completed', 'sm ok') : chip('processing', 'sm info')];
+      }), { empty: 'No tasks yet in this session. Run a template from the Templates tab.' }))}</div>`;
   }
-
-  function pageTechdocs(id) {
-    var doc = D.docs.filter(function (d) { return d.id === id; })[0];
-    if (id && !doc) return notFound('No TechDocs page "' + id + '".');
-    doc = doc || D.docs[0];
-    var secs = [];
-    D.docs.forEach(function (d) { if (secs.indexOf(d.section) < 0) secs.push(d.section); });
-    return html`${head('TechDocs', 'Docs-as-code, built from each repo’s mkdocs.yml.')}
-      <div class="docs-layout">
-        <nav class="card docs-nav" aria-label="Documentation" style="padding:8px">${secs.map(function (s) {
-          return html`<div class="sec">${s}</div>${D.docs.filter(function (d) { return d.section === s; }).map(function (d) {
-            return html`<a href="#/techdocs/${d.id}" ${d === doc ? raw('aria-current="page"') : ''}>${d.title}</a>`;
-          })}`;
-        })}</nav>
-        <article class="card prose"><div class="crumbs">${doc.section}</div><h1 style="margin-bottom:12px">${doc.title}</h1>${doc.body.map(function (b) {
-          if (b[0] === 'p') return html`<p>${b[1]}</p>`;
-          if (b[0] === 'h2') return html`<h2>${b[1]}</h2>`;
-          if (b[0] === 'ul') return html`<ul>${b[1].map(function (x) { return html`<li>${x}</li>`; })}</ul>`;
-          if (b[0] === 'code') return html`<pre><code>${b[1]}</code></pre>`;
-          if (b[0] === 'runbooks') return html`<ul>${D.runbooks.map(function (r) { return html`<li><strong>${r[1]}</strong> <code class="small">docs/runbooks/${r[0]}.md</code></li>`; })}</ul>`;
-          return '';
-        })}<p class="muted small" style="margin-top:20px">Last updated 3 days ago · Edit on GitHub</p></article>
-      </div>`;
+  function pageActions() {
+    var acts = [['idp:deploy-local', 'helm upgrade --install to Kind via host.docker.internal'], ['idp:provision-secret', 'Create a Kubernetes Secret'], ['idp:set-repo-secrets', 'Write GitHub Actions secrets'],
+      ['idp:tech-insights', 'Push metrics to Prometheus Pushgateway'], ['idp:deploy-agent', 'Deploy a KAgent Agent CRD'], ['idp:run-training-job', 'Launch an MLflow training job'],
+      ['idp:deploy-mcp-server', 'Deploy an MCP server via Helm'], ['idp:deploy-model-server', 'Deploy a model inference server (Ollama local / vLLM AWS)'], ['idp:setup-contract-testing', 'Deploy contract-mcp-server and register the target service'],
+      ['fetch:template', 'Downloads a skeleton, templates variables into files and directories'], ['publish:github', 'Initializes a git repository and publishes it to GitHub'], ['catalog:register', 'Registers entities from a catalog descriptor file']];
+    return html`${scaffolderBar('create/actions')}<div class="content"><div class="page-title"><h1>Installed actions</h1></div>
+      <div class="grid">${acts.map(function (a) { return card(a[0], html`<div class="card-body" style="padding-top:0">${a[1]}</div>`); })}</div></div>`;
   }
 
+  /* ---------- APIs (stock api-docs) ---------- */
+  function pageApiDocs() {
+    var f = S.apiCat, all = D.apis.map(function (a) { return { kind: 'API', name: a.name, type: a.type, owner: a.owner, system: a.system, lifecycle: 'production', desc: a.desc, tags: [a.type] }; });
+    var mine = all.filter(function (e) { return e.owner === D.user.team; }), starred = all.filter(function (e) { return S.starred['API:' + e.name]; });
+    var base = f.personal === 'owned' ? mine : f.personal === 'starred' ? starred : all, q = f.q.toLowerCase();
+    var rows = base.filter(function (e) { return (!f.type || e.type === f.type) && (!f.owner || e.owner === f.owner) && (!q || (e.name + ' ' + e.desc).toLowerCase().indexOf(q) >= 0); });
+    return html`${pluginBar('APIs', 'extension')}<div class="content">
+      <div class="page-title"><h1>My Organization API Explorer</h1><a class="btn contained" href="#/catalog-import">Register Existing API</a></div>
+      <div class="catalog-layout"><div class="filters">
+          ${selectField('Type', 'a-type', 'apiCat.type', ['openapi', 'asyncapi', 'graphql'], f.type, 'all')}
+          ${userFilter('apiCat', mine.length, starred.length, all.length, f.personal)}
+          ${selectField('Owner', 'a-owner', 'apiCat.owner', ['platform-team', 'backend-team', 'data-team'].map(function (o) { return [o, team(o).display]; }), f.owner, '')}
+          ${selectField('Lifecycle', 'a-life', 'apiCat.lifecycle', ['production'], f.lifecycle, '')}</div>
+        <section class="card"><div class="card-head"><h2>All APIs (${rows.length})</h2><div class="underline-search">${icon('search', 22)}<label class="sr-only" for="api-q">Filter</label><input id="api-q" type="search" placeholder="Filter" value="${f.q}" data-bind="apiCat.q"></div></div>
+          ${table(['Name', 'System', 'Owner', 'Type', 'Lifecycle', 'Description', 'Tags', 'Actions'], rows.map(function (e) {
+            return [html`<a class="cell-link" href="${entityHref('api', e.name)}">${icon('extension', 16)}${e.name}</a>`, systemLink(e.system), ownerLink(e.owner), e.type, e.lifecycle, html`<span class="clamp">${e.desc}</span>`, tagChips(e.tags), actionsCell(e)];
+          }), { cls: 'bs' })}</section></div></div>`;
+  }
+
+  /* ---------- Docs (stock TechDocs) ---------- */
+  function docSites() {
+    return [{ kind: 'system', name: 'internal-developer-platform', owner: 'platform-team', type: 'system', title: 'Internal Developer Platform' }].concat(D.components.map(function (c) { return { kind: 'component', name: c.name, owner: c.owner, type: c.type, title: c.name }; }));
+  }
+  function pageDocsIndex() {
+    var sites = docSites();
+    return html`${pluginBar('Docs', 'docs')}${header('documentation', 'Documentation', 'Documentation available in My Organization')}<div class="content">
+      ${card('All (' + sites.length + ')', table(['Document', 'Owner', 'Kind', 'Type', 'Actions'], sites.map(function (s) {
+        return [html`<a href="#/docs/default/${s.kind}/${s.name}"><strong>${s.title}</strong></a>`, ownerLink(s.owner), s.kind, s.type, actionsCell({ kind: s.kind === 'system' ? 'System' : 'Component', name: s.name })];
+      }), { cls: 'bs' }))}</div>`;
+  }
+  function docPages(kind, name) {
+    if (kind === 'system') return D.docs;
+    var c = comp(name) || { name: name, desc: '', lang: 'Go' };
+    return [{ id: 'index', title: name, section: 'Home', body: [['p', c.desc], ['h2', 'Endpoints'], ['code', 'GET /          Service info JSON\nGET /healthz   Liveness probe — returns {"status":"ok"}\nGET /readyz    Readiness probe\nGET /metrics   Prometheus metrics'],
+      ['h2', 'Local development'], ['code', c.lang === 'Go' ? 'go test ./... -coverprofile=coverage.out\ngo run ./src' : c.lang === 'Python' ? 'pip install -r requirements.txt\nuvicorn app.main:app --reload' : 'npm ci && npm run dev'],
+      ['h2', 'Deployment'], ['p', 'Merging to main builds and signs the image; ArgoCD syncs ' + name + '-dev from services/' + name + '/helm-values-local.yaml using the shared helm/service-template chart.']] },
+      { id: 'runbooks', title: 'Runbooks', section: 'Runbooks', body: [['p', 'Alerts for this service link to the platform runbooks.'], ['runbooks']] }];
+  }
+  function docsReader(name, kind, pageId, embedded) {
+    var pages = docPages(kind, name), p = pages.filter(function (x) { return x.id === pageId; })[0] || pages[0];
+    var base = '#/docs/default/' + kind + '/' + name;
+    var h2s = p.body.filter(function (b) { return b[0] === 'h2'; }).map(function (b) { return b[1]; });
+    var content = html`<div class="outlined-search" style="max-width:640px;margin:0 auto 32px">${icon('search', 22)}<label class="sr-only" for="doc-q">Search docs</label><input id="doc-q" type="search" placeholder="${'Search ' + name + ' docs'}" value="${S.docSearch}" data-bind-quiet="docSearch"></div>
+      <div class="docs-reader"><nav aria-label="Docs navigation"><strong style="display:block;margin-bottom:8px">${kind === 'system' ? 'Internal Developer Platform' : name}</strong>${pages.map(function (x) {
+        return html`<a href="${base + '/' + x.id}" ${x === p ? raw('aria-current="page"') : ''}>${x.title}</a>`;
+      })}</nav>
+      <article class="prose"><h1>${p.title}</h1>${p.body.map(function (b) {
+        if (b[0] === 'p') return html`<p>${b[1]}</p>`;
+        if (b[0] === 'h2') return html`<h2>${b[1]}</h2>`;
+        if (b[0] === 'ul') return html`<ul>${b[1].map(function (x) { return html`<li>${x}</li>`; })}</ul>`;
+        if (b[0] === 'code') return html`<pre><code>${b[1]}</code></pre>`;
+        if (b[0] === 'runbooks') return html`<ul>${D.runbooks.map(function (r) { return html`<li>${r[1]} — <code>docs/runbooks/${r[0]}.md</code></li>`; })}</ul>`;
+        return '';
+      })}</article>
+      <aside class="toc">${h2s.length ? html`<strong>Table of contents</strong>${h2s.map(function (h) { return html`<a href="${base + '/' + p.id}">${h}</a>`; })}` : ''}</aside></div>`;
+    return embedded ? content : html`${pluginBar('Docs', 'docs')}${header('documentation', p.title, kind === 'system' ? 'Internal Developer Platform' : name)}<div class="content">${content}</div>`;
+  }
+
+  /* ---------- Tech Radar (community plugin, backstage/catalog/tech-radar.json) ---------- */
+  var QUAD = { languages: 'Languages & Frameworks', platforms: 'Platforms & Infrastructure', tools: 'Tools & Utilities', techniques: 'Techniques & Practices' };
+  var RING_COL = { adopt: '#27ae60', trial: '#2980b9', assess: '#f39c12', hold: '#e74c3c' };
+  var RINGS = ['adopt', 'trial', 'assess', 'hold'];
   function pageRadar() {
-    var quads = ['Languages & Frameworks', 'Platforms', 'Tools', 'Techniques'], rings = ['Adopt', 'Trial', 'Assess', 'Hold'];
-    var C = 250, R = [70, 140, 195, 240], s = '';
-    for (var i = 3; i >= 0; i--) s += '<circle cx="' + C + '" cy="' + C + '" r="' + R[i] + '" fill="' + (i % 2 ? 'var(--surface-2)' : 'var(--surface)') + '" stroke="var(--border)"/>';
-    s += '<line x1="10" x2="490" y1="250" y2="250" stroke="var(--border)"/><line y1="10" y2="490" x1="250" x2="250" stroke="var(--border)"/>';
-    rings.forEach(function (r, i) { s += '<text x="' + (C + 4) + '" y="' + (C - (i ? R[i - 1] : 0) - 6) + '" style="font-size:10px;font-weight:600">' + r + '</text>'; });
-    var cols = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
-    var numbered = [];
-    quads.forEach(function (q, qi) {
-      var items = D.radar.filter(function (x) { return x[1] === q; });
-      items.forEach(function (it) {
-        var ri = rings.indexOf(it[2]), rr = rng('radar:' + it[0]);
-        var inner = ri ? R[ri - 1] : 10, outer = R[ri];
-        var rad = inner + 14 + rr() * (outer - inner - 28);
-        var a0 = [180, 270, 90, 0][qi], ang = (a0 + 10 + rr() * 70) * Math.PI / 180;
-        var x = C + rad * Math.cos(ang), y = C - rad * Math.sin(ang), n = numbered.length + 1;
-        numbered.push([n, it[0], q, it[2]]);
-        s += '<g><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="' + cols[qi] + '"><title>' + esc(it[0] + ' (' + it[2] + ')') + '</title></circle><text x="' + x.toFixed(1) + '" y="' + (y + 3.5).toFixed(1) + '" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff">' + n + '</text></g>';
-      });
+    var q = (S.radarQ || '').toLowerCase();
+    var entries = D.radar.map(function (e, i) { return { n: i + 1, title: e[0], quad: e[1], ring: e[2] }; });
+    var pos = { tools: [-1, -1], techniques: [1, -1], platforms: [-1, 1], languages: [1, 1] };
+    var C = 260, R = [90, 150, 205, 250], s = '';
+    for (var i = 3; i >= 0; i--) s += '<circle cx="' + C + '" cy="' + C + '" r="' + R[i] + '" fill="none" stroke="var(--grid)"/>';
+    s += '<line x1="' + (C - 255) + '" x2="' + (C + 255) + '" y1="' + C + '" y2="' + C + '" stroke="var(--grid)"/><line y1="' + (C - 255) + '" y2="' + (C + 255) + '" x1="' + C + '" x2="' + C + '" stroke="var(--grid)"/>';
+    entries.forEach(function (e) {
+      var r = rng('radar:' + e.title), ri = RINGS.indexOf(e.ring), inner = ri ? R[ri - 1] : 14, outer = R[ri];
+      var rad = inner + 12 + r() * (outer - inner - 24), ang = (10 + r() * 70) * Math.PI / 180, p = pos[e.quad] || [1, 1];
+      var x = C + p[0] * rad * Math.cos(ang), y = C + p[1] * rad * Math.sin(ang), dim = q && e.title.toLowerCase().indexOf(q) < 0;
+      s += '<g opacity="' + (dim ? 0.15 : 1) + '"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="9" fill="' + RING_COL[e.ring] + '"><title>' + esc(e.n + '. ' + e.title) + '</title></circle><text x="' + x.toFixed(1) + '" y="' + (y + 3.5).toFixed(1) + '" text-anchor="middle" style="font-size:8.5px;fill:#fff;font-weight:700">' + e.n + '</text></g>';
     });
-    var qpos = [[14, 22, 'start'], [486, 22, 'end'], [14, 488, 'start'], [486, 488, 'end']];
-    quads.forEach(function (q, i) { s += '<text x="' + qpos[i][0] + '" y="' + qpos[i][1] + '" text-anchor="' + qpos[i][2] + '" style="font-size:12px;font-weight:700;fill:' + cols[i] + '">' + esc(q) + '</text>'; });
-    return html`${head('Tech Radar', 'What the platform recommends, trials, assesses or retires. Reviewed quarterly by the architecture guild.')}
-      <div class="grid g2">
-        ${card(null, html`<svg class="chart" viewBox="0 0 500 500" role="img" aria-label="Technology radar with ${numbered.length} entries">${raw(s)}</svg>`)}
-        ${card('Entries', html`<div class="radar-legend">${quads.map(function (q) {
-          return html`<h3>${q}</h3><ol>${numbered.filter(function (n) { return n[2] === q; }).map(function (n) { return html`<li value="${n[0]}">${n[1]} <span class="muted">· ${n[3]}</span></li>`; })}</ol>`;
-        })}</div>`)}
-      </div>`;
-  }
-
-  function pageDora() {
-    var wl = weekLabels(12), comps = D.components.filter(function (c) { return c.replicas > 0 || c.type === 'mobile'; });
-    var df = series('org-df', 12, 41 * 7, 30, 0.3), lt = series('org-lt', 12, 6.2, 1.1, -0.3);
-    var byTeam = D.teams.map(function (t) {
-      var cs = D.components.filter(function (c) { return c.owner === t.name; });
-      return { label: t.name.replace('-team', ''), value: cs.reduce(function (a, c) { return a + c.dora.df; }, 0) };
-    });
-    return html`${head('DORA metrics', 'Delivery performance across all services, last 12 weeks.')}
-      <div class="grid g4">
-        ${stat('Deploy frequency', '41/day', levelPill('Elite'), sparkline(df))}
-        ${stat('Lead time', '6.2 h', levelPill('Elite'), sparkline(lt, 'var(--c2)'))}
-        ${stat('Change failure rate', '6.4%', levelPill('High'), sparkline(series('org-cfr', 12, 6.4, 1.2, -0.2), 'var(--c3)'))}
-        ${stat('Time to restore', '38 min', levelPill('Elite'), sparkline(series('org-mttr', 12, 38, 8, -0.2), 'var(--c4)'))}
-      </div>
-      <div class="grid g2" style="margin-top:16px">
-        ${card('Deployments per week (all services)', barChart(df.map(function (v, i) { return { label: wl[i], value: Math.round(v) }; }), { label: 'Deployments per week' }))}
-        ${card('Deploys per day by team', barChart(byTeam.map(function (b, i) { return { label: b.label, value: b.value, color: 'var(--c' + (i % 6 + 1) + ')' }; }), { label: 'Deploys per day by team' }))}
-      </div>
-      ${card('By service', table(['Service', 'Owner', 'Deploys/day', 'Lead time', 'CFR', 'MTTR'], comps.map(function (c) {
-        return [html`<a href="#/entity/${c.name}/dora">${c.name}</a>`, c.owner, html`${num(c.dora.df, 1)} ${levelPill(doraLevel('df', c.dora.df))}`, html`${hours(c.dora.lt)} ${levelPill(doraLevel('lt', c.dora.lt))}`,
-          html`${pct(c.dora.cfr)} ${levelPill(doraLevel('cfr', c.dora.cfr))}`, html`${dur(c.dora.mttr)} ${levelPill(doraLevel('mttr', c.dora.mttr))}`];
-      })))}`;
-  }
-
-  function pageFinops() {
-    var spend = D.teams.reduce(function (a, t) { return a + t.spend; }, 0), budget = D.teams.reduce(function (a, t) { return a + t.budget; }, 0);
-    var daily = series('finops-daily', 30, spend / 20, spend / 20 * 0.15, 0.1);
-    var cats = [{ name: 'Compute (EC2/EKS)', value: Math.round(spend * 0.55) }, { name: 'AI / LLM (LiteLLM)', value: Math.round(spend * 0.17) }, { name: 'Storage (EBS/S3)', value: Math.round(spend * 0.13) }, { name: 'Network', value: Math.round(spend * 0.09) }, { name: 'Databases (RDS)', value: Math.round(spend * 0.06) }];
-    var recs = [['analytics-pipeline', 'Reduce replicas 3 → 2', 'CPU p95 18% for 14 days', 38.4], ['recommendations-ml', 'Move to Graviton (m7g)', 'Same perf at lower price', 61.2], ['orders-service', 'Lower memory request 2Gi → 1Gi', 'Working set p95 640Mi', 22.9], ['search-snapshots', 'Add Glacier transition at 30 d', '74% of objects older than 30 d', 15.6], ['preview envs', 'Shorten default TTL 3 d → 1 d', '41% of previews idle after day 1', 27.0]];
-    return html`${head('FinOps', 'Cost visibility from OpenCost and LiteLLM, by team, namespace and category. November 2026, day 20.')}
-      <div class="grid g4">
-        ${stat('Spend this month', money(spend), 'of ' + money(budget) + ' budgeted')}
-        ${stat('Forecast', money(spend / 20 * 30), pill('+6% vs Oct', 'warn'))}
-        ${stat('Teams over budget', '1', 'backend-team (107%)')}
-        ${stat('Savings identified', money(165), recs.length + ' recommendations')}
-      </div>
-      <div class="grid g2" style="margin-top:16px">
-        ${card('Spend by team vs budget', hbars(D.teams.map(function (t) {
-          var u = t.spend / t.budget;
-          return { label: t.name, value: t.spend, max: t.budget, text: pct(u * 100, 0), color: u > 1 ? 'var(--bad)' : u > 0.8 ? 'var(--warn)' : 'var(--ok)' };
-        })), html`<a href="#/teams">Teams</a>`)}
-        ${card('By category', donut(cats, [money(spend), 'month to date'], { fmt: money, label: 'Spend by category' }))}
-      </div>
-      ${card('Daily spend (last 30 days)', lineChart([{ name: 'Daily cost', values: daily }], { labels: dayLabels(30), yFmt: function (v) { return '$' + num(v, 0); }, label: 'Daily spend' }))}
-      ${card('Rightsizing recommendations', table(['Target', 'Recommendation', 'Evidence', 'Monthly saving'], recs.map(function (r) { return [html`<strong>${r[0]}</strong>`, r[1], html`<span class="muted">${r[2]}</span>`, money(r[3], 2)]; }), [3]),
-        html`<span class="muted">via cost-mcp-server · get_rightsizing_recommendations</span>`)}`;
-  }
-
-  function pageIncidents(id) {
-    if (id) {
-      var inc = D.incidents.filter(function (i) { return i.id === id; })[0];
-      if (!inc) return notFound('No incident ' + id + '.');
-      return html`${head(inc.id + ': ' + inc.title, null, null, html`<a href="#/incidents">Incidents</a> / ${inc.id}`)}
-        <div class="btn-row" style="margin:-8px 0 16px">${pill(inc.sev, inc.sev === 'SEV2' ? 'bad' : 'warn')} ${statusPill(inc.status)} ${pill('service: ' + inc.service, 'info')} ${pill('IC: ' + inc.commander)}</div>
-        <div class="grid g3">
-          ${card(inc.pm ? 'Post-mortem summary' : 'Summary', html`<p>${inc.summary}</p><dl class="kv"><dt>Started</dt><dd>${inc.started}</dd><dt>Duration</dt><dd>${inc.duration}</dd><dt>Commander</dt><dd>${inc.commander}</dd></dl>
-            ${inc.pm ? html`<p class="muted small" style="margin-top:10px">Blameless post-mortem. Written within 5 working days, reviewed in the weekly ops review.</p>` : ''}`, null, 'span2')}
-          ${card('Action items', inc.actions.length ? html`<ul class="list">${inc.actions.map(function (a) { return html`<li><div style="flex:1">${a[0]}<div class="muted small">${a[1]}</div></div>${statusPill(a[2])}</li>`; })}</ul>` : html`<p class="muted">Action items are added once the incident is resolved.</p>`)}
-        </div>
-        ${card('Timeline', html`<ul class="list">${inc.timeline.map(function (t) { return html`<li><code class="nowrap">${t[0]}</code><div>${t[1]}</div></li>`; })}</ul>`)}`;
+    RINGS.forEach(function (rg, i) { s += '<text x="' + C + '" y="' + (C - R[i] + 22) + '" text-anchor="middle" style="font-size:18px;font-weight:700;fill:' + RING_COL[rg] + ';opacity:.85">' + rg.toUpperCase() + '</text>'; });
+    function quadList(qid) {
+      return html`<div class="radar-q"><h3>${QUAD[qid]}</h3><div class="rings">${RINGS.map(function (rg) {
+        var items = entries.filter(function (e) { return e.quad === qid && e.ring === rg; });
+        if (!items.length) return '';
+        return html`<div><h4 style="color:${raw(RING_COL[rg])}">${rg.toUpperCase()}</h4><ol>${items.map(function (e) { var dim = q && e.title.toLowerCase().indexOf(q) < 0; return html`<li style="${raw(dim ? 'opacity:.35' : '')}">${e.n}. ${e.title}</li>`; })}</ol></div>`;
+      })}</div></div>`;
     }
-    var open = D.incidents.filter(function (i) { return i.status !== 'resolved'; });
-    return html`${head('Incidents', 'Open incidents and blameless post-mortems. The incident-agent links runbooks and drafts status updates.')}
-      <div class="grid g4">${stat('Open', open.length, open.length ? open[0].id : 'none')}${stat('Last 30 days', '4', '1 SEV2 · 2 SEV3 · 1 SEV4')}${stat('MTTR (30 d)', '58 min', pill('-22% vs prev', 'ok'))}${stat('Post-mortems', D.incidents.filter(function (i) { return i.pm; }).length, 'published')}</div>
-      ${card('All incidents', table(['Incident', 'Severity', 'Status', 'Service', 'Started', 'Duration', 'Post-mortem'], D.incidents.map(function (i) {
-        return [html`<a href="#/incidents/${i.id}"><strong>${i.id}</strong></a> ${i.title}`, pill(i.sev, i.sev === 'SEV2' ? 'bad' : 'warn'), statusPill(i.status), comp(i.service) ? entLink(i.service) : i.service, i.started, i.duration, i.pm ? html`<a href="#/incidents/${i.id}">Read</a>` : '-'];
-      })))}`;
+    return html`${pluginBar('tech-radar', 'widgets')}${header('tool', 'Tech Radar', 'Pick the recommended technologies for your projects')}<div class="content">
+      <div class="page-title"><h1 style="font-size:32px">Company Radar</h1><div class="underline-search"><label class="sr-only" for="radar-q">Filter</label><input id="radar-q" type="search" placeholder="Filter" value="${S.radarQ || ''}" data-bind="radarQ"></div></div>
+      <div class="radar-wrap"><div>${quadList('tools')}${quadList('platforms')}</div>
+        <svg class="chart" viewBox="0 0 520 520" role="img" aria-label="${'Tech radar with ' + entries.length + ' entries'}">${raw(s)}</svg>
+        <div>${quadList('techniques')}${quadList('languages')}</div></div></div>`;
   }
 
-  function pageLearning() {
-    var f = S.learning;
-    var items = D.learning.filter(function (l) { return (!f.topic || l.topic === f.topic) && (!f.level || l.level === f.level) && (!f.type || l.type === f.type); });
-    var done = D.learning.filter(function (l) { return S.done[l.title]; }).length;
-    function uniq(k) { var o = []; D.learning.forEach(function (l) { if (o.indexOf(l[k]) < 0) o.push(l[k]); }); return o; }
-    return html`${head('Learning Center', 'Golden-path tutorials and concepts, filtered by topic, experience level and type.')}
-      ${card('Your progress', html`<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><strong style="font-size:22px">${done} / ${D.learning.length}</strong><div class="bar" style="flex:1;min-width:160px;height:10px"><span style="width:${(done / D.learning.length * 100).toFixed(0)}%"></span></div><span class="muted">${pct(done / D.learning.length * 100, 0)} complete</span></div>`)}
-      <div class="card" style="margin-top:16px"><div class="grid g3">
-        <div><h3 style="margin-bottom:8px">Topic</h3>${chips('learning.topic', uniq('topic'), f.topic, 'All')}</div>
-        <div><h3 style="margin-bottom:8px">Experience level</h3>${chips('learning.level', uniq('level'), f.level, 'All')}</div>
-        <div><h3 style="margin-bottom:8px">Type</h3>${chips('learning.type', uniq('type'), f.type, 'All')}</div>
-      </div></div>
-      <div class="grid g-auto" style="margin-top:16px">${items.map(function (l) {
-        var d = !!S.done[l.title];
-        return html`<article class="card tpl"><div class="btn-row">${pill(l.topic, 'info')} ${pill(l.level)} ${pill(l.type)}</div><h3>${l.title}</h3>
-          <p>${l.mins} min${l.template ? html` · uses the <code>${l.template}</code> template` : ''}</p>
-          <div class="btn-row">${l.template ? html`<a class="btn sm primary" href="#/create/${l.template}">Start</a>` : html`<a class="btn sm primary" href="#/techdocs/golden-paths">Read</a>`}
-            <button class="btn sm" type="button" data-action="toggle-done" data-key="${l.title}" aria-pressed="${String(d)}">${d ? '✓ Completed' : 'Mark complete'}</button></div></article>`;
+  /* ---------- Announcements (community plugin) ---------- */
+  var ANNOUNCEMENTS = [
+    ['KAgent v0.4 — OpenAI ModelConfig support', 'Jun 18', 'GPT-4o is now available as an alternative model for KAgent agents.', 'platform-team'],
+    ['Cost attribution GA — teams can now see per-agent AI spend', 'Jun 15', 'Budget tab in Backstage now shows AI API costs broken down by agent.', 'platform-team'],
+    ['Planned maintenance — Kind cluster restart Jun 22 02:00 UTC', 'Jun 14', 'All local services will be unavailable for ~10 minutes.', 'platform-team'],
+    ['Contract testing is now one click', 'Jun 2', 'Run "Enable Contract Testing" on any service; the contract-mcp-server registers its spec automatically.', 'qa-team']
+  ];
+  function pageAnnouncements() {
+    return html`${pluginBar('Announcements', 'campaign')}${header('home', 'Announcements', null, html`<span class="btn outlined" style="color:#fff;border-color:rgba(255,255,255,.6)" aria-disabled="true">New announcement</span>`)}<div class="content"><div class="grid g2">${ANNOUNCEMENTS.map(function (a) {
+      return html`<section class="card"><div class="card-head"><h2>${a[0]}<span class="sub">By ${team(a[3]).display}, ${a[1]}</span></h2></div><div class="card-body" style="padding-top:0">${a[2]}</div></section>`;
+    })}</div></div>`;
+  }
+
+  /* ---------- Register Existing Component (catalog-import) ---------- */
+  function pageImport() {
+    var st = S.importStep, steps = ['Select URL', 'Import Actions', 'Review', 'Finish'];
+    var body = st === 0 ? html`<form data-submit="import" novalidate><div class="field"><label for="imp-url">URL</label><input class="input" id="imp-url" value="${S.importUrl}" data-bind-quiet="importUrl"><span class="hint">Enter the full path to your entity file to start tracking your component</span></div><button class="btn contained" type="submit">Analyze</button></form>`
+      : st === 1 ? html`<p>The following entities will be added to the catalog:</p>${table(['Entity', 'Kind'], [[html`<strong>loyalty-points</strong>`, 'Component'], [html`<strong>loyalty-points-api</strong>`, 'API']])}<div class="btn-row mt16"><button class="btn" type="button" data-action="set" data-key="importStep" data-value="0">Back</button><button class="btn contained" type="button" data-action="set" data-key="importStep" data-value="2">Import</button></div>`
+      : html`<div class="alert success">Entities have been registered. They will appear in the catalog after the next refresh.</div><div class="btn-row"><a class="btn outlined" href="#/catalog">View in catalog</a><button class="btn" type="button" data-action="set" data-key="importStep" data-value="0">Register another</button></div>`;
+    return html`${pluginBar('Register Existing Component', 'add')}${header('home', 'Register an existing component')}<div class="content"><div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+      ${card('Start tracking your component in Backstage by adding it to the software catalog.', html`<div class="stepper-head" style="padding-top:0">${steps.map(function (s, i) {
+        var idx = st === 2 ? 3 : st;
+        return html`${i ? html`<span class="line"></span>` : ''}<span class="st ${i === idx ? 'active' : ''}"><span class="vstep ${i < idx ? 'done' : i === idx ? 'active' : ''}"><span class="num">${i < idx ? '✓' : i + 1}</span></span>${s}</span>`;
+      })}</div><div class="card-body">${body}</div>`)}
+      ${card('Register an existing component', html`<div class="card-body" style="padding-top:0"><p>Enter the URL to your source code repository to add it to the catalog.</p><p><strong>Link to an existing entity file</strong></p><p class="muted small">Example: <code>https://github.com/moatazeldebsy/hello-service/blob/main/catalog-info.yaml</code></p><p class="muted small">The wizard analyzes the file, previews the entities, and adds them to the catalog.</p></div>`)}
+      </div></div>`;
+  }
+
+  /* ---------- custom-pages: platform pages ---------- */
+  function argoApps() {
+    var r = rng('argo');
+    var apps = D.components.filter(function (c) { return c.replicas > 0; }).map(function (c) {
+      var oos = ['notifications-service', 'fraud-scoring', 'qa-mcp-server'].indexOf(c.name) >= 0;
+      return { name: c.name + '-dev', ns: 'services-dev', sync: S.synced[c.name + '-dev'] ? 'Synced' : oos ? 'OutOfSync' : 'Synced', health: c.name === 'inventory-service' ? 'Degraded' : 'Healthy', rev: '—', last: ago(30 + Math.floor(r() * 9000)) };
+    });
+    [['crossplane', 'crossplane-system', '1.17.2'], ['cert-manager', 'cert-manager', 'v1.16.2'], ['ingress-nginx', 'ingress-nginx', '4.11.3'], ['kube-prometheus-stack', 'monitoring', '66.3.1'], ['loki', 'monitoring', '6.21.0'], ['tempo', 'monitoring', '1.14.0'], ['kyverno', 'kyverno', '3.3.4'], ['kagent', 'kagent', 'v0.4.1']].forEach(function (p) {
+      var oos = p[0] === 'tempo' || p[0] === 'kagent';
+      apps.push({ name: p[0], ns: p[1], sync: S.synced[p[0]] ? 'Synced' : oos ? 'OutOfSync' : 'Synced', health: p[0] === 'kagent' && !S.synced.kagent ? 'Progressing' : 'Healthy', rev: p[2], last: ago(60 + Math.floor(r() * 20000)) });
+    });
+    return apps.sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+  function pageArgo() {
+    var apps = argoApps(), c = function (fn) { return apps.filter(fn).length; };
+    return customPage('tool', 'ArgoCD Applications', 'GitOps · app-of-apps', html`
+      <div class="grid g5">${statCard(apps.length, 'Total Apps', '#455a64')}${statCard(c(function (a) { return a.sync === 'Synced'; }), 'Synced', '#43a047')}${statCard(c(function (a) { return a.sync === 'OutOfSync'; }), 'Out of Sync', '#f57c00')}
+        ${statCard(c(function (a) { return a.health === 'Unknown'; }), 'Unknown', '#9e9e9e')}${statCard(c(function (a) { return a.health === 'Degraded'; }), 'Degraded', '#e53935')}</div>
+      <div class="mt">${card('Applications', table(['Application', 'Namespace', 'Sync Status', 'Health', 'Revision', 'Last Synced', ''], apps.map(function (a) {
+        return [a.name, html`<span class="mono">${a.ns}</span>`, status(a.sync), status(a.health), a.rev, html`<span class="nowrap">${a.last}</span>`,
+          html`<button type="button" class="btn outlined sm grey" data-action="argo-sync" data-key="${a.name}" ${S.syncing && S.syncing[a.name] ? raw('disabled') : ''}>${S.syncing && S.syncing[a.name] ? 'Syncing…' : '↻ Sync'}</button>`];
+      })), html`<div class="btn-row"><button type="button" class="btn outlined grey" data-action="noop">↻ Refresh</button><span class="btn contained" aria-disabled="true">Open ArgoCD ↗</span></div>`)}</div>`);
+  }
+  function pageDora() {
+    var rows = D.components.filter(function (c) { return c.replicas > 0 || c.type === 'mobile'; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    return customPage('tool', 'DORA Metrics', 'Platform-wide deployment performance · all services', html`${doraCards(ORG_DORA, 'org')}
+      <div class="mt">${card('Per-Service Breakdown', table(['Service', 'Deploy Freq', 'Lead Time', 'Change Fail %', 'MTTR', 'Perf Band'], rows.map(function (c) {
+        return [html`<a href="${entityHref('component', c.name)}/dora">${c.name}</a>`, num(c.dora.df * 7, 1) + '/wk', hours(c.dora.lt), pct(c.dora.cfr), dur(c.dora.mttr), bandChip(overallBand(c))];
+      }), { num: [1, 2, 3, 4] }))}</div>`);
+  }
+  function pageScorecardPlatform() {
+    var rows = D.components.filter(function (c) { return c.type !== 'library'; }).map(function (c) { var cr = checkResults(c); return { c: c, cr: cr, tier: tierOf(c) }; });
+    var order = { gold: 0, silver: 1, bronze: 2, none: 3 };
+    rows.sort(S.scoreSort === 'name' ? function (a, b) { return a.c.name.localeCompare(b.c.name); } : S.scoreSort === 'tier' ? function (a, b) { return order[a.tier] - order[b.tier] || b.cr.count - a.cr.count; } : function (a, b) { return b.cr.count / b.cr.checks.length - a.cr.count / a.cr.checks.length; });
+    var cnt = function (t) { return rows.filter(function (r) { return r.tier === t; }).length; };
+    return customPage('tool', 'Scorecard Overview', 'Bronze / Silver / Gold shift-left quality tiers · all services', html`
+      <div class="grid g4">${statCard(cnt('gold'), 'Gold', 'var(--gold)')}${statCard(cnt('silver'), 'Silver', 'var(--silver)')}${statCard(cnt('bronze'), 'Bronze', 'var(--bronze)')}${statCard(cnt('none'), 'No Tier', '#9e9e9e')}</div>
+      <div class="mt">${card('Services', table(['Service', 'Owner', 'Tier', 'Score', 'Next action'], rows.map(function (r) {
+        var fail = r.cr.checks.filter(function (ch) { return !r.cr.pass[ch[0]]; })[0];
+        return [html`<a href="${entityHref('component', r.c.name)}/scorecard">${r.c.name}</a>`, 'group:default/' + r.c.owner, tierChip(r.tier),
+          html`<div style="display:flex;gap:10px;align-items:center"><strong class="nowrap">${r.cr.count}/${r.cr.checks.length}</strong>${hbar(r.cr.count, r.cr.checks.length, { gold: 'var(--gold)', silver: 'var(--silver)', bronze: 'var(--bronze)', none: '#9e9e9e' }[r.tier])}</div>`,
+          html`<span class="muted">${fail ? fail[2] : '—'}</span>`];
+      })), chipButtons('scoreSort', [['score', 'Sort by score'], ['tier', 'Sort by tier'], ['name', 'Sort by name']], S.scoreSort, 'flat'))}</div>`);
+  }
+  function pageSloPlatform() {
+    var rows = [];
+    D.components.forEach(function (c) { sloRows(c).forEach(function (s) { rows.push([c, s]); }); });
+    return customPage('tool', 'SLOs', 'Error budgets · all services · powered by Sloth + Prometheus', html`<div class="card">${table(['Service', 'SLO', 'Objective', 'Error Budget Remaining', 'Status'], rows.map(function (x) {
+      var s = x[1];
+      return [html`<a href="${entityHref('component', x[0].name)}/slo"><strong>${x[0].name}</strong></a>`, s.slo, html`<span class="mono">${s.obj}%</span>`,
+        html`<div style="display:flex;gap:10px;align-items:center">${hbar(s.rem, 1, s.rem < 0.2 ? 'var(--err)' : s.rem < 0.5 ? 'var(--warn)' : 'var(--ok)')}<span class="mono">${pct(s.rem * 100)}</span></div>`, sloStatus(s.rem)];
+    }), { num: [2] })}</div><p class="muted small mt16">From <code>sloth_slo_info</code> and the Sloth recording rules.</p>`);
+  }
+  function incidents() {
+    return D.incidents.map(function (i, k) {
+      var started = { 'INC-2041': 2 * 1440 + 30, 'INC-2040': 5 * 1440 + 300, 'INC-2042': 140, 'INC-2038': 11 * 1440 }[i.id] || 600;
+      var d = new Date(NOW.getTime() - started * 60000);
+      return { id: 'INC-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes()) + '00', title: i.title, sev: { SEV2: 'P1', SEV3: 'P2', SEV4: 'P3' }[i.sev], service: i.service, started: fmtDate(d), duration: i.status === 'resolved' ? i.duration : '—', state: i.status === 'resolved' ? 'Resolved' : 'Open', pm: i.pm, k: k };
+    });
+  }
+  function pageIncidents() {
+    var all = incidents(), list = all.filter(function (i) { return S.incFilter === 'All' || i.sev === S.incFilter; });
+    return customPage('tool', 'Incidents', 'Tracked incident records · auto-filed from Alertmanager', html`
+      <div class="grid g4">${statCardTop('Open', all.filter(function (i) { return i.state === 'Open'; }).length, '#e53935')}${statCardTop('Awaiting postmortem', all.filter(function (i) { return i.state === 'Resolved' && !i.pm; }).length, '#f57c00')}${statCardTop('MTTR', '58 min', '#1976d2')}${statCardTop('Total records', all.length, '#455a64')}</div>
+      <div class="btn-row mt" role="group">${['All', 'P1', 'P2', 'P3'].map(function (f) { return html`<button type="button" class="btn grey ${S.incFilter === f ? 'selected' : ''}" data-action="set" data-key="incFilter" data-value="${f}" aria-pressed="${String(S.incFilter === f)}">${f}</button>`; })}</div>
+      <div class="card mt16">${table(['Incident', 'Severity', 'Service', 'Started', 'Duration', 'State'], list.map(function (i) {
+        return [html`<span style="color:var(--link)" title="${i.title}">${i.id}</span>`, chip(i.sev, 'sm err-dark'), i.service, i.started, i.duration, html`<span style="color:${raw(i.state === 'Resolved' ? 'var(--ok-text)' : 'var(--err-dark)')}">${i.state}</span>`];
+      }))}</div>`);
+  }
+  function activityEvents() {
+    var ev = [];
+    incidents().forEach(function (i) { ev.push({ cat: 'Incidents', ic: i.state === 'Resolved' ? '✅' : '🚨', text: html`Incident ${i.state === 'Resolved' ? 'resolved' : 'open'} — <strong>${i.id}</strong> on ${i.service}`, sub: i.sev, when: i.started }); });
+    argoApps().filter(function (a) { return a.ns === 'services-dev'; }).slice(0, 8).forEach(function (a) { ev.push({ cat: 'Deployments', ic: '🚀', text: html`<strong>${a.name}</strong> sync ${a.sync === 'Synced' ? 'succeeded' : 'pending'}`, sub: a.ns + ' · · ' + (a.sync === 'Synced' ? 'Succeeded' : 'Running'), when: a.last }); });
+    D.activity.forEach(function (a, i) {
+      var cat = { scaffold: 'Catalog', ai: 'Catalog', scorecard: 'Scorecard', cost: 'Budget', security: 'Security', deploy: 'Deployments', gitops: 'Deployments', alert: 'Incidents' }[a.kind];
+      ev.push({ cat: cat, ic: { Catalog: '📦', Scorecard: '🏆', Budget: '💸', Security: '🔒', Deployments: '🚀', Incidents: '🔔' }[cat], text: html`<strong>${a.target}</strong> — ${a.who} ${a.what}`, sub: a.detail, when: ago([6, 14, 32, 60, 120, 180, 300, 1500, 1600][i] || 30) });
+    });
+    return ev.sort(function (a, b) { return a.when < b.when ? 1 : -1; });
+  }
+  function pageActivity() {
+    var ev = activityEvents().filter(function (e) { return S.activityFilter === 'All' || e.cat === S.activityFilter; });
+    return customPage('tool', 'Activity Feed', 'Platform-wide event stream · real-time', html`
+      ${chipButtons('activityFilter', ['All', 'Deployments', 'Incidents', 'Catalog', 'Scorecard', 'Budget', 'Security'], S.activityFilter)}
+      <div class="card mt16">${ev.length ? ev.map(function (e) { return html`<div class="list-row"><span class="ic-circle" aria-hidden="true">${e.ic}</span><div style="flex:1;min-width:0">${e.text}<div class="muted small" style="margin-top:4px">${e.sub}</div></div><span class="muted small nowrap">${e.when}</span></div>`; }) : html`<div class="card-body muted">No events for this filter.</div>`}</div>`);
+  }
+  function pageApiExplorer() {
+    var q = S.apiQ.toLowerCase(), list = D.apis.filter(function (a) { return !q || (a.name + ' ' + a.desc).toLowerCase().indexOf(q) >= 0; });
+    var open = D.apis.filter(function (a) { return a.name === S.apiOpen; })[0];
+    var mcol = { GET: 'ok', POST: 'info', PUT: 'warn', DELETE: 'err', PUB: 'warn', QUERY: 'info' };
+    return customPage('tool', 'API Explorer', D.apis.length + ' registered APIs · OpenAPI · AsyncAPI · gRPC', html`
+      <div class="outlined-search" style="max-width:520px;margin-bottom:20px">${icon('search', 22)}<label class="sr-only" for="apix-q">Search APIs</label><input id="apix-q" type="search" placeholder="Search APIs…" value="${S.apiQ}" data-bind="apiQ"></div>
+      ${open ? html`<section class="card" style="margin-bottom:24px"><div class="card-head"><h2>${open.name}<span class="sub">${open.desc}</span></h2><button type="button" class="btn grey sm" data-action="set" data-key="apiOpen" data-value="">Close ✕</button></div>
+        ${table(['Method', 'Path', 'Description', 'Responses'], open.endpoints.map(function (e) { return [chip(e[0], 'sm ' + (mcol[e[0]] || '')), html`<span class="mono">${e[1]}</span>`, e[2], e[0] === 'POST' ? '201 Created · 400 Bad Request' : e[0] === 'GET' ? '200 OK · 404 Not Found' : '—']; }))}</section>` : ''}
+      ${list.length ? html`<div class="grid g3">${list.map(function (a) {
+        return html`<section class="card"><div class="card-body"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3 style="font-size:17px">${a.name}</h3>${chip(a.type, 'sm info')}</div>
+          <p class="muted" style="margin:8px 0">${a.desc}</p><div class="small muted">${team(a.owner).display} · production · ${a.endpoints.length} operations</div>
+          <div class="btn-row mt16"><button type="button" class="btn outlined sm" data-action="set" data-key="apiOpen" data-value="${a.name}">View endpoints</button><a class="btn sm" href="${entityHref('api', a.name)}">Catalog</a></div></div></section>`;
+      })}</div>` : html`<div class="card card-body muted">No APIs match your filter.</div>`}
+      <p class="muted small mt16">Register an API with a <code>catalog-info.yaml</code> with <code>kind: API</code>.</p>`);
+  }
+  function pageOnboarding() {
+    var st = S.onboarding, steps = [
+      ['Set up your profile', html`<div class="field" style="max-width:420px"><label for="ob-name">Display name</label><input class="input" id="ob-name" value="${S.displayName}" data-bind-quiet="displayName"></div><button type="button" class="btn contained" data-action="set" data-key="onboarding" data-value="1">Looks good →</button>`],
+      ['Connect GitHub', html`<div class="alert success">✓ GitHub token detected — GITHUB_TOKEN is set in local/.env — scaffold actions are enabled.</div><div class="btn-row"><button type="button" class="btn" data-action="set" data-key="onboarding" data-value="0">← Back</button><button type="button" class="btn contained" data-action="set" data-key="onboarding" data-value="2">Continue →</button></div>`],
+      ['Create your first service', html`<p>Use a Golden Path template to scaffold a production-ready service in under 2 minutes.</p><div class="btn-row"><a class="btn contained" href="#/create/templates/default/go-service">Go Service</a><a class="btn outlined" href="#/create/templates/default/python-service">Python Service</a><button type="button" class="btn" data-action="set" data-key="onboarding" data-value="3">Skip for now →</button></div>`],
+      ['🎉 You’re all set, ' + (S.displayName || 'there') + '!', html`<p>Here's where to go next:</p><div class="grid g3 gap16">${[['#/catalog', '📚', 'Catalog', 'Browse every service'], ['#/scorecard', '🏆', 'Scorecard', 'Quality tiers across all services'], ['#/ai-assistant', '🤖', 'AI Assistant', 'Ask in plain English']].map(function (l) {
+        return html`<a class="card card-body" href="${l[0]}" style="color:var(--text)"><div style="font-size:22px">${l[1]}</div><strong>${l[2]}</strong><div class="muted small">${l[3]}</div></a>`;
+      })}</div><div class="btn-row mt16"><a class="btn contained" href="#/">Go to Dashboard →</a></div>`]];
+    return html`${pluginBar('custom-pages')}${header('home', 'Welcome to the IDP', 'Let’s get you set up in 4 quick steps')}<div class="content" style="max-width:900px">
+      ${steps.map(function (s, i) {
+        var active = i === st;
+        return html`<section class="card" style="margin-bottom:16px;${raw(active ? '' : 'opacity:.6')}"><div class="card-body"><div class="btn-row">${chip('Step ' + (i + 1) + ' of 4', 'sm ' + (i < st ? 'ok' : i === 3 && active ? 'ok' : 'info'))}<h2 style="font-size:20px">${s[0]}</h2>${i < st ? html`<span class="check-ok">${icon('checkC', 22)}</span>` : ''}</div>${active ? html`<div class="mt16">${s[1]}</div>` : ''}</div></section>`;
       })}</div>`;
   }
-
-  function maturityLevel(sc) {
-    var Q = sc[0], P = sc[1], R = sc[2], Sec = sc[3], DX = sc[4], AI = sc[5], l = 1;
-    if (Q >= 50 && P >= 40 && R >= 40) l = 2;
-    if (l === 2 && P >= 70 && Q >= 65 && R >= 65) l = 3;
-    if (l === 3 && AI >= 65 && Sec >= 60 && DX >= 60) l = 4;
-    return l;
+  function learningItems() {
+    return D.learningTemplates.map(function (l) { var t = tpl(l[0]); return { id: 'tpl:' + l[0], title: t ? t.t : l[0], desc: t ? t.d : '', level: l[1], topic: l[2], type: 'template', href: '#/create/templates/default/' + l[0] }; })
+      .concat(D.learningDocs.map(function (d) { return { id: d[0], title: d[1], desc: d[2], level: d[3], topic: d[4], type: 'doc', href: '#/docs/default/system/internal-developer-platform/getting-started' }; }));
   }
-  function heat(v) { return v >= 75 ? 'var(--ok-soft)' : v >= 60 ? 'var(--info-soft)' : v >= 45 ? 'var(--warn-soft)' : 'var(--bad-soft)'; }
-  function pageEI() {
-    var dist = [1, 2, 3, 4, 5].map(function (l) { return D.teams.filter(function (t) { return maturityLevel(D.teamScores[t.name]) === l; }).length; });
-    return html`${head('Engineering Intelligence', 'Maturity model and DX Core 4, computed from catalog evidence, DORA, Tech Insights and the DevEx survey.')}
-      <div class="grid g4">${D.core4.map(function (c) {
-        return html`<div class="card stat"><div class="label">${c.area}</div><div class="value">${c.value}</div><div class="sub"><span>${c.metric}</span></div>
-          <div class="small" style="margin-top:6px"><span class="${c.good ? 'delta-up' : 'delta-down'}">${c.good ? '▲' : '▼'} from ${c.prev}</span> <span class="muted">QoQ · ${c.secondary}</span></div></div>`;
+  function pageLearning() {
+    var items = learningItems(), f = S.learning, done = items.filter(function (i) { return S.done[i.id]; }).length;
+    var list = items.filter(function (i) { return (!f.level || i.level === f.level) && (!f.type || i.type === f.type) && (!f.topic || i.topic === f.topic); });
+    var topics = []; items.forEach(function (i) { if (topics.indexOf(i.topic) < 0) topics.push(i.topic); });
+    var lvlCls = { beginner: 'ok', intermediate: 'warn', advanced: 'err' };
+    function facet(label, key, opts) { return html`<div class="flabel" style="font-size:13px;text-transform:uppercase;letter-spacing:.04em;margin:16px 0 8px;color:var(--text-2)">${label}</div><div class="btn-row">${opts.map(function (o) { return html`<button type="button" class="chip flat" data-action="set" data-key="learning.${key}" data-value="${o[0]}" aria-pressed="${String(f[key] === o[0])}">${o[1]}</button>`; })}</div>`; }
+    return customPage('tool', 'Learning Center', 'Tutorials and golden-path templates by experience level', html`
+      <section class="card"><div class="card-body"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h2 style="font-size:22px">${done} of ${items.length} completed</h2><span class="muted">${Math.round(done / items.length * 100)}%</span></div>
+        <div class="bar" style="margin-top:14px"><span style="width:${(done / items.length * 100).toFixed(0)}%;background:var(--primary)"></span></div></div></section>
+      <div class="grid mt" style="grid-template-columns:minmax(0,300px) minmax(0,1fr)">
+        <section class="card" style="align-self:start"><div class="card-body"><strong>Filter Your Search</strong>
+          ${facet('Experience', 'level', [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']])}${facet('Type', 'type', [['template', 'Template'], ['doc', 'Doc']])}${facet('Topic', 'topic', topics.sort().map(function (t) { return [t, t]; }))}</div></section>
+        <div>${list.length ? list.map(function (i) {
+          var d = !!S.done[i.id];
+          return html`<section class="card" style="margin-bottom:16px"><div class="card-body" style="display:flex;gap:16px">
+            <button type="button" class="icon-btn sm ${d ? 'check-ok' : ''}" data-action="toggle-done" data-key="${i.id}" aria-pressed="${String(d)}" aria-label="${(d ? 'Mark not completed: ' : 'Mark completed: ') + i.title}">${icon(d ? 'checkC' : 'checkO', 26)}</button>
+            <div style="min-width:0"><div class="btn-row"><h3 style="font-size:18px">${i.title}</h3>${chip(cap(i.level), 'sm ' + lvlCls[i.level])}${chip(i.type === 'template' ? 'Template' : 'Doc', 'sm outlined')}</div>
+              <p class="muted" style="margin:8px 0">${i.desc}</p><a href="${i.href}">${i.type === 'template' ? 'View template →' : 'Read doc →'}</a></div></div></section>`;
+        }) : html`<div class="card card-body muted">No tutorials match these filters.</div>`}</div></div>`);
+  }
+  function calcCost() {
+    var c = S.calc, cpu = +c.cpu / 1000, mem = +c.mem / 1024, rep = +c.replicas, mult = c.env === 'production' ? 1 : 0.5;
+    var k8s = (cpu * 23.5 + mem * 3.2) * rep * mult, ai = +c.ai * 0.0042, obs = 2.5 + rep * 0.8;
+    return { k8s: k8s, ai: ai, obs: obs, total: k8s + ai + obs };
+  }
+  function pageCalculator() {
+    var c = S.calc, k = calcCost(), tm = team(D.user.team), after = tm.spend + k.total;
+    return customPage('tool', 'Cost Calculator', 'Estimate monthly infrastructure cost before deploying', html`<div class="grid g2">
+      ${cardBody('Service Configuration', html`${selectField('Service Type', 'c-svc', 'calc.svc', [['web', 'Web service (HTTP/gRPC)'], ['worker', 'Background worker'], ['cron', 'Cron job'], ['ml', 'ML inference server']], c.svc)}
+        ${selectField('CPU Request', 'c-cpu', 'calc.cpu', [['250', '250m'], ['500', '500m'], ['1000', '1 vCPU'], ['2000', '2 vCPU']], c.cpu)}
+        ${selectField('Memory Request', 'c-mem', 'calc.mem', [['256', '256 Mi'], ['512', '512 Mi'], ['1024', '1 Gi'], ['2048', '2 Gi']], c.mem)}
+        ${selectField('Replicas', 'c-rep', 'calc.replicas', ['1', '2', '3', '4', '6'], c.replicas)}
+        ${selectField('AI API calls / month', 'c-ai', 'calc.ai', [['0', 'None'], ['1000', '1,000'], ['10000', '10,000'], ['100000', '100,000']], c.ai)}
+        ${selectField('Environment', 'c-env', 'calc.env', [['production', 'Production'], ['staging', 'Staging']], c.env)}`)}
+      <div class="grid" style="align-content:start">
+        ${cardBody('Estimated Monthly Cost', html`${table(['Item', 'Monthly'], [['Kubernetes (OpenCost est.)', money(k.k8s)], ['AI API (Claude Sonnet)', money(k.ai)], ['Observability (Loki, Tempo)', money(k.obs)], [html`<strong>Total</strong>`, html`<strong>${money(k.total)}</strong>`]], { num: [1], cls: 'plain' })}`)}
+        ${cardBody('vs Team Budget', html`<div class="muted small" style="margin-bottom:8px">${tm.display} · demo data</div>${hbar(after, tm.budget, after > tm.budget ? 'var(--err)' : after > tm.budget * 0.8 ? 'var(--warn)' : 'var(--ok)')}
+          <p class="small" style="margin-top:8px">This service: <strong>${money(k.total)}</strong> · team after deploy: <strong>${money(after, 0)}</strong> of ${money(tm.budget, 0)} (${pct(after / tm.budget * 100, 0)})</p>`)}
+      </div></div>`);
+  }
+  function pageProfile() {
+    var mine = D.components.filter(function (c) { return c.owner === D.user.team; });
+    return customPage('home', 'My Profile', 'arivera@moatazeldebsy.dev', html`<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
+      <section class="card"><div class="card-body" style="text-align:center"><div class="avatar lg" style="margin:8px auto 12px">${initials(S.displayName)}</div><h2 style="font-size:22px">${S.displayName}</h2>
+        <div class="btn-row" style="justify-content:center;margin:8px 0">${chip(D.user.team, 'sm')}${chip('admin', 'sm primary')}</div><a class="btn outlined" href="#/settings">Edit Profile</a></div></section>
+      <div class="grid">
+        ${cardBody('Stats', html`<div class="grid g4 gap16">${[[mine.length, 'Services owned'], [D.apis.filter(function (a) { return a.owner === D.user.team; }).length, 'APIs owned'], [1, 'Teams'], [37, 'Deploys this month']].map(function (s) { return html`<div><div style="font-size:28px;color:var(--c1)">${s[0]}</div><div class="muted small">${s[1]}</div></div>`; })}</div>`)}
+        ${cardBody('Owned Entities', html`${mine.map(function (c) { return html`<a class="chip sm outlined" href="${entityHref('component', c.name)}">${c.name}</a>`; })}`)}
+        ${cardBody('Recent Activity', html`${activityEvents().slice(0, 5).map(function (e) { return html`<div class="list-row" style="padding:10px 0"><span class="ic-circle" aria-hidden="true">${e.ic}</span><div style="flex:1">${e.text}<div class="muted small">${e.when}</div></div></div>`; })}`)}
+      </div></div>`);
+  }
+  function searchCorpus() {
+    var out = [];
+    D.components.forEach(function (c) { out.push({ type: 'Component', title: c.name, sub: 'Component · group:default/' + c.owner + ' · ' + c.lifecycle + ' · ' + c.type + ' — ' + c.desc, href: entityHref('component', c.name), life: c.lifecycle, text: c.name + ' ' + c.desc + ' ' + c.tags.join(' ') }); });
+    D.apis.forEach(function (a) { out.push({ type: 'API', title: a.name, sub: 'API · group:default/' + a.owner + ' · ' + a.type + ' — ' + a.desc, href: entityHref('api', a.name), text: a.name + ' ' + a.desc }); });
+    D.docs.forEach(function (d) { out.push({ type: 'TechDocs', title: d.title, sub: 'TechDocs · Internal Developer Platform', href: '#/docs/default/system/internal-developer-platform/' + d.id, text: d.title + ' ' + JSON.stringify(d.body) }); });
+    D.templates.forEach(function (t) { out.push({ type: 'Template', title: t.t, sub: 'Template · ' + t.type + ' — ' + t.d, href: '#/create/templates/default/' + t.n, text: t.n + ' ' + t.t + ' ' + t.d + ' ' + t.tags.join(' ') }); });
+    return out;
+  }
+  function searchResults(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return [];
+    return searchCorpus().filter(function (r) { return r.text.toLowerCase().indexOf(q) >= 0 || r.title.toLowerCase().indexOf(q) >= 0; });
+  }
+  function highlight(text, q) {
+    var i = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
+    return i < 0 ? html`${text}` : html`${text.slice(0, i)}<mark class="mark">${text.slice(i, i + q.length)}</mark>${text.slice(i + q.length)}`;
+  }
+  function pageSearchCustom() {
+    var res = searchResults(S.searchQ), types = ['Component', 'API', 'TechDocs', 'Template'];
+    var shown = res.filter(function (r) { return S.searchType === 'all' || r.type === S.searchType; });
+    return customPage('tool', 'Search', 'Find services, APIs, docs, and templates across the platform', html`<div style="max-width:800px;margin:0 auto">
+      <div class="outlined-search">${icon('search', 22)}<label class="sr-only" for="gs-q">Search</label><input id="gs-q" type="search" placeholder="Search services, APIs, docs, templates…" value="${S.searchQ}" data-bind="searchQ"></div>
+      <div class="btn-row mt16">${[['all', 'All (' + res.length + ')']].concat(types.map(function (t) { return [t, t + ' (' + res.filter(function (r) { return r.type === t; }).length + ')']; })).map(function (o) {
+        return html`<button type="button" class="chip" data-action="set" data-key="searchType" data-value="${o[0]}" aria-pressed="${String(S.searchType === o[0])}">${o[1]}</button>`;
       })}</div>
-      <div class="grid g2" style="margin-top:16px">
-        ${card('Maturity model', html`<ol class="list">${D.maturityLevels.map(function (m, i) {
-          return html`<li><span class="icon" style="font-weight:700">${m.level}</span><div style="flex:1"><strong>${m.name}</strong><div class="muted small">${m.desc}</div></div><span class="pill ${dist[i] ? 'info' : ''}">${dist[i]} team${dist[i] === 1 ? '' : 's'}</span></li>`;
-        })}</ol>`)}
-        ${card('Org average by dimension', hbars(D.dimensions.map(function (d, i) {
-          var avg = D.teams.reduce(function (a, t) { return a + D.teamScores[t.name][i]; }, 0) / D.teams.length;
-          return { label: d, value: avg, max: 100, text: num(avg, 0) };
-        })))}
+      ${types.map(function (t) {
+        var g = shown.filter(function (r) { return r.type === t; });
+        if (!g.length) return '';
+        return html`<div class="small" style="text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--text-2);margin:28px 0 10px">${t}</div>${g.slice(0, 8).map(function (r) {
+          return html`<a class="card" href="${r.href}" style="display:flex;gap:16px;align-items:center;padding:14px 18px;margin-bottom:10px;color:var(--text)"><span class="ic-circle">${icon(t === 'API' ? 'extension' : t === 'TechDocs' ? 'docs' : t === 'Template' ? 'library' : 'wrench', 20)}</span>
+            <div style="flex:1;min-width:0"><div style="font-size:16px">${highlight(r.title, S.searchQ)}</div><div class="muted small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sub}</div></div>${r.life ? lifecycleChip(r.life) : ''}</a>`;
+        })}`;
+      })}
+      ${S.searchQ && !res.length ? html`<p class="muted mt">No results for "${S.searchQ}".</p>` : ''}</div>`);
+  }
+  function pageSearchStock() {
+    var res = searchResults(S.searchQ);
+    return html`${pluginBar('Search', 'search')}${header('home', 'Search')}<div class="content">
+      <div class="outlined-search" style="margin-bottom:24px">${icon('search', 22)}<label class="sr-only" for="ss-q">Search in Backstage</label><input id="ss-q" type="search" placeholder="Search in Backstage" value="${S.searchQ}" data-bind="searchQ"></div>
+      <div class="catalog-layout"><div class="filters"><div class="flabel">Result Type</div>${[['all', 'All'], ['Component', 'Software Catalog'], ['TechDocs', 'Documentation'], ['Template', 'Templates']].map(function (o) {
+        return html`<button type="button" class="uf-item" data-action="set" data-key="searchType" data-value="${o[0]}" aria-pressed="${String(S.searchType === o[0])}"><span>${o[1]}</span></button>`;
+      })}</div>
+      <section class="card">${res.filter(function (r) { return S.searchType === 'all' || r.type === S.searchType || (S.searchType === 'Component' && r.type === 'API'); }).slice(0, 20).map(function (r) {
+        return html`<div class="list-row"><div><a href="${r.href}" style="font-size:16px">${r.title}</a><div class="muted small" style="margin-top:4px">${r.sub}</div></div></div>`;
+      })}${!res.length ? html`<div class="card-body muted">Type a query to search the catalog, docs and templates.</div>` : ''}</section></div></div>`;
+  }
+  function pageAdmin() {
+    var users = [['Marcus Chen', 'marcus.chen@idp.local', 'backend-team', 'member'], ['Guest', '', 'platform-team', 'member'], ['Priya Nair', 'priya.nair@idp.local', 'ml-team', 'member'], ['Lena Fischer', 'lena.fischer@idp.local', 'android-team', 'member'],
+      ['Alex Rivera', 'alex.rivera@idp.local', 'platform-team', 'admin'], ['Kenji Watanabe', 'kenji.watanabe@idp.local', 'ios-team', 'member'], ['Amara Okafor', 'amara.okafor@idp.local', 'qa-team', 'member']];
+    var plugins = [['Catalog', '1.12.0'], ['Scaffolder', '1.19.0'], ['TechDocs', '1.9.0'], ['Kubernetes', '0.11.0'], ['PagerDuty', '0.8.0'], ['Search', '1.5.0'], ['Tech Insights', '0.3.0']];
+    return customPage('tool', 'Admin', 'Platform configuration · user management · plugin settings', html`<div class="alert warning">⚠ Admin panel — changes here affect all users on the platform.</div>
+      <div class="grid g2">
+        ${card('Users', table(['Name', 'Team', 'Role', ''], users.map(function (u) { return [html`<div>${u[0]}</div>${u[1] ? html`<div class="muted small">${u[1]}</div>` : ''}`, chip(u[2], 'sm'), chip(u[3], 'sm'), html`<span class="btn sm" aria-disabled="true">Edit</span>`]; })), html`<span class="btn contained sm" aria-disabled="true">+ Invite user</span>`)}
+        ${card('Plugins', table(['Plugin', 'Version', 'Status', ''], plugins.map(function (p) { return [p[0], html`<span class="mono">${p[1]}</span>`, chip('enabled', 'sm ok'), html`<span class="btn sm" aria-disabled="true">Config</span>`]; })))}
       </div>
-      ${card('Teams', html`<div class="table-wrap"><table><thead><tr><th scope="col">Team</th>${D.dimensions.map(function (d) { return html`<th scope="col" class="num">${d}</th>`; })}<th scope="col">Level</th></tr></thead>
-        <tbody>${D.teams.map(function (t) {
-          var sc = D.teamScores[t.name], l = maturityLevel(sc);
-          return html`<tr><td>${teamLink(t.name)}</td>${sc.map(function (v) { return html`<td class="num" style="background:${raw(heat(v))}">${v}</td>`; })}<td>${pill('L' + l + ' · ' + D.maturityLevels[l - 1].name, l >= 3 ? 'ok' : 'warn')}</td></tr>`;
-        })}</tbody></table></div>`)}
-      <p class="muted small" style="margin-top:12px">Level 5 is not reachable yet: two of its requirements (approval-gated agent actions and measured auto-remediation) are not measurable today.</p>`;
+      <div class="mt">${card('Catalog Providers', table(['Provider', 'Target', 'Schedule', 'Entities'], [['GitHub repo discovery', 'github.com/moatazeldebsy (topic: idp)', 'every 30 min', String(D.components.length + D.apis.length)], ['GitHub Org Team sync', 'github.com/moatazeldebsy', 'every 60 min', String(D.teams.length)]], { num: [3] }), null, 'configured entity providers · live entity counts')}</div>`);
   }
-
-  function pageCopilot() {
-    var c = D.copilot, acc = series('cp-acc', 30, c.acceptance, 2.2, 0.12), act = series('cp-act', 30, c.active, 4, 0.1);
-    return html`${head('Copilot metrics', 'AI coding assistant adoption and acceptance, last 30 days.')}
-      <div class="grid g4">${stat('Active users', c.active + ' / ' + c.seats, pct(c.active / c.seats * 100, 0) + ' of seats', sparkline(act))}${stat('Acceptance rate', pct(c.acceptance), pill('+2.1 pts', 'ok'), sparkline(acc, 'var(--c2)'))}
-        ${stat('Lines accepted', num(c.linesAccepted), num(c.accepted) + ' of ' + num(c.suggestions) + ' suggestions')}${stat('Chat turns', num(c.chatTurns), 'IDE + web')}</div>
-      <div class="grid g2" style="margin-top:16px">
-        ${card('Acceptance rate (%)', lineChart([{ name: 'Acceptance', values: acc, color: 'var(--c2)' }], { labels: dayLabels(30), min: 20, max: 40, label: 'Acceptance rate' }))}
-        ${card('Acceptance by language', hbars(c.languages.map(function (l) { return { label: l[0], value: l[1], max: 45, text: pct(l[1]) }; })))}
-      </div>
-      ${card('By team', table(['Team', 'Seats', 'Acceptance'], c.teams.map(function (t) { return [teamLink(t[0]), t[1], pct(t[2])]; }), [1, 2]))}`;
+  var BUILTIN_AGENTS = ['argo-rollouts-conversion-agent', 'cilium-debug-agent', 'cilium-manager-agent', 'cilium-policy-agent', 'helm-agent', 'istio-agent', 'k8s-agent', 'kgateway-agent', 'observability-agent', 'promql-agent'];
+  function pageKagent() {
+    var r = rng('kagent');
+    var rows = D.agents.map(function (a) { return { name: a.name, model: a.model, mcp: ['ai-gateway'], tools: a.tools.length, calls: Math.floor(r() * 1900), lat: num(1 + r() * 3, 1) + 's', ready: a.ready }; })
+      .concat(BUILTIN_AGENTS.map(function (n) { return { name: n, model: 'default-model-config', mcp: ['kagent-tool-server'], tools: 5 + (hash(n) % 16), calls: 0, lat: '—', ready: true }; }))
+      .sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var ready = rows.filter(function (a) { return a.ready; }), calls = rows.reduce(function (s, a) { return s + a.calls; }, 0);
+    var used = {}; D.agents.forEach(function (a) { used[a.model] = true; });
+    return customPage('tool', 'KAgent', 'Kubernetes AI agents · namespace: kagent · ' + ready.length + ' agents running', html`
+      <div class="grid g3">${statCardTop('Agents Running', ready.length, '#43a047', ready.map(function (a) { return a.name; }).join(', '))}${statCardTop('MCP Tool Calls (24h)', num(calls), '#1976d2', 'across all agents')}${statCardTop('Avg Response', '2.1s', '#8e24aa', 'p50 · p95: 6.4s')}</div>
+      <div class="mt">${card('Agents', table(['Name', 'Model', 'MCP Servers', 'Tools', 'Calls (24h)', 'Avg Latency', 'Status'], rows.map(function (a) {
+        return [a.name, html`<span class="mono small">${a.model}</span>`, a.mcp.map(function (m) { return chip(m, 'sm'); }), html`<span class="mono">${a.tools}</span>`, html`<span class="mono">${a.calls}</span>`, a.lat, status(a.ready ? 'Ready' : 'Not ready')];
+      }), { num: [3, 4] }), html`<div class="btn-row"><span class="btn outlined sm grey" aria-disabled="true">Open KAgent UI ↗</span><a class="btn contained sm" href="#/create/templates/default/ai-agent-kagent">+ Deploy agent</a></div>`)}</div>
+      <div class="grid g2 mt">
+        ${card('MCP Servers', table(['Server', 'Tools', 'Namespace', 'Status'], D.mcpServers.map(function (s) { return [s.name, String(s.tools.length), html`<span class="mono">services-dev</span>`, status(s.health)]; }), { num: [1] }))}
+        ${card('ModelConfigs', table(['Name', 'Provider', 'Model', 'Status'], D.modelConfigs.map(function (m) { return [m.name, m.provider, html`<span class="mono small">${m.model}</span>`, chip(used[m.name] ? 'active' : 'inactive', 'sm dot ' + (used[m.name] ? 'ok' : ''))]; })))}
+      </div>`);
   }
-
-  function pageSurvey() {
-    var dxi = 71;
-    return html`${head('DevEx survey', 'Quarterly, about 5 minutes. Results are aggregated per team with a minimum group size of 5.')}
-      <div class="grid g3">
-        ${card('Developer Experience Index', gauge(dxi / 100, 'Q4 2026 · 142 responses (79%)', String(dxi), 'var(--brand)'))}
-        ${card('Results by question (1–5)', html`${D.survey.map(function (s) {
-          var d = s.score - s.prev;
-          return html`<div style="margin-bottom:10px"><div class="small" style="display:flex;justify-content:space-between;gap:10px"><span>${s.q}</span><span class="nowrap"><strong>${num(s.score, 1)}</strong> <span class="${d >= 0 ? 'delta-up' : 'delta-down'}">${d >= 0 ? '+' : ''}${num(d, 1)}</span></span></div>
-            <div class="bar"><span style="width:${(s.score / 5 * 100).toFixed(0)}%;background:${raw(s.score < 3.2 ? 'var(--warn)' : 'var(--brand)')}"></span></div></div>`;
-        })}`, null, 'span2')}
-      </div>
-      ${card('Take this quarter’s survey', S.surveySent ? html`<div class="notice info" style="border-color:var(--ok);background:var(--ok-soft)">Thanks. Your response was recorded (in this demo, only in your browser tab).</div>` :
-        html`<form data-submit="survey">${D.survey.map(function (s, qi) {
-          return html`<fieldset style="border:0;padding:0;margin:0 0 14px"><legend style="font-weight:600;margin-bottom:6px">${s.q}</legend><div class="chips">${[1, 2, 3, 4, 5].map(function (v) {
-            return html`<label class="chip" style="display:inline-flex;gap:5px;align-items:center"><input type="radio" name="q${qi}" value="${v}" data-bind-quiet="survey.q${qi}" ${S.survey['q' + qi] === String(v) ? raw('checked') : ''}>${['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'][v - 1]}</label>`;
-          })}</div></fieldset>`;
-        })}<button class="btn primary" type="submit">Submit</button></form>`)}`;
+  function pageLangfuse() {
+    var tr = D.traces, models = [['claude-sonnet-4-6', 1840210, 214330, 9.21], ['claude-haiku-4-5-20251001', 920110, 120400, 1.38], ['claude-sonnet-bedrock', 310200, 41020, 1.72]];
+    return customPage('tool', 'AI Observability', 'LLM tracing · cost · latency · powered by Langfuse · 3,912 traces (7d)', html`
+      <div class="grid g4">${statCardTop('Traces', '3,912', '#1976d2', 'last 7 days')}${statCardTop('Observations', '18,204', '#43a047', 'spans + generations')}${statCardTop('LLM Cost', '$12.31', '#8e24aa', 'last 7 days')}${statCardTop('Models', models.length, '#f57c00', 'with usage')}</div>
+      <div class="mt">${card('Usage by model (7 days)', table(['Model', 'Input units', 'Output units', 'Cost'], models.map(function (m) { return [html`<span class="mono">${m[0]}</span>`, num(m[1]), num(m[2]), money(m[3])]; }), { num: [1, 2, 3] }), html`<span class="btn outlined sm" aria-disabled="true">Open Langfuse ↗</span>`)}</div>
+      <div class="mt">${card('Recent agent runs', table(['Trace', 'Agent', 'User', 'Latency', 'Cost', 'When'], tr.map(function (t) {
+        return [html`<span class="mono">${t.id}</span>`, t.name.split(' · ')[0], t.user === 'svc' ? '—' : 'user:default/' + t.user, num(t.latency, 1) + 's', money(t.cost, 4), t.t];
+      })))}</div>`);
   }
-
-  /* ---------- pages: AI ---------- */
-  var SUGGESTIONS = ['Who owns payments-api?', 'Show metrics for hello-service', 'Scaffold a Go service called inventory-sync', 'Which teams are over budget?', 'Any open incidents?', 'What deployments are out of sync?'];
-  function pageAssistant() {
-    return html`${head('AI Assistant', 'Powered by KAgent · platform-assistant (claude-sonnet via the AI gateway). Mutating actions wait for your approval.', html`<button class="btn" type="button" data-action="new-chat">New chat</button>`)}
-      <section class="card chat">
-        <div class="chat-scroll" id="chat-scroll" aria-live="polite">
-          ${S.chat.length ? '' : html`<div class="empty"><h2 style="margin-bottom:6px">Ask about services, deployments, metrics or costs</h2><p>Replies are scripted for this demo, but they follow what the real agents do with the MCP tools.</p></div>`}
-          ${S.chat.map(renderMsg)}
-        </div>
-        <div style="padding:6px 0">${html`<div class="chips">${SUGGESTIONS.map(function (s) { return html`<button type="button" class="chip" data-action="ask" data-prompt="${s}">${s}</button>`; })}</div>`}</div>
-        <form class="chat-input" data-submit="chat"><label class="sr-only" for="chat-in">Message</label>
-          <input class="input" id="chat-in" autocomplete="off" placeholder="Ask about services, deployments, metrics…" value="${S.chatDraft}" data-bind-quiet="chatDraft">
-          <button class="btn primary" type="submit" aria-label="Send">${icon('send')}</button></form>
-      </section>`;
+  function pageLitellm() {
+    var total = D.litellmKeys.reduce(function (s, k) { return s + k.spend; }, 0), r = rng('llm'), log = [];
+    for (var i = 0; i < 10; i++) { var k = D.litellmKeys[i % D.litellmKeys.length], tok = Math.floor(400 + r() * 6000); log.push([html`<span class="mono">chatcmpl-${hash('l' + i).toString(16).slice(0, 10)}</span>`, html`<span class="mono small">${k.model}</span>`, num(tok), money(tok * 0.0000062, 4), (i * 3 + 1) + ' min ago', k.alias]); }
+    return customPage('tool', 'LiteLLM Spend', 'Multi-provider LLM spend (Anthropic + Bedrock) · virtual keys & budgets · ' + money(total) + ' total', html`
+      <div class="grid g3">${statCardTop('Total spend', money(total), '#8e24aa', 'all virtual keys')}${statCardTop('Recent calls', '1,284', '#1976d2', 'last 24 hours')}${statCardTop('Virtual keys', D.litellmKeys.length, '#43a047', D.litellmKeys.filter(function (k) { return k.spend / k.budget > 0.8; }).length + ' above 80% of budget')}</div>
+      <div class="mt">${card('Recent spend log', table(['Request', 'Model', 'Tokens', 'Spend', 'When', 'Key alias'], log, { num: [2, 3] }))}</div>`);
   }
-  function renderMsg(m, i) {
-    if (m.role === 'user') return html`<div class="msg user">${m.text}</div>`;
-    if (m.typing) return html`<div class="msg bot typing" aria-label="Assistant is typing"><span></span><span></span><span></span></div>`;
-    return html`<div class="msg bot">${m.tools && m.tools.length ? html`<div class="tool-calls">${m.tools.map(function (t) { return html`<span class="tool-call">${t[0]} · ${t[1]}</span>`; })}</div>` : ''}${m.body}
-      ${m.plan ? (m.state === 'pending' ? html`<div class="btn-row" style="margin-top:10px"><button class="btn primary sm" type="button" data-action="chat-approve" data-key="${i}">Approve</button><button class="btn sm" type="button" data-action="chat-cancel" data-key="${i}">Cancel</button></div>`
-        : html`<div style="margin-top:8px">${m.state === 'approved' ? pill('Approved by you', 'ok') : pill('Cancelled')}</div>`) : ''}</div>`;
+  function pageMlflow() {
+    var runs = [];
+    D.mlflow.forEach(function (e) { e.runs.forEach(function (r) { runs.push([e, r]); }); });
+    var models = [];
+    runs.forEach(function (x) { if (x[1].registered) models.push([x[0].name + '-model', x[1].registered.split(' · ')[0].replace('v', ''), x[1].registered.split(' · ')[1], x[1].started]); });
+    function metricStr(m) { return Object.keys(m).slice(0, 2).map(function (k) { return k + ' ' + num(m[k], 3); }).join(' · '); }
+    return customPage('tool', 'MLflow', 'Experiment tracking · model registry · namespace: ml-platform · ' + D.mlflow.length + ' experiments', html`
+      <div class="grid g3">${statCardTop('Experiments', D.mlflow.length, '#1976d2')}${statCardTop('Runs', runs.length, '#43a047')}${statCardTop('Registered Models', models.length, '#8e24aa')}</div>
+      <div class="mt">${card('Experiments', table(['Name', 'Recent runs', 'Last run', 'Latest metric', 'Artifacts'], D.mlflow.map(function (e, i) {
+        return [html`<strong>${e.name}</strong>`, String(e.runs.length), e.runs[0].started, metricStr(e.runs[0].metrics), html`<span class="mono small">mlflow-artifacts:/${i + 2}</span>`];
+      })), html`<span class="btn outlined sm" aria-disabled="true">Open MLflow ↗</span>`)}</div>
+      <div class="grid g2 mt">
+        ${card('Registered Models', table(['Model', 'Latest version', 'Stage', 'Updated'], models.map(function (m) { return [m[0], m[1], chip(m[2], 'sm ' + (m[2] === 'Production' ? 'ok' : 'info')), m[3]]; })))}
+        ${card('Recent Runs', table(['Run', 'Experiment', 'Status', 'Duration', 'Metrics'], runs.slice(0, 6).map(function (x) { return [html`<span class="mono small">${x[1].name}</span>`, x[0].name, status(x[1].status), x[1].dur, html`<span class="small">${x[1].status === 'FAILED' ? '—' : metricStr(x[1].metrics)}</span>`]; })))}
+      </div>`);
   }
-  function askAssistant(text) {
-    text = String(text).trim();
-    if (!text) return;
-    S.chat.push({ role: 'user', text: text });
-    var typing = { role: 'bot', typing: true };
-    S.chat.push(typing);
-    S.chatDraft = '';
-    refreshIf('ai-assistant');
-    setTimeout(function () {
-      var idx = S.chat.indexOf(typing);
-      if (idx < 0) return;
-      S.chat[idx] = reply(text);
-      refreshIf('ai-assistant');
-    }, 650);
+  function pageSupport() {
+    var links = [['🏅', 'Scorecard', '#/scorecard'], ['📈', 'DORA', '#/dora'], ['💸', 'Cost Overview', '#/finops'], ['📚', 'Docs', '#/docs'], ['🤖', 'AI Assistant', '#/ai-assistant'], ['🧭', 'Learning Center', '#/learning-center']];
+    return customPage('home', 'Support', 'Platform Engineering team · #platform-support on Slack', html`<div class="grid g2">
+      ${cardBody('Get Help', html`${[['💬', 'Ask in #platform-support', 'Slack · answered within 4 business hours'], ['🐛', 'Open an issue', 'github.com/moatazeldebsy/backstage-platform-template/issues'], ['🤖', 'Ask the AI Assistant', 'Catalog, metrics, scaffolding and costs']].map(function (h) {
+        return html`<div class="list-row" style="padding:12px 0"><span class="ic-circle">${h[0]}</span><div><strong>${h[1]}</strong><div class="muted small">${h[2]}</div></div></div>`;
+      })}`)}
+      ${cardBody('Platform Team On-Call', html`${table(['', ''], [['Current on-call', 'Alex Rivera'], ['Rotation', 'Weekly, Monday 09:00 UTC'], ['Response SLA', '15 min (P1) · 4 h (P2)'], ['Escalation', 'Priya Nair → Marcus Chen']], { cls: 'plain' })}<span class="btn outlined sm mt16" aria-disabled="true">PagerDuty ↗</span>`)}
+      ${cardBody('Useful Links', html`<div class="grid g2 gap16">${links.map(function (l) { return html`<a href="${l[2]}">${l[0]} ${l[1]}</a>`; })}</div>`)}
+      ${cardBody('Recent Platform Announcements', html`${ANNOUNCEMENTS.slice(0, 3).map(function (a, i) {
+        return html`<div style="border-left:4px solid ${raw(['#1976d2', '#4caf50', '#ff9800'][i])};padding:4px 12px;margin-bottom:12px"><strong>${a[0]}</strong><div class="muted small">${a[1]} · ${a[2]}</div></div>`;
+      })}`)}
+    </div>`);
   }
-  function findComp(t) {
-    var hit = D.components.slice().sort(function (a, b) { return b.name.length - a.name.length; }).filter(function (c) { return t.indexOf(c.name) >= 0; })[0];
-    return hit || null;
+  function pageFinops() {
+    var ns = [['ml-platform', 3.589, 2.488, 0, 31], ['monitoring', 4.188, 1.495, 0, 41], ['kagent', 4.056, 1.39, 0, 24], ['kube-system', 1.92, 0.88, 0.04, 61], ['services-dev', 1.41, 0.96, 0.12, 42], ['argocd', 1.02, 0.41, 0, 38], ['crossplane-system', 0.62, 0.3, 0, 55], ['kyverno', 0.41, 0.22, 0, 48]];
+    var mult = { day: 1 / 7, week: 1, month: 4.3 }[S.finops.range];
+    var rows = ns.map(function (n) { return { name: n[0], cpu: n[1] * mult, ram: n[2] * mult, pv: n[3] * mult, eff: n[4], total: (n[1] + n[2] + n[3]) * mult }; }).sort(function (a, b) { return b.total - a.total; });
+    var total = rows.reduce(function (s, r) { return s + r.total; }, 0), days = S.finops.range === 'day' ? 1 : 7, labels = dayLabels(days);
+    var layers = rows.map(function (r, i) { var v = series('fo' + r.name, days, r.total / days, r.total / days * 0.2); if (days === 7) { v[0] = v[1] = v[2] = 0; var s = v.reduce(function (a, b) { return a + b; }, 0) || 1; v = v.map(function (x) { return x * r.total / s; }); } return { name: r.name, values: v, color: 'var(--c' + (i + 1) + ')' }; });
+    return customPage('tool', 'FinOps — Cost Overview', 'Kubernetes spend · powered by OpenCost', html`
+      <div style="display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start">
+        <div class="btn-row" style="gap:32px;align-items:flex-start"><div><div class="flabel" style="margin-bottom:8px">Date Range</div>${chipButtons('finops.range', [['day', 'Last 24h'], ['week', 'Last Week'], ['month', 'Last Month']], S.finops.range)}</div>
+          <div><div class="flabel" style="margin-bottom:8px">Breakdown</div>${chipButtons('finops.by', [['namespace', 'Namespace'], ['team', 'Team'], ['container', 'Container']], S.finops.by)}</div></div>
+        <div class="card" style="padding:14px 24px;text-align:center"><div style="font-size:26px;color:#1976d2;font-weight:700">${money(total)}</div><div class="muted small">Total Cost (USD)</div></div></div>
+      <div class="mt">${cardBody('Spend Over Time by ' + cap(S.finops.by), S.finops.range === 'month' ? lineChart([{ name: 'Daily cost', values: series('fo-m', 30, total / 30, total / 30 * 0.2) }], { labels: dayLabels(30), yFmt: function (v) { return '$' + num(v, 1); }, label: 'Daily spend' }) : stackedBars(labels, layers, { label: 'Spend over time' }))}</div>
+      <div class="card mt">${table(['Name', 'Cost breakdown', 'CPU', 'RAM', 'PV', 'Efficiency', 'Total Cost'], rows.map(function (r, i) {
+        return [html`<span style="display:inline-flex;gap:8px;align-items:center"><i style="width:10px;height:10px;display:inline-block;background:${raw('var(--c' + (i + 1) + ')')}"></i>${r.name}</span>`,
+          html`<div style="display:flex;width:200px;height:28px;border-radius:2px;overflow:hidden"><span style="flex:${r.cpu.toFixed(3)};background:#3878d1"></span><span style="flex:${r.ram.toFixed(3)};background:#4c9a3f"></span><span style="flex:${(r.pv || 0.001).toFixed(3)};background:#e8a33c"></span></div>`,
+          money(r.cpu, 3), money(r.ram, 3), money(r.pv, 3), html`<span style="color:${raw(r.eff < 40 ? 'var(--err-dark)' : 'var(--ok-text)')}">${r.eff}%</span>`, html`<strong>${money(r.total, 3)}</strong>`];
+      }).concat([[html`<strong>Totals</strong>`, '', '', '', '', '', html`<strong>${money(total, 3)}</strong>`]]), { num: [2, 3, 4, 5, 6] })}</div>`);
   }
-  function reply(text) {
-    var t = text.toLowerCase(), c = findComp(t);
-    if (/scaffold|create (a|an|new)|new (go|python|node|java|service|microservice)|bootstrap/.test(t)) {
-      var lang = /python/.test(t) ? 'python' : /node|express/.test(t) ? 'nodejs' : /java|jvm|spring/.test(t) ? 'jvm' : /react|frontend/.test(t) ? 'react' : 'go';
-      var tname = lang === 'react' ? 'react-frontend' : lang + '-service', tt = tpl(tname);
-      var nm = (t.match(/(?:called|named)\s+([a-z0-9][a-z0-9-]{2,40})/) || [])[1] || (lang + '-demo-' + (S.chat.length + 1));
-      var owner = (t.match(/([a-z]+-team)/) || [])[1] || D.user.team;
-      var plan = { template: tname, name: nm, owner: owner };
-      return { role: 'bot', tools: [['list_templates', '96 ms'], ['get_template_params', '141 ms'], ['check_policy', '88 ms']], plan: plan, state: 'pending',
-        body: html`<p>Here is the plan. I will run the <strong>${tt ? tt.t : tname}</strong> template with these parameters:</p>
-          ${table(['Parameter', 'Value'], [['name', html`<code>${nm}</code>`], ['owner', html`<code>group:default/${owner}</code>`], ['repo', html`<code>github.com/moatazeldebsy/${nm}</code>`], ['deployTarget', html`<code>local</code>`]])}
-          <p class="small muted" style="margin-top:8px">This creates a repository and opens a GitOps PR, so <code>scaffold_service</code> needs your approval (policy: allowed with approval).</p>` };
-    }
-    if (/budget|cost|spend|finops/.test(t)) {
-      return { role: 'bot', tools: [['list_budget_overruns', '233 ms'], ['get_team_spend', '310 ms']],
-        body: html`<p>One team is over budget and one is close:</p>${table(['Team', 'Spend', 'Budget', 'Used'], D.teams.slice().sort(function (a, b) { return b.spend / b.budget - a.spend / a.budget; }).slice(0, 4).map(function (x) {
-          var u = x.spend / x.budget; return [teamLink(x.name), money(x.spend), money(x.budget), pill(pct(u * 100, 0), u > 1 ? 'bad' : u > 0.8 ? 'warn' : 'ok')];
-        }))}<p style="margin-top:8px"><a href="#/team/backend-team/budget">backend-team</a> is driven mostly by orders-service memory requests. Want rightsizing suggestions?</p>` };
-    }
-    if (/incident|alert|on-?call|outage|down/.test(t)) {
-      var firing = D.alerts.filter(function (a) { return a.state === 'firing'; });
-      return { role: 'bot', tools: [['get_open_incidents', '174 ms'], ['get_alert_history', '205 ms'], ['get_runbook', '61 ms']],
-        body: html`<p><a href="#/incidents/INC-2042">INC-2042</a> is open (SEV3): inventory-service pods are crash-looping after a secret rename. The <a href="#/techdocs/runbooks">pod-crash-loop runbook</a> applies, and release-agent has a rollback waiting in <a href="#/approvals">Agent Approvals</a>.</p>
-          <p>${firing.length} alerts are firing: ${firing.map(function (a, i) { return html`${i ? ', ' : ''}<code>${a.name}</code>`; })}.</p>` };
-    }
-    if (/deploy|argo|sync|rollout|release/.test(t)) {
-      var apps = allArgoApps().filter(function (a) { return a.sync !== 'Synced' || a.health !== 'Healthy'; });
-      return { role: 'bot', tools: [['list_deployments', '188 ms'], ['list_apps', '264 ms']],
-        body: html`<p>${apps.length} applications need attention:</p>${table(['Application', 'Sync', 'Health'], apps.map(function (a) { return [a.name, statusPill(a.sync), statusPill(a.health)]; }))}<p style="margin-top:8px">Open <a href="#/argocd">ArgoCD</a> to sync, or ask me to sync one (needs approval).</p>` };
-    }
-    if (c && /metric|latency|error|slo|dora|health|perform|how is/.test(t)) {
-      var vals = series('chat-rps:' + c.name, 24, c.replicas * 40 + 20, 12);
-      return { role: 'bot', tools: [['get_service_metrics', '344 ms']],
-        body: html`<p>Last 24 h for <a href="#/entity/${c.name}">${c.name}</a>:</p>${table(['Metric', 'Value'], [
-          ['Requests / s', num(vals[23], 0)], ['Error rate', pct(c.dora.cfr / 10, 2)], ['p95 latency', num(120 + c.dora.lt * 3, 0) + ' ms'],
-          ['Availability SLO', c.slo ? pct(sloState(c).avail.sli, 3) + ' vs ' + c.slo.avail + '% target' : 'no SLO'], ['Deploys / day', num(c.dora.df, 1)]])}
-          <div style="margin-top:8px">${sparkline(vals)}</div>` };
-    }
-    if (/own|who|find|search|catalog|list|which service|services/.test(t)) {
-      var teamHit = D.teams.filter(function (x) { return t.indexOf(x.name) >= 0; })[0];
-      var res = c ? [c] : teamHit ? D.components.filter(function (x) { return x.owner === teamHit.name; }) :
-        D.components.filter(function (x) { return t.split(/\W+/).some(function (w) { return w.length > 3 && (x.name + ' ' + x.desc + ' ' + x.tags.join(' ')).toLowerCase().indexOf(w) >= 0; }); }).slice(0, 6);
-      if (!res.length) res = D.components.slice(0, 5);
-      return { role: 'bot', tools: [['catalog_search', '182 ms']],
-        body: html`${c ? html`<p><a href="#/entity/${c.name}">${c.name}</a> is owned by ${teamLink(c.owner)} (lead: ${team(c.owner) ? team(c.owner).lead : '-'}). It is ${c.lifecycle}, in the ${c.system} system, and sits at ${tierPill(tierOf(c))}.</p>` : html`<p>I found ${res.length} matching components:</p>`}
-          ${c ? '' : table(['Component', 'Owner', 'Tier'], res.map(function (x) { return [entLink(x.name), x.owner, tierPill(tierOf(x))]; }))}` };
-    }
-    if (/template|golden|test suite|tests/.test(t)) {
-      return { role: 'bot', tools: [['list_templates', '96 ms']],
-        body: html`<p>There are ${D.templates.length} templates. Popular ones:</p><ul style="margin:0;padding-left:18px">${['go-service', 'playwright-e2e-suite', 'enable-contract-testing', 's3-bucket-crossplane', 'ai-agent-kagent'].map(function (n) { var x = tpl(n); return html`<li><a href="#/create/${n}">${x.t}</a></li>`; })}</ul>` };
-    }
-    return { role: 'bot', tools: [], body: html`<p>I can search the catalog, check service metrics, list deployments, report costs and incidents, or scaffold a service for you. Try one of the suggestions below, for example <em>"Scaffold a Go service called inventory-sync"</em>.</p>` };
-  }
-  function approveChat(i) {
-    var m = S.chat[i];
-    if (!m || m.state !== 'pending') return;
-    m.state = 'approved';
-    var typing = { role: 'bot', typing: true };
-    S.chat.push(typing);
-    rerender();
-    setTimeout(function () {
-      var p = m.plan, t = tpl(p.template);
-      registerEntity({ name: p.name, owner: p.owner, desc: '' }, t);
-      var pr = 700 + hash(p.name) % 90;
-      var idx = S.chat.indexOf(typing);
-      if (idx < 0) return;
-      S.chat[idx] = { role: 'bot', tools: [['request_approval', 'approved'], ['scaffold_service', '2.4 s'], ['list_deployments', '190 ms']],
-        body: html`<p><strong>Done.</strong> ${p.name} is scaffolded and running.</p><ul style="margin:0 0 8px;padding-left:18px">
-          <li>Repository <code>github.com/moatazeldebsy/${p.name}</code> created with CI</li><li>GitOps PR #${pr} merged (helm-values only)</li>
-          <li>ArgoCD synced <code>${p.name}-local</code>: Healthy</li><li>Registered in the catalog, owner ${p.owner}</li></ul>
-          <div class="btn-row"><a class="btn sm primary" href="#/entity/${p.name}">Open ${p.name}</a><a class="btn sm" href="#/argocd">View in ArgoCD</a></div>` };
-      refreshIf('ai-assistant');
-    }, 1300);
-  }
-
   function pageAISearch() {
     var q = S.aiQuery.toLowerCase(), words = q.split(/\W+/).filter(function (w) { return w.length > 2; });
     var res = D.aiSearchCorpus.map(function (d) {
       var hay = (d.title + ' ' + d.text).toLowerCase(), hits = words.filter(function (w) { return hay.indexOf(w) >= 0 || hay.indexOf(w.replace(/s$/, '')) >= 0; }).length;
       return { d: d, score: words.length ? 0.55 + 0.4 * hits / words.length + rng(d.title + q)() * 0.04 : 0 };
     }).filter(function (r) { return r.score > 0.6; }).sort(function (a, b) { return b.score - a.score; }).slice(0, 6);
-    var top = res[0];
-    return html`${head('AI Search', 'Semantic search over the catalog and TechDocs (Voyage embeddings in pgvector), with a short generated answer.')}
-      <form class="filters" data-submit="ai-search"><label class="sr-only" for="ai-q">Question</label>
-        <input class="input grow" id="ai-q" type="search" value="${S.aiQuery}" placeholder="Ask a question" data-bind-quiet="aiQuery"><button class="btn primary" type="submit">${icon('search')} Search</button></form>
-      <div style="margin-bottom:16px">${chips('aiQuery', ['how do I roll back a deployment', 'request an s3 bucket', 'slo error budget', 'who handles payments', 'load testing'], S.aiQuery)}</div>
-      ${top ? card('Answer', html`<p>${top.d.kind === 'TechDocs' ? 'The most relevant guide is ' : 'The best match is '}<a href="${top.d.href}">${top.d.title}</a>. ${res.length > 1 ? html`Also see <a href="${res[1].d.href}">${res[1].d.title}</a>.` : ''}</p><p class="muted small">Generated from the top ${res.length} passages · catalog_semantic_search · 412 ms</p>`) : ''}
-      ${card(res.length + ' results', res.length ? html`<ul class="list">${res.map(function (r) {
-        return html`<li><span class="icon">${icon(r.d.kind === 'TechDocs' ? 'book' : r.d.kind === 'Template' ? 'plus' : 'grid')}</span><div style="flex:1"><a href="${r.d.href}"><strong>${r.d.title}</strong></a><div class="muted small">${r.d.kind} · …${r.d.text}…</div></div><span class="pill info">${num(r.score, 2)}</span></li>`;
-      })}</ul>` : html`<p class="muted">No passages above the relevance threshold. Try one of the example questions.</p>`)}`;
+    return customPage('tool', 'AI Search', 'Semantic search powered by Voyage AI + pgvector', html`
+      <form data-submit="noop" style="display:flex;gap:8px;align-items:center;max-width:820px"><div class="outlined-search" style="flex:1">${icon('search', 22)}<label class="sr-only" for="ai-q">Search by intent</label><input id="ai-q" type="search" placeholder="Search by intent, e.g. how do I roll back a deployment" value="${S.aiQuery}" data-bind="aiQuery"></div>
+        <button type="button" class="icon-btn" data-action="noop" title="Re-index catalog entities and external sources" aria-label="Re-index catalog entities and external sources">${icon('refresh')}</button></form>
+      <div class="btn-row mt16">${['how do I roll back a deployment', 'request an s3 bucket', 'slo error budget', 'who handles payments', 'load testing'].map(function (s) { return html`<button type="button" class="chip flat" data-action="set" data-key="aiQuery" data-value="${s}" aria-pressed="${String(S.aiQuery === s)}">${s}</button>`; })}</div>
+      <div class="mt" style="max-width:820px">${res.length ? res.map(function (r) {
+        return html`<a class="card" href="${r.d.href}" style="display:block;padding:14px 18px;margin-bottom:10px;color:var(--text)"><div style="display:flex;justify-content:space-between;gap:12px"><strong style="font-size:16px">${r.d.title}</strong>${chip('similarity ' + num(r.score, 2), 'sm outlined')}</div>
+          <div class="muted small" style="margin-top:4px">${r.d.kind} · …${r.d.text}…</div></a>`;
+      }) : html`<p class="muted">No results above the similarity threshold.</p>`}</div>`);
   }
-
   function pageApprovals() {
-    var tab = S.approvalsTab, list = S.approvals.filter(function (a) { return tab === 'pending' ? a.status === 'pending' : a.status !== 'pending'; });
-    return html`${head('Agent Approvals', 'Human-in-the-loop gate for agent actions that change things. Policy-as-Prompt pre-screens each request.')}
-      <div style="margin-bottom:16px">${chips('approvalsTab', [['pending', 'Pending (' + S.approvals.filter(function (a) { return a.status === 'pending'; }).length + ')'], ['history', 'History']], tab)}</div>
-      ${list.length ? html`<div class="grid g2">${list.map(function (a) {
-        return html`<section class="card"><div class="card-head"><h2>${a.id} · <code>${a.tool}</code></h2>${a.status === 'pending' ? pill(a.risk + ' risk', a.risk === 'high' ? 'bad' : a.risk === 'medium' ? 'warn' : 'ok') : statusPill(a.status)}</div>
-          <dl class="kv"><dt>Agent</dt><dd>${a.agent}</dd><dt>Target</dt><dd><code>${a.target}</code></dd><dt>Requested by</dt><dd>${a.by} · ${a.t}</dd><dt>Reason</dt><dd>${a.reason}</dd><dt>Policy</dt><dd>${a.policy}</dd></dl>
-          ${a.status === 'pending' ? html`<div class="btn-row" style="margin-top:12px"><button class="btn primary sm" type="button" data-action="approval" data-key="${a.id}" data-value="approved">${icon('ok')} Approve</button>
-            <button class="btn sm danger" type="button" data-action="approval" data-key="${a.id}" data-value="rejected">${icon('x')} Reject</button></div>` : html`<p class="muted small" style="margin-top:10px">${a.status === 'approved' ? 'Approved' : 'Rejected'} by ${D.user.name} just now. The agent was notified via get_approval_status.</p>`}</section>`;
-      })}</div>` : html`<div class="card empty">${tab === 'pending' ? 'No pending requests. Nice.' : 'No decisions yet in this session.'}</div>`}`;
+    var list = S.approvals.filter(function (a) { return S.approvalsFilter === 'all' || a.status === 'pending'; });
+    var col = { pending: 'primary', approved: 'secondary', denied: '' };
+    return customPage('tool', 'Agent Approvals', 'Human-in-the-loop gate for agent-initiated mutating actions', html`
+      <div class="btn-row" style="margin-bottom:16px"><button type="button" class="btn grey ${S.approvalsFilter === 'pending' ? 'selected' : ''}" data-action="set" data-key="approvalsFilter" data-value="pending" aria-pressed="${String(S.approvalsFilter === 'pending')}">Pending only</button>
+        <button type="button" class="btn grey ${S.approvalsFilter === 'all' ? 'selected' : ''}" data-action="set" data-key="approvalsFilter" data-value="all" aria-pressed="${String(S.approvalsFilter === 'all')}">All (last 100)</button>
+        <button type="button" class="icon-btn" data-action="noop" aria-label="Refresh" title="Refresh">${icon('gavel')}</button></div>
+      ${list.length ? list.map(function (a) {
+        return html`<section class="card" style="margin-bottom:12px"><div class="card-body"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+            <div class="btn-row">${chip(a.status, 'sm ' + col[a.status])}<span>${a.agent} → <span class="mono">${a.tool}</span> on <span class="mono">${a.target}</span></span></div><span class="muted small">requested ${a.requested}</span></div>
+          <div class="muted" style="margin:12px 0 8px">${JSON.stringify({ reason: a.reason })}</div>
+          ${a.status === 'pending' ? html`<div class="small muted" style="margin-bottom:10px">${a.policy || ''}</div><div class="btn-row"><button type="button" class="btn contained sm" data-action="decide" data-key="${a.id}" data-value="approved">Approve</button><button type="button" class="btn outlined sm" data-action="decide" data-key="${a.id}" data-value="denied">Deny</button></div>`
+            : html`<div class="muted small">${a.status} by ${a.decided_by} at ${a.decided}</div>`}</div></section>`;
+      }) : html`<div class="card card-body muted">No approval requests${S.approvalsFilter === 'pending' ? ' pending' : ''}.</div>`}`);
   }
-
-  function pageKagent() {
-    return html`${head('KAgent agents', D.agents.length + ' agents in the kagent namespace. Every agent reaches tools and models through the one AI gateway.')}
-      <div class="grid g-auto">${D.agents.map(function (a) {
-        return html`<section class="card"><div class="card-head"><h2>${a.name}</h2>${statusPill(a.ready ? 'Ready' : 'Not ready')}</div><p class="muted small">${a.desc}</p>
-          <dl class="kv" style="margin-bottom:10px"><dt>ModelConfig</dt><dd><code>${a.model}</code></dd><dt>Team</dt><dd>${a.team}</dd><dt>Tools</dt><dd>${a.tools.length}</dd></dl>
-          ${a.note ? html`<div class="notice">${a.note}</div>` : ''}
-          <div>${a.tools.slice(0, 8).map(function (t) { return html`<span class="tag mono">${t}</span>`; })}${a.tools.length > 8 ? html`<span class="tag">+${a.tools.length - 8} more</span>` : ''}</div></section>`;
+  function pageCopilot() {
+    var c = D.copilot, n = 28, act = series('cp-act', n, c.active, 4, 0.1), eng = act.map(function (v, i) { return v * (0.62 + 0.05 * Math.sin(i / 3)); }), acc = series('cp-acc', n, c.acceptance, 2.2, 0.12);
+    var seatsTotal = c.seats, cost = seatsTotal * 19;
+    return customPage('tool', 'GitHub Copilot Metrics', 'Developer productivity via AI assistance', html`
+      <div class="btn-row" style="margin-bottom:16px">${demoChip()}<span class="muted small">Set <code>GITHUB_TOKEN</code> with <code>read:org</code> and <code>manage_billing:copilot</code> to load live metrics.</span></div>
+      <div class="grid g4">${statCardTop('Active Users (latest day)', Math.round(act[n - 1]), '#1976d2')}${statCardTop('Engaged Users (latest day)', Math.round(eng[n - 1]), '#43a047')}${statCardTop('Lines Accepted (latest day)', num(1490), '#8e24aa')}${statCardTop('Acceptance Rate', pct(acc[n - 1]), '#f57c00')}</div>
+      <div class="grid g2 mt">${cardBody('Active vs Engaged Users (last ' + n + ' days)', lineChart([{ name: 'Active users', values: act, color: '#1976d2' }, { name: 'Engaged users', values: eng, color: '#43a047' }], { labels: dayLabels(n), label: 'Active vs engaged users' }))}
+        ${cardBody('Acceptance Rate Trend', lineChart([{ name: 'Acceptance %', values: acc, color: '#f57c00' }], { labels: dayLabels(n), min: 20, max: 40, label: 'Acceptance rate' }))}</div>
+      <div class="grid g2 mt">${card('Usage by Language', table(['Language', 'Acceptance rate', ''], c.languages.map(function (l) { return [l[0], pct(l[1]), hbar(l[1], 45, '#1976d2')]; }), { num: [1] }))}
+        ${card('Code Completions by Editor (latest day)', table(['Editor', 'Suggestions', 'Acceptances', 'Rate'], [['VS Code', 1420, 471, '33.2%'], ['JetBrains', 610, 172, '28.2%'], ['Neovim', 88, 27, '30.7%']], { num: [1, 2, 3] }))}</div>
+      <div class="grid g2 mt">${card('Seat Utilization by Team', table(['Team', 'Seats', 'Acceptance'], c.teams.map(function (t) { return [t[0], t[1], pct(t[2])]; }), { num: [1, 2] }))}
+        ${cardBody('Cost / ROI', table(['', ''], [['Seats', String(seatsTotal)], ['Monthly cost', money(cost, 0) + ' ($19/seat)'], ['Active seats', c.active + ' (' + pct(c.active / seatsTotal * 100, 0) + ')'], ['Est. hours saved / month', '≈ 410 h']], { cls: 'plain' }))}</div>`);
+  }
+  function eiScores() {
+    var avg = function (i) { return Math.round(D.teams.reduce(function (s, t) { return s + D.teamScores[t.name][i]; }, 0) / D.teams.length); };
+    return [['Platform', avg(1)], ['Developer Experience', avg(4)], ['Quality', avg(0)], ['Reliability', avg(2)], ['AI', avg(5)], ['Security', avg(3)], ['FinOps', 64]];
+  }
+  function pageEI() {
+    var sc = eiScores(), col = function (v) { return v >= 75 ? '#43a047' : v >= 60 ? '#1976d2' : v >= 45 ? '#f57c00' : '#e53935'; };
+    return html`${pluginBar('engineering-intelligence', 'insights')}${header('tool', 'Engineering Intelligence', 'Platform, Developer Experience, Quality, Reliability, AI, Security and FinOps health — scored from the platform’s own telemetry')}<div class="content">
+      <section class="card"><div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><div class="tier-badge" style="background:#1976d2;font-size:30px;font-weight:700">L3</div>
+        <div><h2 style="font-size:24px">Level 3 — Platform Enabled</h2><div class="muted">Platform ≥ 70, Quality ≥ 65 and Reliability ≥ 65 are met. Level 4 needs AI ≥ 65 (currently ${sc[4][1]}).</div></div></div></section>
+      <div class="grid g4 mt">${sc.map(function (s) { return statCardTop(s[0], s[1], col(s[1]), s[1] >= 60 ? 'healthy' : 'needs attention'); })}</div>
+      <div class="mt">${card('Platform Health', table(['Metric', 'Observed', 'Score', 'Impact', 'Source'], [
+        ['Services', String(D.components.length), '82', 'Catalog coverage', 'Catalog'], ['Ownership', '100% of components', '100', 'Every component has an owner', 'Catalog'],
+        ['Golden path', '71% from templates', '71', 'Scaffolded vs hand-rolled', 'Scaffolder'], ['Self-service', '64 template runs (30 d)', '78', 'No ticket needed', 'Scaffolder'],
+        ['Deploy frequency', '41/day', '90', 'DORA speed', 'DORA exporter'], ['Change failure rate', '6.4%', '76', 'DORA stability', 'DORA exporter']], { num: [2] }))}</div>
+      <div class="grid g2 mt">${cardBody('AI Evaluation', table(['Assertions', 'Passed', 'Failed'], [['412', '398', '14']], { num: [0, 1, 2] }))}${cardBody('AI Spend', table(['Total', 'Attributed'], [[money(D.litellmKeys.reduce(function (s, k) { return s + k.spend; }, 0)), '96%']]))}</div></div>`;
+  }
+  function pageCore4() {
+    return html`${pluginBar('engineering-intelligence', 'insights')}${header('tool', 'DX Core 4', 'Speed, Effectiveness, Quality and Impact — system metrics and the DevEx survey, read together')}<div class="content">
+      <div class="grid g4">${D.core4.map(function (c) {
+        return html`<div class="card stat" style="border-top-color:var(--c1)"><div class="lab-top">${c.area}</div><div class="num">${c.value}</div><div class="lab" style="font-size:13px">${c.metric}</div>
+          <div class="desc"><span style="color:${raw(c.good ? 'var(--ok-text)' : 'var(--err-dark)')}">${c.good ? '▲' : '▼'} from ${c.prev}</span> · ${c.secondary}</div></div>`;
       })}</div>
-      ${card('Model configs', table(['Name', 'Provider', 'Model', 'Route'], D.modelConfigs.map(function (m) { return [html`<code>${m.name}</code>`, m.provider, html`<code>${m.model}</code>`, m.via]; })))}`;
+      <div class="mt">${card('By team', table(['Team', 'Engineers', 'PRs / engineer / week', 'Survey responses', 'Experience index', 'Time on new capabilities'], D.teams.map(function (t) {
+        var r = rng('c4' + t.name); return [t.name, t.members, num(2.4 + r() * 2.6, 1), Math.max(3, t.members - Math.floor(r() * 3)), Math.round(58 + r() * 24), pct(40 + r() * 25, 0)];
+      }), { num: [1, 2, 3, 4, 5] }), html`<a class="btn outlined sm" href="#/devex-survey">Answer the survey</a>`)}</div></div>`;
+  }
+  function pageSurvey() {
+    var opts = ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'];
+    return html`${pluginBar('devex-survey', 'feedback')}${header('tool', 'DevEx Survey', 'About five minutes. Anonymous, and only ever reported as team averages.')}<div class="content" style="max-width:960px">
+      ${S.surveySent ? html`<div class="alert success">Thanks — your answers were recorded (in this demo, only in this browser tab). See the results on <a href="#/core4">DX Core 4</a>.</div>` : html`
+      <section class="card"><div class="card-head"><h2>Q4 2026 DevEx survey<span class="sub">Open until Dec 4 · 142 responses so far</span></h2></div><form class="card-body" data-submit="survey" style="padding-top:0">
+        ${selectField('Answer as a member of', 's-team', 'surveyTeam', D.teams.map(function (t) { return [t.name, t.display]; }), S.surveyTeam)}
+        ${D.survey.map(function (s, qi) {
+          return html`<fieldset style="border:0;border-top:1px solid var(--divider);padding:14px 0;margin:0"><legend style="font-weight:700;padding:0 0 8px">${s.q}</legend><div class="seg" role="radiogroup">${opts.map(function (o, i) {
+            var v = String(i + 1); return html`<button type="button" role="radio" aria-checked="${String(S.survey['q' + qi] === v)}" aria-pressed="${String(S.survey['q' + qi] === v)}" data-action="set" data-key="survey.q${qi}" data-value="${v}">${o}</button>`;
+          })}</div></fieldset>`;
+        })}<button class="btn contained mt16" type="submit">Submit</button></form></section>`}</div>`;
   }
 
-  function pageMcp() {
-    var total = D.mcpServers.reduce(function (a, s) { return a + s.tools.length; }, 0);
-    return html`${head('MCP servers', D.mcpServers.length + ' servers, ' + total + ' tools, all behind the AI gateway with prefixMode: never (tool names must be unique across targets).')}
-      <div class="grid g2">${D.mcpServers.map(function (s) {
-        return html`<section class="card"><div class="card-head"><h2>${s.name}</h2>${statusPill(s.health === 'healthy' ? 'Healthy' : 'Degraded')}</div>
-          <div class="btn-row small muted" style="margin-bottom:10px"><span>target <code>${s.target}</code></span><span>· p95 ${num(s.p95)} ms</span><span>· ${num(s.calls)} calls (7 d)</span></div>
-          <div>${s.tools.map(function (t) { return html`<span class="tag mono">${t}</span>`; })}</div></section>`;
-      })}</div>
-      <p class="muted small" style="margin-top:12px">Audit: every call emits <code>[AUDIT]</code> JSON to stdout and increments <code>mcp_agent_tool_calls_total{server,tool,agent}</code>.</p>`;
+  /* ---------- AI Assistant ---------- */
+  var PROMPTS = [
+    ['Metrics & Catalog', [['List my services', 'List all services in the catalog'], ['Check hello-service metrics', 'Show me the request rate, error rate and latency for hello-service'], ['List deployments', 'List all running Kubernetes deployments and their health'], ['Find payment services', 'Find all services related to payments']]],
+    ['Scaffolding', [['Scaffold a Go service', 'Scaffold a new Go microservice'], ['Add a Playwright suite', 'Add a Playwright E2E test suite to an existing service']]],
+    ['Delivery & Cost', [['Check ArgoCD apps', 'List all ArgoCD applications and their sync status'], ['Team budget status', 'Show me all teams over 80% budget utilisation'], ['Rightsizing savings', 'What are the top rightsizing opportunities to reduce cost?']]],
+    ['Contracts', [['List contracts', 'List all registered API contracts'], ['Check breaking changes', 'Detect breaking changes across all registered API contracts'], ['Validate compatibility', 'Validate compatibility between all consumer and provider contracts'], ['Discover contracts', 'Auto-discover contracts for all services in the catalog']]]
+  ];
+  function pageAssistant() {
+    var agents = D.agents.map(function (a) { return a.name; });
+    var right = html`<div class="btn-row"><label class="sr-only" for="agent-sel">KAgent agent to chat with</label><select id="agent-sel" class="input" style="height:36px;width:auto;font-size:14px;color:var(--text)" data-bind="agent">${agents.map(function (a) { return html`<option ${a === S.agent ? raw('selected') : ''}>${a}</option>`; })}</select></div>`;
+    return html`${pluginBar('custom-pages')}${header('tool', 'AI Assistant', 'Powered by KAgent · ' + S.agent, right)}<div class="content">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px"><button type="button" class="btn outlined grey" data-action="toggle-history">${icon('history', 20)}History</button><button type="button" class="btn outlined grey" data-action="new-chat">${icon('newchat', 20)}New chat</button></div>
+      ${S.showHistory ? card('Chat History', table(['Conversation', 'Agent', 'Messages', 'Last activity'], [[S.chat.length ? (S.chat[0].text || 'New chat') : 'New chat', S.agent, String(S.chat.length), 'now'], ['Scaffold a new Go microservice', 'platform-assistant', '4', 'Yesterday'], ['Which teams are over budget?', 'cost-agent', '2', 'Nov 17']]), html`<button type="button" class="icon-btn sm" data-action="toggle-history" aria-label="Close history">${icon('clear', 20)}</button>`) : ''}
+      <div class="chat-wrap"><div class="chat-scroll" id="chat-scroll" aria-live="polite">
+        ${S.chat.length ? '' : html`<div style="max-width:900px">${PROMPTS.map(function (g) {
+          return html`<div class="prompt-group"><div class="pg-title">${g[0]}</div><div class="btn-row">${g[1].map(function (p) { return html`<button type="button" class="chip" data-action="ask" data-prompt="${p[1]}">${p[0]}</button>`; })}</div></div>`;
+        })}</div>`}
+        ${S.chat.map(function (m) { return m.role === 'user' ? html`<div class="bubble-user">${m.text}</div>` : m.typing ? html`<div class="bubble-bot typing" aria-label="Assistant is typing"><span></span><span></span><span></span></div>` : html`<div class="bubble-bot">${m.body}</div>`; })}
+      </div>
+      ${S.pending ? html`<div class="btn-row" style="margin-bottom:10px"><button type="button" class="chip" data-action="ask" data-prompt="Yes, go ahead">Yes, go ahead</button><button type="button" class="chip" data-action="ask" data-prompt="Cancel">Cancel</button></div>` : ''}
+      <form class="chat-input" data-submit="chat"><label class="sr-only" for="chat-in">Message</label><input id="chat-in" autocomplete="off" placeholder="Ask about services, deployments, metrics…" value="${S.chatDraft}" data-bind-quiet="chatDraft">
+        <button type="submit" class="icon-btn" aria-label="Send">${icon('send')}</button></form></div></div>`;
+  }
+  function ask(text) {
+    text = String(text).trim();
+    if (!text) return;
+    S.chat.push({ role: 'user', text: text });
+    var typing = { role: 'bot', typing: true };
+    S.chat.push(typing); S.chatDraft = '';
+    refreshIf('ai-assistant'); scrollChat();
+    setTimeout(function () {
+      var i = S.chat.indexOf(typing);
+      if (i < 0) return;
+      S.chat[i] = { role: 'bot', body: reply(text) };
+      refreshIf('ai-assistant'); scrollChat();
+    }, 700);
+  }
+  function kv(rows) { return html`<table class="plain"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${rows.map(function (r) { return html`<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td></tr>`; })}</tbody></table>`; }
+  function reply(text) {
+    var t = text.toLowerCase(), c = D.components.slice().sort(function (a, b) { return b.name.length - a.name.length; }).filter(function (x) { return t.indexOf(x.name) >= 0; })[0];
+    if (S.pending) {
+      var p = S.pending;
+      S.pending = null;
+      if (/^(yes|y|go|ok|approve|confirm|do it|sure)/.test(t)) {
+        var tt = tpl(p.template), id = startTask(tt, { name: p.name, owner: p.owner, desc: '', target: 'aws', service: p.service || 'hello-service' });
+        var isTs = isSuite(tt);
+        return html`<p><strong>✅ ${isTs ? 'Test suite pull request opened!' : 'Go microservice scaffolded successfully!'}</strong></p><p>Here's a summary of what was created:</p>
+          ${kv([[isTs ? 'Suite Name' : 'Service Name', html`<code>${p.name}</code>`], ['Template', html`${tt.t} (<code>template:default/${tt.n}</code>)`], ['Owner', html`<code>group:default/${p.owner}</code>`], ['Repository', html`<code>github.com/moatazeldebsy/${isTs ? p.service : p.name}</code>`], ['Deploy Target', 'AWS (EKS)'], ['Cluster', html`<code>idp-mvp</code> @ <code>us-east-1</code>`], ['Task ID', html`<code>${id}</code>`]])}
+          <p style="margin-top:8px">🔗 <a href="#/create/tasks/${id}">View scaffolder task</a></p>
+          ${isTs ? '' : html`<p><strong>What's included out of the box:</strong></p><ul><li>🐹 Go HTTP service with health endpoints</li><li>🚀 GitHub Actions CI/CD pipeline (builds &amp; pushes to ECR via OIDC)</li><li>⎈ Helm chart for Kubernetes deployment on EKS</li><li>📦 Catalog entity auto-registered</li></ul>
+          <p><strong>Suggested next steps:</strong></p><ul><li>🧪 <strong>Add a test suite</strong> — e.g. Playwright E2E, k6 performance, or Pact contract tests</li><li>🔒 <strong>Enable security scanning</strong> — SonarCloud + Snyk via <code>enable-security-scanning</code></li></ul>`}`;
+      }
+      return html`<p>No problem — nothing was created.</p>`;
+    }
+    if (/playwright|e2e/.test(t) && /add|suite|test/.test(t)) {
+      S.pending = { template: 'playwright-e2e-suite', name: (c ? c.name : 'checkout-web') + '-e2e', owner: 'qa-team', service: c ? c.name : 'checkout-web' };
+      return html`<p>I can add a <strong>Playwright E2E Test Suite</strong> with these parameters:</p>${kv([['Target service', html`<code>${S.pending.service}</code>`], ['Suite name', html`<code>${S.pending.name}</code>`], ['Owner', html`<code>group:default/qa-team</code>`], ['Mode', 'Add to existing repo (opens a PR)']])}
+        <p style="margin-top:8px"><code>scaffold_test_suite</code> opens a pull request, so it goes through the approval gate. Shall I go ahead?</p>`;
+    }
+    if (/scaffold|create (a|an|new)|new (go|python|node|java)? ?(micro)?service/.test(t)) {
+      var nm = (t.match(/(?:called|named)\s+([a-z0-9][a-z0-9-]{2,40})/) || [])[1] || 'my-go-service-' + pad(S.chat.length);
+      S.pending = { template: /python/.test(t) ? 'python-service' : /node/.test(t) ? 'nodejs-service' : 'go-service', name: nm, owner: D.user.team };
+      return html`<p>I have everything I need. To scaffold your microservice I'll use these details:</p>
+        ${kv([['Service Name', html`<code>${nm}</code>`], ['Description', 'Scaffolded by the AI Assistant'], ['Owner', html`<code>group:default/${D.user.team}</code>`], ['GitHub Repo Name', html`<code>github.com/moatazeldebsy/${nm}</code>`], ['Deploy Target', html`<code>aws</code> (EKS)`]])}
+        <p style="margin-top:8px"><strong>Optional extras:</strong> Port (default <code>8080</code>), Cost Center (default <code>eng-platform</code>). Reply <em>yes</em> to scaffold it, or tell me what to change.</p>`;
+    }
+    if (/budget|cost|spend|rightsiz/.test(t)) {
+      if (/rightsiz|reduce/.test(t)) return html`<p>Top rightsizing opportunities (from <code>get_rightsizing_recommendations</code>):</p><ul><li><strong>recommendations-ml</strong> — move to Graviton (m7g): ~$61/month</li><li><strong>analytics-pipeline</strong> — 3 → 2 replicas (CPU p95 18%): ~$38/month</li><li><strong>orders-service</strong> — memory request 2Gi → 1Gi: ~$23/month</li></ul>`;
+      var over = D.teams.filter(function (x) { return x.spend / x.budget > 0.8; });
+      return html`<p>${over.length} teams are above 80% of their monthly budget:</p><ul>${over.map(function (x) { return html`<li><a href="${entityHref('group', x.name)}/budget">${x.display}</a> — ${money(x.spend, 0)} of ${money(x.budget, 0)} (${pct(x.spend / x.budget * 100, 0)})</li>`; })}</ul>`;
+    }
+    if (/argocd|sync status/.test(t)) {
+      var apps = argoApps(), bad = apps.filter(function (a) { return a.sync !== 'Synced' || a.health !== 'Healthy'; });
+      return html`<p>${apps.length} ArgoCD applications; ${bad.length} need attention:</p><ul>${bad.map(function (a) { return html`<li><code>${a.name}</code> — ${a.sync}, ${a.health}</li>`; })}</ul><p>See <a href="#/argocd">ArgoCD</a>.</p>`;
+    }
+    if (/deployment|kubernetes|running/.test(t)) {
+      var deps = D.components.filter(function (x) { return x.replicas > 0; });
+      return html`<p>${deps.length} deployments in <code>services-dev</code>:</p><ul>${deps.slice(0, 8).map(function (x) { return html`<li><code>${x.name}</code> — ${x.name === 'inventory-service' ? '0/' + x.replicas + ' ready (CrashLoopBackOff)' : x.replicas + '/' + x.replicas + ' ready'}</li>`; })}</ul>${deps.length > 8 ? html`<p class="muted">…and ${deps.length - 8} more.</p>` : ''}`;
+    }
+    if (c && /metric|latency|error|rate/.test(t)) {
+      var rps = series('chat-rps:' + c.name, 24, c.replicas * 40 + 20, 12);
+      return html`<p>Last 24 h for <a href="${entityHref('component', c.name)}">${c.name}</a> (<code>get_service_metrics</code>):</p><ul><li>📊 Request rate: <strong>${num(rps[23], 1)} req/s</strong></li><li>❌ Error rate: <strong>${pct(c.dora.cfr / 10, 2)}</strong></li><li>⏱ p95 latency: <strong>${num(120 + c.dora.lt * 3, 0)} ms</strong></li></ul>`;
+    }
+    if (/contract|breaking|compatib/.test(t)) {
+      if (/breaking/.test(t)) return html`<p>Checked ${D.apis.length} registered contracts. <strong>1 breaking change</strong> found:</p><ul><li><code>orders-api</code> — <code>POST /v1/orders/{id}/cancel</code> now requires <code>reason</code> (consumer <code>checkout-web</code> does not send it)</li></ul>`;
+      if (/discover/.test(t)) return html`<p>Auto-discovered OpenAPI specs for <strong>4</strong> services and registered them: payments-api, orders-service, search-api, hello-service.</p>`;
+      if (/compatib/.test(t)) return html`<p>Compatibility report: <strong>11 of 12</strong> consumer/provider pairs are compatible. <code>checkout-web → orders-api</code> fails (see breaking change above). <code>can_i_deploy</code> blocks orders-service until it is fixed.</p>`;
+      return html`<p>${D.apis.length} registered contracts:</p><ul>${D.apis.map(function (a) { return html`<li><code>${a.name}</code> (${a.type}) — provided by ${a.provider}</li>`; })}</ul>`;
+    }
+    if (/service|catalog|find|search|who owns|list/.test(t)) {
+      var words = t.split(/\W+/).filter(function (w) { return w.length > 3 && ['list', 'services', 'service', 'catalog', 'find', 'related', 'search', 'with', 'that', 'show', 'owns'].indexOf(w) < 0; });
+      var res = c ? [c] : words.length ? D.components.filter(function (x) { return words.some(function (w) { return (x.name + ' ' + x.desc + ' ' + x.tags.join(' ')).toLowerCase().indexOf(w.replace(/s$/, '')) >= 0; }); }) : D.components;
+      return html`<p>Found <strong>${res.length}</strong> ${res.length === 1 ? 'component' : 'components'} (<code>catalog_search</code>):</p><ul>${res.slice(0, 10).map(function (x) { return html`<li><a href="${entityHref('component', x.name)}">${x.name}</a> — ${x.type}, owned by ${x.owner} (${x.lifecycle})</li>`; })}</ul>${res.length > 10 ? html`<p class="muted">…and ${res.length - 10} more in the <a href="#/catalog">catalog</a>.</p>` : ''}`;
+    }
+    return html`<p>Sure! Here are a few things I can help you with under <strong>Metrics &amp; Catalog</strong>:</p><ul><li>🔍 <strong>Search the catalog</strong> — Find services, APIs, components, or resources by name or keyword</li>
+      <li>📊 <strong>Query service metrics</strong> — Pull real-time Prometheus metrics (requests, errors, latency, etc.)</li><li>🚀 <strong>List deployments</strong> — See Kubernetes deployments and their readiness status</li></ul>
+      <p>What would you like to do? For example:</p><ul><li><em>"Search for the payments service"</em></li><li><em>"Show metrics for orders-service"</em></li><li><em>"Scaffold a new Go microservice"</em></li></ul>`;
   }
 
-  function pageGateway() {
-    var up = D.mcpServers.filter(function (s) { return s.health === 'healthy'; }).length;
-    var rpm = series('gw-rpm', 24, 190, 30);
-    return html`${head('AI Gateway', 'agentgateway (standalone) in ml-platform. One RemoteMCPServer for all agents; model traffic forwarded to LiteLLM.')}
-      <div class="grid g4">${stat('MCP targets up', up + ' / ' + D.mcpServers.length, 'failureMode: failOpen')}${stat('Requests / min', num(rpm[23], 0), 'MCP + LLM', sparkline(rpm))}${stat('p95 (LLM)', '1.9 s', 'via LiteLLM')}${stat('Tool errors (1 h)', '14', 'security target timeouts')}</div>
-      ${card('Routes', table(['Listener', 'Route', 'Backend', 'Policy'], [
-        [':8080', html`<code>/mcp</code>`, '8 MCP targets (multiplexed)', 'prefixMode: never · failOpen'],
-        [':8080', html`<code>/v1/messages</code>`, 'LiteLLM (provider: anthropic, baseUrl)', 'model allow-list + "*" catch-all'],
-        [':15000', html`<code>/ui</code>, <code>/config_dump</code>`, 'admin console (local only)', 'credentials redacted']]))}
-      <div class="grid g2" style="margin-top:16px">
-        ${card('MCP targets', table(['Target', 'Host', 'Health', 'p95'], D.mcpServers.map(function (s) {
-          return [html`<code>${s.target}</code>`, html`<span class="small">${s.name}.services-dev.svc</span>`, statusPill(s.health === 'healthy' ? 'Healthy' : 'Degraded'), num(s.p95) + ' ms'];
-        }), [3]))}
-        ${card('Models', table(['Model', 'Backend', 'Req/min'], D.gatewayModels.map(function (m) { return [html`<code>${m.name}</code>`, m.backend, m.rpm]; }), [2]))}
+  /* ---------- Settings (user-settings plugin) ---------- */
+  var THEMES = [['', 'Auto'], ['light', 'Light'], ['dark', 'Dark'], ['idp-dark', 'IDP Dark'], ['catppuccin', 'Catppuccin Mocha'], ['nord', 'Nord'], ['dracula', 'Dracula']];
+  function pageSettings() {
+    var cur = document.documentElement.getAttribute('data-theme') || '';
+    var tab = S.settingsTab, body;
+    if (tab === 'auth') body = card('Available Providers', table(['Provider', 'Description', ''], [['GitHub', 'Sign in with your GitHub account', html`<span class="btn outlined sm" aria-disabled="true">Sign in</span>`], ['Guest', 'Signed in as guest (local development)', chip('signed in', 'sm ok')]]));
+    else if (tab === 'flags') body = card('Feature Flags', html`<div class="card-body muted" style="padding-top:0">No registered feature flags.</div>`);
+    else body = html`<div class="grid g2">
+        ${cardBody('Profile', html`<div style="display:flex;gap:16px;align-items:center"><div class="avatar lg" style="width:72px;height:72px;font-size:24px">${initials(S.displayName)}</div><div><h3 style="font-size:20px">${S.displayName}</h3><div class="muted">arivera@moatazeldebsy.dev</div></div></div>`)}
+        ${cardBody('Appearance', html`<div class="toggle-row"><div><strong>Theme</strong><div class="muted small">Change the theme mode</div></div><div class="seg" role="group" aria-label="Theme">${THEMES.map(function (th) {
+          return html`<button type="button" data-action="set-theme" data-value="${th[0]}" aria-pressed="${String(cur === th[0])}">${th[1]}</button>`;
+        })}</div></div><div class="toggle-row"><div><strong>Language</strong><div class="muted small">Change the language</div></div><span>English</span></div>
+        <div class="toggle-row"><div><strong>Pin Sidebar</strong><div class="muted small">Prevent the sidebar from collapsing</div></div>${chip('on', 'sm ok')}</div>`)}
       </div>`;
-  }
-
-  function pageLitellm() {
-    var spend = D.litellmKeys.reduce(function (a, k) { return a + k.spend; }, 0), daily = series('llm-daily', 20, spend / 20, spend / 20 * 0.3, 0.3);
-    var byModel = {};
-    D.litellmKeys.forEach(function (k) { byModel[k.model] = (byModel[k.model] || 0) + k.spend; });
-    return html`${head('LiteLLM spend', 'Virtual keys, budgets and spend per agent, team and model. November to date.')}
-      <div class="grid g4">${stat('Spend (MTD)', money(spend, 2), 'across ' + D.litellmKeys.length + ' virtual keys')}${stat('Requests', '1.42 M', '+18% vs Oct')}${stat('Tokens', '611 M', '82% input / 18% output')}${stat('Keys near budget', D.litellmKeys.filter(function (k) { return k.spend / k.budget > 0.8; }).length, '80%+ used')}</div>
-      <div class="grid g2" style="margin-top:16px">
-        ${card('Daily spend', lineChart([{ name: 'Spend', values: daily }], { labels: dayLabels(20), yFmt: function (v) { return '$' + num(v, 0); }, label: 'Daily LLM spend' }))}
-        ${card('By model', donut(Object.keys(byModel).map(function (m) { return { name: m, value: Math.round(byModel[m] * 100) / 100 }; }), [money(spend, 0), 'MTD'], { fmt: function (v) { return money(v, 2); }, label: 'Spend by model' }))}
-      </div>
-      ${card('Virtual keys', table(['Key', 'Alias', 'Team', 'Model', 'Spend / budget', ''], D.litellmKeys.map(function (k) {
-        var u = k.spend / k.budget;
-        return [html`<code>${k.key}</code>`, k.alias, k.team, k.model, money(k.spend, 2) + ' / ' + money(k.budget), html`<div class="bar" style="width:110px"><span style="width:${Math.min(100, u * 100).toFixed(0)}%;background:${raw(u > 0.9 ? 'var(--bad)' : u > 0.8 ? 'var(--warn)' : 'var(--ok)')}"></span></div>`];
-      }), [4]))}`;
-  }
-
-  function pageMlflow() {
-    var ex = D.mlflow[S.mlExp] || D.mlflow[0], keys = Object.keys(ex.runs[0].metrics), main = keys[0];
-    return html`${head('MLflow', 'Experiments, runs and the model registry in ml-platform.')}
-      <div style="margin-bottom:16px" class="chips" role="group">${D.mlflow.map(function (e, i) { return html`<button class="chip" type="button" data-action="set" data-key="mlExp" data-value="${i}" aria-pressed="${String(i === S.mlExp)}">${e.name}</button>`; })}</div>
-      <div class="grid g3">
-        ${card(ex.name, html`<dl class="kv"><dt>Owner</dt><dd>${ex.owner}</dd><dt>Runs</dt><dd>${ex.runs.length}</dd><dt>Artifact store</dt><dd><code>s3://ml-artifacts/${ex.name}</code></dd>
-          <dt>Registered</dt><dd>${ex.runs.filter(function (r) { return r.registered; }).map(function (r) { return html`<div>${r.registered}</div>`; })}</dd></dl>`)}
-        ${card('Compare runs · ' + main, barChart(ex.runs.map(function (r, i) { return { label: r.name.slice(0, 12), value: r.metrics[main], color: 'var(--c' + (i + 1) + ')' }; }), { max: 1, yFmt: function (v) { return num(v, 2); }, label: 'Run comparison' }), null, 'span2')}
-      </div>
-      ${card('Runs', table(['Run', 'Status', 'Started', 'Duration'].concat(Object.keys(ex.runs[0].params)).concat(keys), ex.runs.map(function (r) {
-        return [html`<strong>${r.name}</strong><div class="muted small mono">${r.id}${r.registered ? ' · ' + r.registered : ''}</div>`, statusPill(r.status), r.started, r.dur]
-          .concat(Object.keys(r.params).map(function (p) { return String(r.params[p]); })).concat(keys.map(function (k) { return num(r.metrics[k], 3); }));
-      })))}`;
-  }
-
-  function pageLangfuse() {
-    var tr = D.traces.filter(function (t) { return t.id === S.trace; })[0] || D.traces[0];
-    var total = tr.spans[0][1], off = 0;
-    var bars = tr.spans.map(function (s, i) {
-      var start = i === 0 ? 0 : off;
-      if (i > 0) off += s[1];
-      return { name: s[0], ms: s[1], start: start, depth: s[2] };
-    });
-    return html`${head('Langfuse traces', 'LLM and agent traces with token usage, cost and latency.')}
-      <div class="grid g4">${stat('Traces (24 h)', '3,912', '99.1% success')}${stat('p95 latency', '8.4 s', 'agent turns')}${stat('Tokens (24 h)', '18.7 M', '')}${stat('Cost (24 h)', '$41.80', 'matches LiteLLM')}</div>
-      ${card('Recent traces', table(['Trace', 'User', 'Latency', 'Tokens', 'Cost', 'Status', ''], D.traces.map(function (t) {
-        return [html`<strong>${t.name}</strong><div class="muted small mono">${t.id} · ${t.t}</div>`, t.user, num(t.latency, 1) + ' s', num(t.tokens), money(t.cost, 4), statusPill(t.status === 'ok' ? 'ok' : 'error'),
-          html`<button class="btn sm" type="button" data-action="set" data-key="trace" data-value="${t.id}" aria-pressed="${String(t.id === tr.id)}">${t.id === tr.id ? 'Viewing' : 'View'}</button>`];
-      }), [2, 3, 4]))}
-      ${card('Trace ' + tr.id + ' · ' + tr.name, html`${tr.error ? html`<div class="notice">${tr.error}</div>` : ''}<div>${bars.map(function (b) {
-        return html`<div class="hbar-row" style="grid-template-columns:minmax(120px,240px) 1fr 70px"><span class="mono small" style="padding-left:${b.depth * 14}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.name}</span>
-          <div style="position:relative;height:14px;background:var(--neutral-soft);border-radius:4px"><span style="position:absolute;top:0;bottom:0;left:${(b.start / total * 100).toFixed(1)}%;width:${Math.max(0.8, b.ms / total * 100).toFixed(1)}%;border-radius:4px;background:${raw(b.name.indexOf('tool.') === 0 ? 'var(--c2)' : b.name.indexOf('llm.') === 0 ? 'var(--c1)' : b.name.indexOf('wait') === 0 ? 'var(--c3)' : 'var(--c4)')}"></span></div>
-          <span class="num small">${b.ms >= 1000 ? num(b.ms / 1000, 1) + ' s' : b.ms + ' ms'}</span></div>`;
-      })}</div>${legend([{ name: 'LLM', color: 'var(--c1)' }, { name: 'Tool (MCP)', color: 'var(--c2)' }, { name: 'Waiting for approval', color: 'var(--c3)' }, { name: 'Root', color: 'var(--c4)' }])}`)}`;
-  }
-
-  /* ---------- pages: Operations ---------- */
-  function pageArgo() {
-    var apps = allArgoApps();
-    function node(a) {
-      var kids = apps.filter(function (x) { return x.parent === a.name; });
-      return html`<li><span class="tree-node"><strong>${a.comp ? html`<a href="#/entity/${a.comp}">${a.name}</a>` : a.name}</strong>${statusPill(a.sync)}${statusPill(a.health)}<span class="muted small">${a.rev}</span>
-        ${a.sync !== 'Synced' ? html`<button class="btn sm" type="button" data-action="argo-sync" data-key="${a.name}" ${S.syncing[a.name] ? raw('disabled') : ''}>${S.syncing[a.name] ? 'Syncing…' : 'Sync'}</button>` : ''}</span>
-        ${kids.length ? html`<ul>${kids.map(node)}</ul>` : ''}</li>`;
-    }
-    var oos = apps.filter(function (a) { return a.sync !== 'Synced'; }).length, deg = apps.filter(function (a) { return a.health !== 'Healthy'; }).length;
-    return html`${head('ArgoCD', 'App-of-apps: idp-root owns the platform infrastructure and the idp-services ApplicationSet, which generates one Application per services/<name>/.')}
-      <div class="grid g4">${stat('Applications', apps.length, 'in 2 projects')}${stat('Synced', apps.length - oos, oos + ' out of sync')}${stat('Healthy', apps.length - deg, deg + ' degraded')}${stat('Last sync', '41 s ago', 'auto-sync + self-heal')}</div>
-      ${card('Application tree', html`<ul class="tree">${apps.filter(function (a) { return !a.parent; }).map(node)}</ul>`)}`;
-  }
-
-  var ROLL_STEPS = [['setWeight', 10], ['pause', '30s'], ['analysis', 'success-rate'], ['setWeight', 25], ['pause', '30s'], ['setWeight', 50], ['analysis', 'p95-latency'], ['setWeight', 100]];
-  function rollWeight(step) { var w = 0; for (var i = 0; i < step && i < ROLL_STEPS.length; i++) if (ROLL_STEPS[i][0] === 'setWeight') w = ROLL_STEPS[i][1]; return w; }
-  function pageRollouts() {
-    var r = S.rollout, w = r.aborted ? 0 : rollWeight(r.step), doneAll = r.step >= ROLL_STEPS.length, total = 6, canPods = Math.round(total * w / 100);
-    var status = r.aborted ? 'Aborted' : doneAll ? 'Healthy' : r.playing ? 'Progressing' : 'Paused';
-    return html`${head('Argo Rollouts', 'Canary release of payments-api 3.22.0 → 3.23.0 with automated analysis against Prometheus.')}
-      <div class="grid g3">
-        ${card('payments-api', html`<dl class="kv"><dt>Strategy</dt><dd>Canary</dd><dt>Stable</dt><dd><code>3.22.0</code></dd><dt>Canary</dt><dd><code>3.23.0</code></dd><dt>Status</dt><dd>${statusPill(status)}</dd><dt>Step</dt><dd>${Math.min(r.step, ROLL_STEPS.length)} / ${ROLL_STEPS.length}</dd></dl>
-          <div class="btn-row" style="margin-top:14px">
-            <button class="btn primary" type="button" data-action="roll-play" ${doneAll || r.aborted || r.playing ? raw('disabled') : ''}>${r.step ? 'Promote' : 'Start canary'}</button>
-            <button class="btn danger" type="button" data-action="roll-abort" ${doneAll || r.aborted || !r.step ? raw('disabled') : ''}>Abort</button>
-            <button class="btn" type="button" data-action="roll-reset">Reset</button></div>`)}
-        ${card('Traffic split', html`<div class="traffic" role="img" aria-label="${(100 - w) + '% stable, ' + w + '% canary'}"><div style="flex-basis:${100 - w}%;background:var(--c1)">${100 - w ? 'stable ' + (100 - w) + '%' : ''}</div><div style="flex-basis:${w}%;background:var(--c2)">${w ? 'canary ' + w + '%' : ''}</div></div>
-          <h3 style="margin:14px 0 8px">Pods</h3><div class="pods">${Array.from({ length: total }).map(function (_, i) { return html`<span class="pod" title="${i < total - canPods ? 'stable' : 'canary'}" style="background:${raw(i < total - canPods ? 'var(--c1)' : 'var(--c2)')}"></span>`; })}</div>
-          <h3 style="margin:14px 0 8px">Steps</h3><div class="rollout-steps">${ROLL_STEPS.map(function (s, i) { return html`<span class="${i < r.step ? 'done' : i === r.step && !doneAll && !r.aborted ? 'cur' : ''}">${s[0]} ${s[1]}${s[0] === 'setWeight' ? '%' : ''}</span>`; })}</div>`, null, 'span2')}
-      </div>
-      ${card('Analysis runs', table(['Metric', 'Query', 'Result', 'Status'], [
-        ['success-rate', html`<code>sum(rate(http_requests_total{code!~"5.."}[2m])) / sum(rate(http_requests_total[2m]))</code>`, r.step > 2 ? '99.71% (≥ 99.5%)' : '-', statusPill(r.step > 2 ? 'Passed' : 'pending')],
-        ['p95-latency', html`<code>histogram_quantile(0.95, …) &lt; 0.3</code>`, r.step > 6 ? '212 ms' : '-', statusPill(r.step > 6 ? 'Passed' : 'pending')]]))}`;
-  }
-  function rollTick() {
-    var r = S.rollout;
-    if (!r.playing || r.aborted) return;
-    r.step++;
-    if (r.step >= ROLL_STEPS.length) r.playing = false;
-    refreshIf('rollouts');
-    if (r.playing) setTimeout(rollTick, 1100);
-  }
-
-  function pageGrafana() {
-    var tab = S.grafana, hl = hourLabels(24), body;
-    if (tab === 'qa') {
-      body = html`<div class="grid g4">${stat('Test pass rate', '97.8%', '24 h, all suites')}${stat('Flaky tests', '12', '3 quarantined this week')}${stat('Coverage (median)', '78%', 'gate: 70%')}${stat('Contract checks', '412', 'can-i-deploy: 2 blocked')}</div>
-        <div class="grid g2" style="margin-top:16px">
-          ${card('Pass rate by suite type', lineChart([{ name: 'unit', values: series('qa-u', 24, 99.2, 0.4) }, { name: 'e2e', values: series('qa-e', 24, 94.5, 1.8) }, { name: 'contract', values: series('qa-c', 24, 98, 0.8) }], { labels: hl, min: 85, max: 100, area: false, label: 'Pass rate by suite' }))}
-          ${card('Suite duration (min)', barChart([['unit', 2.1], ['component', 4.8], ['integration', 7.9], ['contract', 1.6], ['e2e', 12.4], ['k6', 9.0], ['zap', 14.2]].map(function (x, i) { return { label: x[0], value: x[1], color: 'var(--c' + (i % 6 + 1) + ')' }; }), { label: 'Suite durations' }))}
-        </div>`;
-    } else if (tab === 'ai') {
-      var tools = [['catalog_search', 4210], ['get_service_metrics', 2380], ['list_deployments', 1990], ['list_apps', 1720], ['get_test_metrics', 1180], ['scaffold_service', 96]];
-      body = html`<div class="grid g4">${stat('Tool calls (24 h)', '14,860', 'mcp_tool_calls_total')}${stat('Tool p95', '284 ms', 'mcp_tool_duration_seconds')}${stat('LLM calls', '9,412', 'ai_api_calls_total')}${stat('AI cost (24 h)', '$41.80', 'by team label')}</div>
-        <div class="grid g2" style="margin-top:16px">
-          ${card('Tool calls by tool', hbars(tools.map(function (t) { return { label: t[0], value: t[1], max: 4500, text: num(t[1]) }; })))}
-          ${card('Calls per hour by agent', lineChart([{ name: 'idp-assistant', values: series('ai1', 24, 260, 60) }, { name: 'platform-assistant', values: series('ai2', 24, 180, 40) }, { name: 'qa-assistant', values: series('ai3', 24, 70, 20) }], { labels: hl, area: false, label: 'Calls per hour by agent' }))}
-        </div>`;
-    } else {
-      var svc = D.components.filter(function (c) { return c.replicas > 1; }).slice(0, 4);
-      body = html`<div class="grid g2">
-          ${card('Requests / s by service', lineChart(svc.map(function (c) { return { name: c.name, values: series('g-rps' + c.name, 24, c.replicas * 40, 20) }; }), { labels: hl, area: false, label: 'Requests per second by service' }))}
-          ${card('Error rate (%)', lineChart(svc.map(function (c) { return { name: c.name, values: series('g-err' + c.name, 24, c.dora.cfr / 12, 0.2) }; }), { labels: hl, area: false, label: 'Error rate by service' }))}
-          ${card('p95 latency (ms)', lineChart(svc.map(function (c) { return { name: c.name, values: series('g-lat' + c.name, 24, 100 + c.dora.lt * 3, 25) }; }), { labels: hl, area: false, label: 'p95 latency by service' }))}
-          ${card('Pod restarts (24 h)', barChart(D.components.filter(function (c) { return c.replicas; }).slice(0, 10).map(function (c) { return { label: c.name.split('-')[0], value: c.name === 'inventory-service' ? 41 : Math.floor(rng('rs' + c.name)() * 4), color: c.name === 'inventory-service' ? 'var(--bad)' : 'var(--c1)' }; }), { label: 'Pod restarts' }))}
-        </div>`;
-    }
-    return html`${head('Dashboards', 'Grafana-style views over Prometheus. The real dashboards live in kubernetes/monitoring/.')}
-      <div style="margin-bottom:16px">${chips('grafana', [['services', 'IDP Services'], ['qa', 'QA metrics'], ['ai', 'AI observability']], tab)}</div>${body}`;
-  }
-
-  function pageAlerts() {
-    var st = S.alertState, list = D.alerts.filter(function (a) { return !st || a.state === st; });
-    return html`${head('Alerts', 'Prometheus alerting rules and their current state. Every rule links a runbook.')}
-      <div class="grid g3">${['firing', 'pending', 'inactive'].map(function (s) { return stat(s[0].toUpperCase() + s.slice(1), D.alerts.filter(function (a) { return a.state === s; }).length, 'rules'); })}</div>
-      <div style="margin:16px 0">${chips('alertState', ['firing', 'pending', 'inactive'], st, 'All')}</div>
-      ${card(list.length + ' rules', table(['Alert', 'State', 'Severity', 'Labels', 'For', 'Runbook'], list.map(function (a) {
-        return [html`<strong>${a.name}</strong><div class="muted small mono" style="max-width:420px">${a.expr}</div>`, statusPill(a.state), pill(a.sev, a.sev === 'critical' ? 'bad' : a.sev === 'warning' ? 'warn' : 'info'), html`<code class="small">${a.labels}</code>`, a.since, html`<a href="#/techdocs/runbooks">${a.runbook}</a>`];
-      })))}`;
-  }
-
-  function pagePolicies() {
-    return html`${head('Policy violations', 'Kyverno and OPA Gatekeeper results across namespaces. Audit-mode findings do not block; Enforce/Deny do.')}
-      <div class="grid g4">${stat('Violations', D.violations.length, 'open')}${stat('Kyverno', D.violations.filter(function (v) { return v.engine === 'Kyverno'; }).length, 'policy reports')}${stat('Gatekeeper', D.violations.filter(function (v) { return v.engine === 'Gatekeeper'; }).length, 'constraints')}${stat('Blocked (7 d)', '23', 'admission denials')}</div>
-      ${card('Findings', table(['Policy', 'Engine', 'Resource', 'Namespace', 'Action', 'Severity', 'Message'], D.violations.map(function (v) {
-        return [html`<code>${v.policy}</code>`, v.engine, v.resource, v.ns, pill(v.action, v.action === 'Audit' ? 'info' : 'bad'), pill(v.sev, v.sev === 'critical' || v.sev === 'high' ? 'bad' : v.sev === 'medium' ? 'warn' : ''), v.msg];
-      })), html`<span class="muted">via security-mcp-server · list_policy_violations</span>`)}`;
-  }
-
-  function pageCrossplane() {
-    var bad = D.resources.filter(function (r) { return !r.ready; });
-    return html`${head('Crossplane claims', 'Per-service AWS resources requested through scaffolder templates and synced by ArgoCD. AWS only; claims live at services/<svc>/claims/.')}
-      ${bad.map(function (r) { return html`<div class="notice"><strong>${r.name}</strong> is not ready: ${r.reason}</div>`; })}
-      ${card(D.resources.length + ' claims', table(['Claim', 'Kind', 'Template', 'Namespace', 'Synced', 'Ready', 'Connection secret', 'Age'], D.resources.map(function (r) {
-        return [html`<strong>${r.name}</strong><div class="muted small">${r.desc}</div>`, r.kind, html`<a href="#/create/${r.provider}">${r.provider}</a>`, r.ns, statusPill(String(r.synced)), statusPill(r.ready ? 'Ready' : 'Not ready'), html`<code>${r.secret}</code>`, r.age];
-      })))}`;
-  }
-
-  function pagePreviews() {
-    return html`${head('Preview environments', 'One namespace per pull request, created by CI and destroyed when the PR closes or the TTL runs out.')}
-      <div class="grid g4">${stat('Active', S.previews.filter(function (p) { return p.status !== 'destroyed'; }).length, 'environments')}${stat('Cost (MTD)', money(212.4, 2), 'all previews')}${stat('Median lifetime', '19 h', '')}${stat('Default TTL', '3 days', 'extendable')}</div>
-      ${card('Environments', table(['PR', 'Service', 'Branch', 'Author', 'Status', 'URL', 'TTL', 'Cost', ''], S.previews.map(function (p) {
-        return [html`<strong>#${p.pr}</strong>`, entLink(p.service), html`<code class="small">${p.branch}</code>`, p.author, statusPill(p.status === 'ready' ? 'Ready' : p.status), p.status === 'ready' ? html`<code class="small">${p.url}</code>` : html`<span class="muted small">${p.reason || '-'}</span>`, p.ttl, money(p.cost, 2),
-          p.status === 'destroyed' ? '' : html`<div class="btn-row"><button class="btn sm" type="button" data-action="preview" data-key="${p.pr}" data-value="extend" ${p.status !== 'ready' ? raw('disabled') : ''}>Extend</button><button class="btn sm danger" type="button" data-action="preview" data-key="${p.pr}" data-value="destroy">Destroy</button></div>`];
-      }), [7]))}`;
+    return html`${pluginBar('Settings', 'gear')}${header('home', 'Settings')}<nav class="subtabs" aria-label="Settings">${[['general', 'General'], ['auth', 'Authentication Providers'], ['flags', 'Feature Flags']].map(function (t) {
+      return html`<a href="#/settings" data-action="set" data-key="settingsTab" data-value="${t[0]}" ${t[0] === tab ? raw('aria-current="page"') : ''}>${t[1]}</a>`;
+    })}</nav><div class="content">${body}</div>`;
   }
 
   function notFound(msg) {
-    return html`<div class="card empty"><h1>Page not found</h1><p>${msg || 'There is nothing at this address in the demo.'}</p><a class="btn primary" href="#/home">Go home</a></div>`;
+    return html`<div class="content"><div class="empty-state"><h1>404</h1><p style="font-size:18px">${msg || 'Looks like someone dropped the mic!'}</p><a class="btn contained" href="#/">Go back</a></div></div>`;
   }
 
   /* ---------- router ---------- */
   var PAGES = {
-    home: pageHome, catalog: pageCatalog, teams: pageTeams, create: pageCreate, apis: pageApis, techdocs: pageTechdocs, 'tech-radar': pageRadar,
-    dora: pageDora, finops: pageFinops, incidents: pageIncidents, 'learning-center': pageLearning, 'engineering-intelligence': pageEI, copilot: pageCopilot,
-    'devex-survey': pageSurvey, 'ai-assistant': pageAssistant, 'ai-search': pageAISearch, approvals: pageApprovals, kagent: pageKagent, mcp: pageMcp,
-    'ai-gateway': pageGateway, litellm: pageLitellm, mlflow: pageMlflow, langfuse: pageLangfuse, argocd: pageArgo, rollouts: pageRollouts,
-    grafana: pageGrafana, alerts: pageAlerts, policies: pagePolicies, crossplane: pageCrossplane, previews: pagePreviews
+    '': pageHome, catalog: pageCatalog, create: pageCreate, 'api-docs': pageApiDocs, docs: pageDocsIndex, 'tech-radar': pageRadar, announcements: pageAnnouncements,
+    'catalog-import': pageImport, finops: pageFinops, 'ai-search': pageAISearch, 'ai-assistant': pageAssistant, approvals: pageApprovals, incidents: pageIncidents,
+    copilot: pageCopilot, dora: pageDora, scorecard: pageScorecardPlatform, slo: pageSloPlatform, argocd: pageArgo, activity: pageActivity, apis: pageApiExplorer,
+    onboarding: pageOnboarding, 'learning-center': pageLearning, calculator: pageCalculator, profile: pageProfile, 'search-page': pageSearchCustom, admin: pageAdmin,
+    kagent: pageKagent, langfuse: pageLangfuse, 'litellm-spend': pageLitellm, mlflow: pageMlflow, support: pageSupport, 'engineering-intelligence': pageEI,
+    core4: pageCore4, 'devex-survey': pageSurvey, settings: pageSettings, search: pageSearchStock
   };
-  var TITLES = {};
-  NAV.forEach(function (g) { g.items.forEach(function (it) { TITLES[it[0]] = it[1]; }); });
-
   function renderPage() {
-    var p = parts(), r = p[0], out;
-    if (r === 'entity') out = pageEntity(p[1], p[2]);
-    else if (r === 'team') out = pageTeam(p[1], p[2]);
-    else if (r === 'create' && p[1]) out = pageTemplate(p[1], p[2]);
-    else if ((r === 'apis' || r === 'techdocs' || r === 'incidents') && p[1]) out = PAGES[r](p[1]);
-    else if (PAGES[r] && !p[1]) out = PAGES[r]();
-    else out = notFound();
-    return out;
+    var p = parts(), r = p[0] || '';
+    if (r === 'catalog' && p[1]) return pageEntity(p[2], p[3], p[4]);
+    if (r === 'create' && p[1] === 'templates') return pageTemplateForm(p[3]);
+    if (r === 'create' && p[1] === 'tasks') return p[2] ? pageTask(p[2]) : pageTasks();
+    if (r === 'create' && p[1] === 'actions') return pageActions();
+    if (r === 'docs' && p[1]) return docsReader(p[3], p[2], p[4], false);
+    if (PAGES[r] && !p[1]) return PAGES[r]();
+    return notFound();
   }
+  var TITLES = {};
+  NAV_ALL.forEach(function (n) { TITLES[n.path] = n.title; });
   var lastHash = null;
   function render() {
     var h = location.hash;
-    $('#content').innerHTML = renderPage().s;
+    $('#main').innerHTML = renderPage().s;
     renderSidebar();
     var p = parts();
-    document.title = (p[0] === 'entity' ? p[1] : p[0] === 'team' ? p[1] : TITLES[p[0]] || 'Not found') + ' · IDP Platform Demo';
+    document.title = (p[0] === 'catalog' && p[3] ? p[3] : TITLES[p[0] || ''] || 'Backstage') + ' | IDP Portal Demo';
     if (h !== lastHash) {
       window.scrollTo(0, 0);
       document.body.classList.remove('nav-open');
       $('#menu-btn').setAttribute('aria-expanded', 'false');
       lastHash = h;
     }
-    var cs = $('#chat-scroll');
-    if (cs) cs.scrollTop = cs.scrollHeight;
-    var lg = $('#run-log');
-    if (lg) lg.scrollTop = lg.scrollHeight;
+    var lg = $('#task-log'); if (lg) lg.scrollTop = lg.scrollHeight;
   }
   function rerender() {
-    var a = document.activeElement, id = a && a.id && $('#content').contains(a) ? a.id : null, pos = null;
+    var a = document.activeElement, id = a && a.id && $('#main').contains(a) ? a.id : null, pos = null;
     try { pos = id ? a.selectionStart : null; } catch (e) { pos = null; }
     var y = window.scrollY;
     render();
     window.scrollTo(0, y);
-    if (id) {
-      var el = document.getElementById(id);
-      if (el) { el.focus({ preventScroll: true }); try { if (pos != null) el.setSelectionRange(pos, pos); } catch (e) { /* not a text input */ } }
-    }
+    if (id) { var el = document.getElementById(id); if (el) { el.focus({ preventScroll: true }); try { if (pos != null) el.setSelectionRange(pos, pos); } catch (e) { /* not a text input */ } } }
   }
   function refreshIf(route) { if (current() === route) rerender(); else renderSidebar(); }
-  function $(sel) { return document.querySelector(sel); }
+  function scrollChat() { if (current() === 'ai-assistant') window.scrollTo(0, document.body.scrollHeight); }
 
   /* ---------- state binding ---------- */
   function setPath(path, value) {
     var keys = path.split('.'), o = S;
     for (var i = 0; i < keys.length - 1; i++) { if (o[keys[i]] == null) o[keys[i]] = {}; o = o[keys[i]]; }
     var last = keys[keys.length - 1];
-    o[last] = typeof o[last] === 'number' ? Number(value) : value;
+    o[last] = typeof o[last] === 'number' ? Number(value) : typeof o[last] === 'boolean' ? value === 'true' : value;
   }
-  function getPath(path) { return path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, S); }
+
+  /* ---------- search modal (SidebarSearchModal) ---------- */
+  var modalSel = 0;
+  function openSearch() {
+    $('#modal-root').innerHTML = html`<div class="modal-backdrop" data-action="close-search"><div class="modal" role="dialog" aria-modal="true" aria-label="Search">
+      <div style="padding:16px 24px 8px"><div class="outlined-search">${icon('search', 22)}<label class="sr-only" for="modal-q">Search in Backstage</label><input id="modal-q" type="search" placeholder="Search in Backstage" autocomplete="off"><button type="button" class="icon-btn sm" data-action="close-search" aria-label="Close search">${icon('clear', 20)}</button></div></div>
+      <div class="modal-results" id="modal-results"></div>
+      <div style="padding:8px 24px 16px;text-align:right"><a href="#/search" data-action="close-search">View full results →</a></div></div></div>`.s;
+    document.body.classList.remove('nav-open');
+    modalSel = 0;
+    $('#modal-q').focus();
+    runModalSearch();
+  }
+  function closeSearch() { $('#modal-root').innerHTML = ''; }
+  function runModalSearch() {
+    var input = $('#modal-q'); if (!input) return;
+    var q = input.value, pages = NAV_ALL.filter(function (n) { return q && n.title.toLowerCase().indexOf(q.toLowerCase()) >= 0; }).map(function (n) { return { title: n.title, sub: 'Page', href: '#/' + n.path }; });
+    var res = pages.concat(searchResults(q)).slice(0, 10);
+    modalSel = Math.min(modalSel, Math.max(0, res.length - 1));
+    $('#modal-results').innerHTML = q ? (res.length ? res.map(function (r, i) {
+      return html`<a href="${r.href}" class="${i === modalSel ? 'active' : ''}" data-action="close-search"><div style="font-size:16px">${highlight(r.title, q)}</div><div class="muted small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sub}</div></a>`.s;
+    }).join('') : html`<div class="muted" style="padding:12px 24px">Sorry, no results were found</div>`.s) : html`<div class="muted" style="padding:12px 24px">Start typing to search the catalog, docs, templates and pages.</div>`.s;
+  }
 
   /* ---------- actions ---------- */
   var ACTIONS = {
     set: function (el) {
       var k = el.getAttribute('data-key'), v = el.getAttribute('data-value');
-      if (k.indexOf('catalog.') === 0 && k !== 'catalog.kind') { if (k === 'catalog.owner' || k === 'catalog.system') S.catalog.kind = 'Component'; }
-      setPath(k, getPath(k) === v && el.classList.contains('chip') && k !== 'grafana' && k !== 'approvalsTab' && k !== 'aiQuery' && k !== 'mlExp' && k !== 'trace' ? '' : v);
-      if (el.tagName !== 'A') rerender();
+      if (k === 'cat.kind') { S.cat.type = ''; S.cat.owner = ''; S.cat.lifecycle = ''; S.cat.tag = ''; }
+      if (k.indexOf('learning.') === 0 && S.learning[k.split('.')[1]] === v) v = '';
+      setPath(k, v);
+      if (el.tagName !== 'A') rerender(); else setTimeout(rerender, 0);
     },
-    'reset-catalog': function () { S.catalog = { q: '', kind: 'Component', owner: '', tier: '', system: '' }; rerender(); },
+    star: function (el) { var k = el.getAttribute('data-key'); S.starred[k] = !S.starred[k]; rerender(); },
+    'toggle-tpl-starred': function () { S.tplf.starred = !S.tplf.starred; rerender(); },
     'toggle-theme': function () {
       var cur = document.documentElement.getAttribute('data-theme');
-      var dark = cur ? cur === 'dark' : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var next = dark ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      try { localStorage.setItem('idp-demo-theme', next); } catch (e) { /* storage unavailable */ }
-      themeIcon();
+      var dark = cur ? cur !== 'light' : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(dark ? 'light' : 'dark');
     },
-    'open-nav': function () { var open = !document.body.classList.contains('nav-open'); document.body.classList.toggle('nav-open', open); $('#menu-btn').setAttribute('aria-expanded', String(open)); },
+    'set-theme': function (el) { applyTheme(el.getAttribute('data-value')); },
+    'open-nav': function () { var o = !document.body.classList.contains('nav-open'); document.body.classList.toggle('nav-open', o); $('#menu-btn').setAttribute('aria-expanded', String(o)); },
     'close-nav': function () { document.body.classList.remove('nav-open'); $('#menu-btn').setAttribute('aria-expanded', 'false'); },
-    ask: function (el) {
-      var p = el.getAttribute('data-prompt');
-      if (current() !== 'ai-assistant') { location.hash = '#/ai-assistant'; }
-      askAssistant(p);
-    },
-    'new-chat': function () { S.chat = []; rerender(); },
-    'chat-approve': function (el) { approveChat(+el.getAttribute('data-key')); },
-    'chat-cancel': function (el) {
-      var m = S.chat[+el.getAttribute('data-key')];
-      if (m && m.state === 'pending') { m.state = 'cancelled'; S.chat.push({ role: 'bot', tools: [], body: html`<p>Cancelled. Nothing was created.</p>` }); rerender(); }
-    },
-    approval: function (el) {
+    'open-search': function () { openSearch(); },
+    'close-search': function (el, e) { if (el.classList.contains('modal-backdrop') && e.target !== el) return; closeSearch(); },
+    ask: function (el) { if (current() !== 'ai-assistant') location.hash = '#/ai-assistant'; ask(el.getAttribute('data-prompt')); },
+    'new-chat': function () { S.chat = []; S.pending = null; rerender(); },
+    'toggle-history': function () { S.showHistory = !S.showHistory; rerender(); },
+    decide: function (el) {
       var a = S.approvals.filter(function (x) { return x.id === el.getAttribute('data-key'); })[0];
-      if (a) { a.status = el.getAttribute('data-value'); rerender(); }
+      if (a) { a.status = el.getAttribute('data-value'); a.decided_by = 'user:default/arivera'; a.decided = ago(0); rerender(); }
     },
     'toggle-done': function (el) {
-      var k = el.getAttribute('data-key');
-      S.done[k] = !S.done[k];
+      var k = el.getAttribute('data-key'); S.done[k] = !S.done[k];
       try { localStorage.setItem('idp-demo-learning', JSON.stringify(S.done)); } catch (e) { /* storage unavailable */ }
       rerender();
     },
-    'try-api': function (el) { var k = el.getAttribute('data-key'); S.apiTry = S.apiTry === k ? null : k; rerender(); },
     'argo-sync': function (el) {
-      var k = el.getAttribute('data-key');
-      S.syncing[k] = true; rerender();
-      setTimeout(function () { S.syncing[k] = false; S.synced[k] = true; refreshIf('argocd'); }, 1200);
+      var k = el.getAttribute('data-key'); S.syncing = S.syncing || {}; S.syncing[k] = true; rerender();
+      setTimeout(function () { S.syncing[k] = false; S.synced[k] = true; refreshIf('argocd'); }, 1100);
     },
-    'roll-play': function () { var r = S.rollout; if (r.playing) return; r.playing = true; rerender(); setTimeout(rollTick, 600); },
-    'roll-abort': function () { S.rollout.aborted = true; S.rollout.playing = false; rerender(); },
-    'roll-reset': function () { S.rollout = { step: 0, playing: false, aborted: false }; rerender(); },
-    preview: function (el) {
-      var p = S.previews.filter(function (x) { return String(x.pr) === el.getAttribute('data-key'); })[0];
-      if (!p) return;
-      if (el.getAttribute('data-value') === 'extend') p.ttl = 'extended +2d';
-      else { p.status = 'destroyed'; p.ttl = '-'; p.url = '-'; p.reason = 'namespace deleted'; }
-      rerender();
-    },
-    toast: function (el) { el.textContent = el.getAttribute('data-msg'); el.disabled = true; }
+    'tpl-back': function (el) { var f = S.forms[el.getAttribute('data-key')]; if (f && f.step > 0) { f.step--; f.error = ''; rerender(); } },
+    'toggle-logs': function () { S.showLogs = !S.showLogs; rerender(); },
+    toast: function (el) { el.textContent = el.getAttribute('data-msg'); },
+    noop: function () { /* visual-only control */ }
   };
   var SUBMITS = {
-    scaffold: function (form) {
-      var name = form.getAttribute('data-tpl'), t = tpl(name), f = S.form[name], err = form.querySelector('#form-error');
-      if (!/^[a-z][a-z0-9-]{2,40}$/.test(f.name)) { err.textContent = 'Name must start with a letter and use only lowercase letters, digits and hyphens (3–41 characters).'; form.querySelector('#f-name').focus(); return; }
-      if (comp(f.name) && !(t.type === 'test-suite' || t.type === 'platform-capability')) { err.textContent = 'A component named ' + f.name + ' already exists.'; return; }
-      startRun(t, Object.assign({}, f));
-      location.hash = '#/create/' + name + '/run';
+    'tpl-next': function (form) {
+      var n = form.getAttribute('data-tpl'), t = tpl(n), f = S.forms[n];
+      if (f.step === 0) {
+        if (!/^[a-z][a-z0-9-]{2,40}$/.test(f.name)) { f.error = 'Name must start with a letter and use only lowercase letters, digits and hyphens (3–41 characters).'; rerender(); var el = $('#f-name'); if (el) el.focus(); return; }
+        if (!isSuite(t) && t.type !== 'resource' && comp(f.name)) { f.error = 'A component named ' + f.name + ' already exists in the catalog.'; rerender(); return; }
+      }
+      f.error = '';
+      if (f.step < 2) { f.step++; rerender(); return; }
+      var id = startTask(t, { name: f.name, owner: f.owner, desc: f.desc, target: f.target, service: f.service });
+      f.step = 0;
+      location.hash = '#/create/tasks/' + id;
     },
-    chat: function () { askAssistant(S.chatDraft); },
-    'ai-search': function () { rerender(); },
-    survey: function () { S.surveySent = true; rerender(); }
+    chat: function () { ask(S.chatDraft); },
+    survey: function () { S.surveySent = true; rerender(); },
+    'import': function () { S.importStep = 1; rerender(); },
+    noop: function () { rerender(); }
   };
 
-  /* ---------- global search ---------- */
-  function searchIndex() {
-    var idx = [];
-    NAV.forEach(function (g) { g.items.forEach(function (it) { idx.push({ t: it[1], k: 'Page · ' + g.group, h: '#/' + it[0] }); }); });
-    D.components.forEach(function (c) { idx.push({ t: c.name, k: 'Component · ' + c.owner, h: '#/entity/' + c.name, x: c.desc + ' ' + c.tags.join(' ') }); });
-    D.apis.forEach(function (a) { idx.push({ t: a.name, k: 'API · ' + a.type, h: '#/apis/' + a.name, x: a.desc }); });
-    D.teams.forEach(function (t) { idx.push({ t: t.name, k: 'Team', h: '#/team/' + t.name, x: t.display }); });
-    D.templates.forEach(function (t) { idx.push({ t: t.t, k: 'Template', h: '#/create/' + t.n, x: t.n + ' ' + t.tags.join(' ') }); });
-    D.docs.forEach(function (d) { idx.push({ t: d.title, k: 'TechDocs', h: '#/techdocs/' + d.id }); });
-    return idx;
+  function applyTheme(t) {
+    if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme');
+    try { if (t) localStorage.setItem('idp-demo-theme', t); else localStorage.removeItem('idp-demo-theme'); } catch (e) { /* storage unavailable */ }
+    themeLabel();
+    if (current() === 'settings') rerender();
   }
-  var searchSel = 0;
-  function runSearch() {
-    var input = $('#global-search'), box = $('#search-results'), q = input.value.trim().toLowerCase();
-    if (!q) { box.hidden = true; input.setAttribute('aria-expanded', 'false'); return; }
-    var res = searchIndex().map(function (e) {
-      var tl = e.t.toLowerCase(), score = tl === q ? 3 : tl.indexOf(q) === 0 ? 2 : tl.indexOf(q) >= 0 ? 1.5 : (e.x || '').toLowerCase().indexOf(q) >= 0 ? 1 : 0;
-      return { e: e, s: score };
-    }).filter(function (r) { return r.s > 0; }).sort(function (a, b) { return b.s - a.s; }).slice(0, 10);
-    searchSel = Math.min(searchSel, Math.max(0, res.length - 1));
-    box.innerHTML = res.length ? res.map(function (r, i) {
-      return html`<a href="${r.e.h}" class="${i === searchSel ? 'active' : ''}" data-search-item><span>${r.e.t}</span><span class="kind">${r.e.k}</span></a>`.s;
-    }).join('') : html`<div class="muted" style="padding:8px 10px">No matches for "${input.value}".</div>`.s;
-    box.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
-  }
-  function closeSearch() { $('#search-results').hidden = true; $('#global-search').setAttribute('aria-expanded', 'false'); }
-
-  function themeIcon() {
+  function themeLabel() {
     var cur = document.documentElement.getAttribute('data-theme');
-    var dark = cur ? cur === 'dark' : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var b = $('#theme-btn');
-    b.innerHTML = icon(dark ? 'sun' : 'moon', 18).s;
-    b.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    var dark = cur ? cur !== 'light' : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    $('#theme-btn').textContent = dark ? 'Light theme' : 'Dark theme';
+    $('#theme-btn').setAttribute('aria-label', dark ? 'Switch to the light theme' : 'Switch to the dark theme');
   }
   function syncBannerHeight() { document.documentElement.style.setProperty('--bh', $('#banner').offsetHeight + 'px'); }
 
   /* ---------- wiring ---------- */
   document.addEventListener('click', function (e) {
     var el = e.target.closest('[data-action]');
-    if (el && ACTIONS[el.getAttribute('data-action')]) {
-      if (el.tagName !== 'A') e.preventDefault();
-      ACTIONS[el.getAttribute('data-action')](el, e);
-    }
-    if (e.target.closest('[data-search-item]')) { $('#global-search').value = ''; closeSearch(); }
-    else if (!e.target.closest('.search')) closeSearch();
+    if (!el || !ACTIONS[el.getAttribute('data-action')]) return;
+    var act = el.getAttribute('data-action');
+    if (el.tagName !== 'A') e.preventDefault();
+    ACTIONS[act](el, e);
   });
   document.addEventListener('input', function (e) {
     var el = e.target;
-    if (el.id === 'global-search') { searchSel = 0; runSearch(); return; }
+    if (el.id === 'modal-q') { modalSel = 0; runModalSearch(); return; }
     var b = el.getAttribute('data-bind'), q = el.getAttribute('data-bind-quiet');
-    if (b) { setPath(b, el.value); rerender(); }
-    else if (q) setPath(q, el.value);
+    if (b === 'cat.kind') { S.cat.type = ''; S.cat.owner = ''; S.cat.lifecycle = ''; S.cat.tag = ''; S.cat.personal = 'all'; }
+    if (b) { setPath(b, el.value); rerender(); } else if (q) setPath(q, el.value);
   });
-  document.addEventListener('change', function (e) {
-    var q = e.target.getAttribute && e.target.getAttribute('data-bind-quiet');
-    if (q) setPath(q, e.target.value);
-  });
+  document.addEventListener('change', function (e) { var q = e.target.getAttribute && e.target.getAttribute('data-bind-quiet'); if (q) setPath(q, e.target.value); });
   document.addEventListener('submit', function (e) {
     var f = e.target.closest('[data-submit]');
     if (f && SUBMITS[f.getAttribute('data-submit')]) { e.preventDefault(); SUBMITS[f.getAttribute('data-submit')](f); }
   });
   document.addEventListener('keydown', function (e) {
-    var input = $('#global-search');
-    if (e.key === '/' && document.activeElement && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); input.focus(); return; }
+    var modal = $('#modal-q');
     if (e.key === 'Escape') { closeSearch(); document.body.classList.remove('nav-open'); return; }
-    if (document.activeElement === input && !$('#search-results').hidden) {
-      var items = document.querySelectorAll('#search-results a');
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); searchSel = (searchSel + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % Math.max(1, items.length); runSearch(); }
-      else if (e.key === 'Enter' && items[searchSel]) { e.preventDefault(); location.hash = items[searchSel].getAttribute('href'); input.value = ''; closeSearch(); input.blur(); }
+    if (modal && document.activeElement === modal) {
+      var items = document.querySelectorAll('#modal-results a');
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && items.length) { e.preventDefault(); modalSel = (modalSel + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length; runModalSearch(); }
+      else if (e.key === 'Enter' && items[modalSel]) { e.preventDefault(); location.hash = items[modalSel].getAttribute('href'); closeSearch(); }
+      return;
     }
+    if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) { e.preventDefault(); openSearch(); }
   });
   window.addEventListener('hashchange', render);
   window.addEventListener('resize', syncBannerHeight);
-  if (window.matchMedia) { try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeIcon); } catch (e) { /* old browsers */ } }
+  if (window.matchMedia) { try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeLabel); } catch (e) { /* old browsers */ } }
 
-  $('#menu-btn').innerHTML = icon('menu', 18).s;
-  themeIcon();
+  $('#menu-btn').innerHTML = html`${icon('menu')}<span>Menu</span>`.s;
+  $('#mb-home').innerHTML = html`${icon('dashboard')}<span>Home</span>`.s;
+  $('#mb-search').innerHTML = html`${icon('search')}<span>Search</span>`.s;
+  themeLabel();
   syncBannerHeight();
   render();
 
   // Exposed for automated checks only.
-  window.__demo = { routes: ROUTES, state: S };
+  window.__demo = { nav: NAV_ALL.map(function (n) { return n.path; }), entityTabs: function (name) { var c = comp(name); return c ? entityTabs(c).map(function (t) { return t[0]; }) : []; }, state: S };
 })();
