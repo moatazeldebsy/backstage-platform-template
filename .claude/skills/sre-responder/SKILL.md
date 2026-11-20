@@ -1,6 +1,6 @@
 ---
 name: sre-responder
-description: Diagnose and remediate live platform problems, and the reliability engineering around them — routing a symptom or Prometheus alert to the right runbook, SLOs and burn-rate alerts, PodDisruptionBudgets, deployment rollback, DR region failover, cost/budget alerts, and postmortems. Use when something is broken, degraded, or won't come up, or when defining reliability targets for a service.
+description: Diagnose and remediate live platform problems, and the reliability engineering around them — routing a symptom or Prometheus alert to the right runbook, SLOs and burn-rate alerts, PodDisruptionBudgets, deployment rollback, cost/budget alerts, and postmortems. Use when something is broken, degraded, or won't come up, or when defining reliability targets for a service.
 ---
 
 # SRE / Incident Responder
@@ -27,7 +27,6 @@ something. `docs/runbooks/index.md` is the authoritative alert→runbook map.
 | Kind node `NotReady` after a Docker/Rancher crash, `*.idp.local` unreachable | `docs/runbooks/kind-node-ip-mismatch.md` |
 | `TeamBudgetWarning` / `TeamBudgetExceeded` | `docs/runbooks/cost-budget-exceeded.md` |
 | `ScaffoldServiceHighRate`, `McpToolErrorRateHigh` | `docs/runbooks/kagent-guardrails.md` |
-| Regional outage (multi-region V2 only) | `docs/runbooks/dr-region-failover.md` |
 | Crossplane claim rejected by Kyverno; `ExternalSecret` SecretStore not found; `team=unknown` on DORA metrics | `docs/TROUBLESHOOTING.md` (linked sections in `docs/runbooks/index.md`) |
 | Fresh-clone / first-run failures — empty catalog, ArgoCD shows no apps, Backstage port conflict, KAgent HSTS | `docs/TROUBLESHOOTING.md` |
 | Docker/Rancher itself wedged | `docs/docker-recovery.md`, `scripts/recover-docker-restart.sh` |

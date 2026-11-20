@@ -43,8 +43,8 @@ gate for every component you touched before saying it's done**, and quote the ou
    `bootstrap-local.sh` / `idp deploy` is fine; `kubectl apply` against a shared cluster
    is not a shipping path.
 3. **`setup.sh` is one-time.** It personalizes placeholders and regenerates
-   `.idp-config.env`. Every day-2 operation is `bootstrap-local.sh` (Kind),
-   `bootstrap.sh` (AWS), or `bootstrap-multiregion.sh`. Never suggest re-running
+   `.idp-config.env`. Every day-2 operation is `bootstrap-local.sh` (Kind)
+   or `bootstrap.sh` (AWS). Never suggest re-running
    `setup.sh` to fix a cluster, and never hand-edit `.idp-config.env`.
 4. **Config picks a layer.** New Backstage config goes in the layer where it's true:
    base / `.local` / `.aws` / `.production`.

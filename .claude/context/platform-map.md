@@ -146,17 +146,18 @@ generation otherwise. Change one, check whether the other needs the matching cha
   risk with a re-evaluation condition in `SECURITY.md` — treat it as *known*, not as a
   finding.
 - **`setup.sh` is one-time.** It personalizes placeholders and writes `.idp-config.env`.
-  Every day-2 operation belongs to `bootstrap-local.sh` (Kind) / `bootstrap.sh` (AWS) /
-  `bootstrap-multiregion.sh`. Never suggest re-running `setup.sh` to fix a cluster.
+  Every day-2 operation belongs to `bootstrap-local.sh` (Kind) / `bootstrap.sh` (AWS).
+  Never suggest re-running `setup.sh` to fix a cluster.
   Rationale: `docs/scripts-reference.md#setupsh-vs-bootstrap-localsh-why-two-scripts`.
 - **`.idp-config.env` is generated**, not hand-edited. It's the single source of truth
   for org, cluster name, AWS account/region, contact email.
 - **Manifests in `kubernetes/` are reconciled by ArgoCD**, not applied by hand. A
   scaffolded service's `catalog-info.yaml` + Helm values are what drive its deployment.
-- **Opt-in layers that are live on `main`** — check before assuming they're inactive:
-  multi-region V2 (`scripts/bootstrap-multiregion.sh`, active-standby `eu-central-1`
-  primary + `us-east-1` standby) and the Agentic Development Platform
-  (`scripts/bootstrap-ai.sh --adp`).
+- **AWS is one region across three AZs** (ADR-0009). Don't design for a second
+  region; AZ resilience comes from per-AZ NAT + RDS Multi-AZ
+  on the `medium`/`large` profiles.
+- **Opt-in layer that is live on `main`** — check before assuming it's inactive:
+  the Agentic Development Platform (`scripts/bootstrap-ai.sh --adp`).
 
 ---
 
@@ -173,5 +174,5 @@ generation otherwise. Change one, check whether the other needs the matching cha
 | Scaffolder templates ×61 | YAML + skeletons | `backstage/catalog/templates/` | `python3 scripts/validate-catalog-templates.py` |
 
 Deep-dive docs: `docs/architecture.md`, `docs/golden-path.md`, `docs/cli-reference.md`,
-`docs/scripts-reference.md`, `docs/multi-region.md`, `docs/agentic-platform.md`,
+`docs/scripts-reference.md`, `docs/agentic-platform.md`,
 `docs/crossplane-vs-terraform.md`.

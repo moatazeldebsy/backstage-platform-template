@@ -8,6 +8,7 @@
 [![CI](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml/badge.svg)](https://github.com/moatazeldebsy/backstage-platform-template/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=moatazeldebsy_backstage-platform-template&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=moatazeldebsy_backstage-platform-template)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://moatazeldebsy.github.io/backstage-platform-template/)
+[![Live demo](https://img.shields.io/badge/live%20demo-try%20it-36baa2)](https://moatazeldebsy.github.io/backstage-platform-template/demo/)
 [![Roadmap](https://img.shields.io/badge/roadmap-GitHub%20Project-8250df)](https://github.com/users/moatazeldebsy/projects/5)
 
 A Backstage developer portal, golden-path Helm chart, 59 scaffold templates, an AI/ML platform and full observability — wired to both a local Kind cluster and AWS EKS. Runs locally in ~15 minutes.
