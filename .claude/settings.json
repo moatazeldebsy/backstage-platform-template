@@ -24,6 +24,95 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git status)"
+    ],
+    "ask": [
+      "Bash(dangerouslyDisableSandbox:true)"
+    ],
+    "deny": [
+      "Read(*.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Read(./terraform/terraform.tfvars)",
+      "Read(~/.aws/**)",
+      "Read(~/.kube/config)",
+      "Read(~/.ssh/**)",
+      "Bash(cat *.env*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git checkout -- *)",
+      "Bash(git stash drop*)",
+      "Bash(git stash clear*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push origin main*)",
+      "Bash(terraform apply*)",
+      "Bash(terraform destroy*)",
+      "Bash(./scripts/cleanup.sh*)",
+      "Bash(./scripts/bootstrap-local.sh --destroy*)",
+      "Bash(./scripts/bootstrap-ai.sh --destroy*)",
+      "Bash(kubectl delete namespace*)",
+      "Bash(kubectl delete ns *)",
+      "Bash(aws * delete*)",
+      "Bash(aws s3 rm*)",
+      "Bash(aws s3 rb*)",
+      "Bash(gh repo delete*)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": ["docker *", "kind *", "kubectl *", "helm *", "terraform *", "aws *"],
+    "filesystem": {
+      "allowWrite": [
+        "~/Library/Caches/go-build",
+        "~/.cache/go-build",
+        "~/go/pkg/mod",
+        "~/Library/Caches/Yarn",
+        "~/.yarn/berry",
+        "~/.npm"
+      ],
+      "denyRead": [
+        "./local/.env",
+        "./local/backstage/.env",
+        "./terraform/terraform.tfvars",
+        "~/.aws",
+        "~/.kube",
+        "~/.ssh"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "*.githubusercontent.com",
+        "ghcr.io",
+        "registry.npmjs.org",
+        "registry.yarnpkg.com",
+        "repo.yarnpkg.com",
+        "proxy.golang.org",
+        "sum.golang.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "versions.backstage.io",
+        "*.idp.local"
+      ]
+    }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/claude-hooks/post-edit-lint.sh", "timeout": 120 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/claude-hooks/stop-gate.sh", "timeout": 300 }
+        ]
+      }
     ]
   }
 }
