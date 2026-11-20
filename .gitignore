@@ -136,3 +136,8 @@ coverage.out
 .claude/skills/e2e
 .cursor/
 .mcp.json
+
+# Docusaurus site (website/)
+website/node_modules/
+website/build/
+website/.docusaurus/

@@ -1,7 +1,8 @@
-# Kind Node IP Mismatch After Crash Runbook
+# Kind Node IP Mismatch After a Docker Restart
 
 ## Symptoms
 
+- `*.idp.local` URLs return `Could not resolve host` / `Connection refused`, or `kubectl` can't reach the server
 - One or more nodes stuck in `NotReady` after Docker / Rancher Desktop crash and restart
 - Pods stuck in `Terminating` or `Pending` state
 - `ingress-nginx` controller unable to schedule a replacement pod — all `*.idp.local` URLs return 502 / unreachable
@@ -20,6 +21,20 @@ This cascades to:
 - Pods that were running on the affected node get evicted and enter `Terminating`
 - Replacement pods that require a `NotReady` node (e.g. DaemonSets, ingress with node affinity) stay `Pending`
 - inotify resource limits may also be exhausted after the restart, causing kube-proxy to crash
+
+## Fix it automatically
+
+```bash
+./scripts/recover-docker-restart.sh                   # full recovery, ~2–3 min
+./scripts/recover-docker-restart.sh --skip-backstage  # leave Backstage running
+./scripts/recover-docker-restart.sh --dry-run         # print the steps only
+```
+
+In order, it patches `kubelet.conf` with the new API server IP, restarts the
+`kindnet` and `kube-proxy` DaemonSets, replaces the `ingress-nginx` pods, fixes
+Grafana PVC permissions, patches the Prometheus operator's liveness probe,
+restarts Backstage, and smoke-tests every service URL. If a step fails, use the
+manual diagnosis and fix below.
 
 ## Diagnosis
 
@@ -136,6 +151,7 @@ kubectl get pods -n kagent -w | grep kagent-controller
 
 ## Prevention
 
+- **Prefer sleep over restart** — sleep keeps container IPs. **Rancher Desktop** (`KUBERNETES_PROVIDER=rancher-desktop`) runs in a VM with a stable IP.
 - **Add a fixed IP subnet to Docker:** configure Docker Desktop / Rancher Desktop to use a stable subnet so container IPs do not change across restarts. Set this in Docker Desktop → Settings → Docker Engine:
 
   ```json

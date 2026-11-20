@@ -289,7 +289,7 @@ Select the **Tempo** datasource and search by service name, trace ID, or span at
 
 ---
 
-## Datadog Infra Observability & APM
+## Datadog Infra Observability & APM {#datadog-infra-observability-apm}
 
 ### Coexistence with Prometheus/Grafana
 
