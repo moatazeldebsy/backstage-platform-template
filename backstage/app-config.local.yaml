@@ -493,3 +493,10 @@ techdocs:
   # instead of S3 so local doesn't need AWS credentials.
   publisher:
     type: 'local'
+
+# Claude Metrics: real data instead of the mock org. First set ANTHROPIC_ADMIN_KEY in local/backstage/.env,
+# then uncomment. With dataSource: anthropic and no key, the plugin fails at startup
+# (see the backend log) and /api/claude-metrics returns 503.
+# See docs/claude-metrics.md.
+# claudeMetrics:
+#   dataSource: anthropic

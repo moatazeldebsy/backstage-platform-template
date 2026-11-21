@@ -552,7 +552,7 @@ if grafana_pw:
 # from the RAG search endpoint (packages/backend/src/modules/idpRagSearch.ts).
 # Each is applied only when actually exported, so an unset one changes nothing.
 for key in ('VOYAGE_API_KEY', 'SONAR_TOKEN', 'SNYK_TOKEN', 'DD_API_KEY', 'DD_APP_KEY',
-            'GRAFANA_TOKEN'):
+            'GRAFANA_TOKEN', 'ANTHROPIC_ADMIN_KEY'):
     val = os.environ.get(key, '')
     if val:
         s[key] = val

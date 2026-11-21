@@ -87,6 +87,7 @@ nav:
     - Crossplane vs Terraform: crossplane-vs-terraform.md
     - Team Management: team-management.md
     - DORA & FinOps: dora-finops.md
+    - Claude Metrics: claude-metrics.md
   - AI & Agents:
     - AI Assistant: ai-assistant.md
     - Agentic Development Platform: agentic-platform.md

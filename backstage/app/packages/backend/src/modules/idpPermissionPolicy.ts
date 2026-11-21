@@ -8,8 +8,10 @@ import type {
 import {
   AuthorizeResult,
   PolicyDecision,
+  isPermission,
   isResourcePermission,
 } from '@backstage/plugin-permission-common';
+import { claudeMetricsReadPermission } from '@internal/backstage-plugin-claude-metrics-common';
 import {
   catalogConditions,
   createCatalogConditionalDecision,
@@ -45,6 +47,13 @@ export const OWNER_SCOPED_PERMISSIONS = new Set(['catalog.entity.delete']);
  */
 export const ADMIN_ONLY_PERMISSIONS = new Set(['catalog.location.delete']);
 
+/**
+ * Who may open Claude Metrics (per-user Claude Code activity and cost for the whole
+ * org). Synced from the GitHub org's engineering-managers team, like platform-team
+ * (ADR-0004). Platform admins also get it through the admin rule.
+ */
+export const CLAUDE_METRICS_GROUPS = ['group:default/engineering-managers'];
+
 export function isPlatformAdmin(user?: PolicyQueryUser): boolean {
   return user?.info?.ownershipEntityRefs?.includes(PLATFORM_ADMIN_GROUP) ?? false;
 }
@@ -67,6 +76,14 @@ export class IdpPermissionPolicy implements PermissionPolicy {
     }
     if (isPlatformAdmin(user)) {
       return { result: AuthorizeResult.ALLOW };
+    }
+    if (isPermission(request.permission, claudeMetricsReadPermission)) {
+      const refs = user?.info?.ownershipEntityRefs ?? [];
+      return {
+        result: refs.some(ref => CLAUDE_METRICS_GROUPS.includes(ref))
+          ? AuthorizeResult.ALLOW
+          : AuthorizeResult.DENY,
+      };
     }
     if (ADMIN_ONLY_PERMISSIONS.has(name)) {
       return { result: AuthorizeResult.DENY };
@@ -93,7 +110,7 @@ export class IdpPermissionPolicy implements PermissionPolicy {
  * - Guests: read-only (catalog browse, template view, TechDocs)
  * - platform-team members: full access
  * - Other signed-in users: full access, except deleting catalog entities they
- *   do not own and unregistering catalog locations
+ *   do not own, unregistering catalog locations, and Claude Metrics (managers only)
  *
  * Registered in src/index.ts instead of
  * @backstage/plugin-permission-backend-module-allow-all-policy.
