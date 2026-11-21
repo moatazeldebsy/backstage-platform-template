@@ -226,6 +226,14 @@ spec:
                   # Not provisioned by terraform/secrets.tf — Voyage AI embeddings are an
                   # optional feature (semantic search), not required for Backstage to start.
                   optional: true
+            - name: ANTHROPIC_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-secrets
+                  key: ANTHROPIC_ADMIN_KEY
+                  # Claude Metrics (docs/claude-metrics.md). Optional: the dashboard runs on
+                  # mock data until app-config.aws.yaml sets dataSource: anthropic.
+                  optional: true
             - name: AUTH_SESSION_SECRET
               valueFrom:
                 secretKeyRef:

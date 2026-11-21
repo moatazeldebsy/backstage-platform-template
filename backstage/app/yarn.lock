@@ -7474,7 +7474,7 @@ __metadata:
 
 "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz#./vendor/backstage-plugin-claude-metrics-backend.tgz::hash=3a454b&locator=root%40workspace%3A."
+  resolution: "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz#./vendor/backstage-plugin-claude-metrics-backend.tgz::hash=7dc3c7&locator=root%40workspace%3A."
   dependencies:
     "@backstage/backend-defaults": "npm:^0.18.1"
     "@backstage/backend-plugin-api": "npm:^1.11.0"
@@ -7486,7 +7486,7 @@ __metadata:
     "@internal/claude-metrics-lib": "npm:^0.1.0"
     express: "npm:^4.22.1"
     express-promise-router: "npm:^4.1.0"
-  checksum: 10c0/5363b936480b018b33842403199555730af7967068985cfbcb03125535ae9fbab1cb2e5cf6d5910504d6e99e827c153c65531d539b4b6dde18028c6df38f7581
+  checksum: 10c0/3378eac3a9d9fbca57765d835699d8261abc8c0b1fca606a722bd97fa793af3ffe50becbcc4ddde354a79df092ebb219680e36f1eb60d70279c68f74aea514aa
   languageName: node
   linkType: hard
 

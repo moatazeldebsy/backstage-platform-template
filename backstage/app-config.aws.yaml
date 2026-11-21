@@ -529,3 +529,11 @@ permission:
   #
   # Still open: team-scoped template execution (any signed-in user can run any
   # template). Extend the same module for it.
+
+# Claude Metrics: real data instead of the mock org. First add ANTHROPIC_ADMIN_KEY to the idp-mvp/backstage secret in
+# Secrets Manager (or export it before bootstrap.sh),
+# then uncomment. With dataSource: anthropic and no key, the plugin fails at startup
+# (see the backend log) and /api/claude-metrics returns 503.
+# See docs/claude-metrics.md.
+# claudeMetrics:
+#   dataSource: anthropic

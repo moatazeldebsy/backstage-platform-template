@@ -366,8 +366,12 @@ complianceWatcher:
 
 
 # Claude Metrics (/claude-metrics): Claude Code adoption and Anthropic API usage & cost.
-# mock serves a seeded 1,200-person org with no key. For real data set
-# dataSource: anthropic and provide ANTHROPIC_ADMIN_KEY (a Console Admin API key).
+# mock serves a seeded 1,200-person org with no key. Real data: set
+# dataSource: anthropic in app-config.local.yaml / app-config.aws.yaml and provide
+# ANTHROPIC_ADMIN_KEY (a Console Admin API key). See docs/claude-metrics.md.
 # Access is managers only, see CLAUDE_METRICS_GROUPS in idpPermissionPolicy.ts.
 claudeMetrics:
   dataSource: mock
+  # Unset or empty is fine on mock. On anthropic without it, the plugin fails at
+  # startup (logged) and /api/claude-metrics returns 503; the rest keeps working.
+  adminKey: ${ANTHROPIC_ADMIN_KEY}

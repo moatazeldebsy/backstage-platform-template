@@ -53,6 +53,8 @@ services:
       CATALOG_EXPORTER_TOKEN: ${CATALOG_EXPORTER_TOKEN:-local-catalog-exporter-token}
       GITHUB_ORG: ${GITHUB_ORG:-moatazeldebsy}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      # Claude Metrics: Anthropic Admin API key (docs/claude-metrics.md)
+      ANTHROPIC_ADMIN_KEY: ${ANTHROPIC_ADMIN_KEY:-}
       # External SaaS proxy tokens — empty values render an empty state in the Security tab.
       SONAR_TOKEN: ${SONAR_TOKEN:-}
       SNYK_TOKEN: ${SNYK_TOKEN:-}
