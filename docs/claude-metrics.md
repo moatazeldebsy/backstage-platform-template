@@ -2,7 +2,10 @@
 
 **Claude Metrics** (`/claude-metrics`, in the sidebar's Menu) shows Claude Code adoption and Anthropic API usage and cost for your Claude Console organization: active users, sessions, lines of code, tool accept rates, commits and PRs, per-department adoption, per-model and org-wide cost, per-user activity and idle seats.
 
-It comes from the [Claude Metrics Viewer](https://github.com/moatazeldebsy/claude-metrics-viewer) Backstage plugins, installed from the prebuilt packages in `backstage/app/vendor/`. That repo's [integration guide](https://github.com/moatazeldebsy/claude-metrics-viewer/blob/main/docs/backstage-integration.md) covers the plugins in general; this page covers this platform.
+<!-- Upstream links use mixed case on purpose: scripts/placeholders.conf rewrites the lowercase
+     owner name when the template is personalised, and these must keep pointing at the plugin's repo.
+     GitHub owner names are case-insensitive. -->
+It comes from the [Claude Metrics Viewer](https://github.com/MoatazElDebsy/claude-metrics-viewer) Backstage plugins, installed from the prebuilt packages in `backstage/app/vendor/`. That repo's [integration guide](https://github.com/MoatazElDebsy/claude-metrics-viewer/blob/main/docs/backstage-integration.md) covers the plugins in general; this page covers this platform.
 
 ## Who can see it
 
