@@ -2,6 +2,7 @@ import { AuthorizeResult } from '@backstage/plugin-permission-common';
 import type { PolicyQuery, PolicyQueryUser } from '@backstage/plugin-permission-node';
 import {
   ADMIN_ONLY_PERMISSIONS,
+  CLAUDE_METRICS_GROUPS,
   GUEST_BLOCKED_PERMISSIONS,
   IdpPermissionPolicy,
   OWNER_SCOPED_PERMISSIONS,
@@ -195,5 +196,41 @@ describe('isPlatformAdmin', () => {
     expect(isPlatformAdmin(makeUser('user:default/bob', [PLATFORM_ADMIN_GROUP]))).toBe(true);
     expect(isPlatformAdmin(makeUser('user:default/alice', ['group:default/team-payments']))).toBe(false);
     expect(isPlatformAdmin(undefined)).toBe(false);
+  });
+});
+
+// ── Claude Metrics (managers only) ────────────────────────────────────────────
+
+describe('IdpPermissionPolicy — claude-metrics.dashboard.read', () => {
+  const READ = 'claude-metrics.dashboard.read';
+
+  it('allows members of a Claude Metrics group', async () => {
+    const user = makeUser('user:default/maria', [CLAUDE_METRICS_GROUPS[0]]);
+    expect((await policy.handle(makeQuery(READ), user)).result).toBe(AuthorizeResult.ALLOW);
+  });
+
+  it('allows platform admins', async () => {
+    const user = makeUser('user:default/alex', [PLATFORM_ADMIN_GROUP]);
+    expect((await policy.handle(makeQuery(READ), user)).result).toBe(AuthorizeResult.ALLOW);
+  });
+
+  it('denies other signed-in users', async () => {
+    const user = makeUser('user:default/sam', ['group:default/backend-team']);
+    expect((await policy.handle(makeQuery(READ), user)).result).toBe(AuthorizeResult.DENY);
+  });
+
+  it('denies guests', async () => {
+    expect((await policy.handle(makeQuery(READ), makeUser('user:development/guest'))).result).toBe(
+      AuthorizeResult.DENY,
+    );
+  });
+
+  it('defaults to the engineering-managers team synced from GitHub', () => {
+    expect(CLAUDE_METRICS_GROUPS).toEqual(['group:default/engineering-managers']);
+  });
+
+  it('leaves other read permissions alone for signed-in users', async () => {
+    const user = makeUser('user:default/sam', ['group:default/backend-team']);
+    expect((await policy.handle(makeQuery('catalog.entity.read'), user)).result).not.toBe(AuthorizeResult.DENY);
   });
 });

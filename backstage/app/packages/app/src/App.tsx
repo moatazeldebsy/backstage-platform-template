@@ -15,6 +15,7 @@ import announcementsPlugin from '@backstage-community/plugin-announcements/alpha
 import adrPlugin from '@backstage-community/plugin-adr/alpha';
 import techRadarPlugin from '@backstage-community/plugin-tech-radar/alpha';
 import catalogGraphPlugin from '@backstage/plugin-catalog-graph/alpha';
+import claudeMetricsPlugin from '@internal/backstage-plugin-claude-metrics';
 
 import { SignInPage } from '@backstage/core-components';
 import { githubAuthApiRef } from '@backstage/core-plugin-api';
@@ -73,6 +74,7 @@ export default createApp({
     announcementsPlugin,
     adrPlugin,
     techRadarPlugin,
+    claudeMetricsPlugin,
     navModule,
     themesModule,
     scaffolderFieldsModule,

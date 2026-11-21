@@ -364,3 +364,10 @@ complianceWatcher:
 #   AWS   → app-config.aws.yaml    (*.svc.cluster.local DNS)
 
 
+
+# Claude Metrics (/claude-metrics): Claude Code adoption and Anthropic API usage & cost.
+# mock serves a seeded 1,200-person org with no key. For real data set
+# dataSource: anthropic and provide ANTHROPIC_ADMIN_KEY (a Console Admin API key).
+# Access is managers only, see CLAUDE_METRICS_GROUPS in idpPermissionPolicy.ts.
+claudeMetrics:
+  dataSource: mock

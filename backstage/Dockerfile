@@ -18,6 +18,8 @@ COPY .yarnrc.yml package.json yarn.lock ./
 COPY .yarn ./.yarn
 # vm2-shim is resolved via portal:./vm2-shim in package.json resolutions
 COPY vm2-shim ./vm2-shim
+# Prebuilt plugin packages resolved via file:./vendor/*.tgz in package.json resolutions
+COPY vendor ./vendor
 # Workspace manifests only — full source is copied AFTER install so edits
 # inside packages/* don't invalidate the 8-minute install layer.
 COPY packages/app/package.json ./packages/app/
@@ -116,6 +118,8 @@ COPY --from=builder --chown=node:node /app/.yarn ./.yarn
 COPY --from=builder --chown=node:node /app/package.json /app/yarn.lock ./
 # vm2 is resolved via portal:./vm2-shim in package.json resolutions
 COPY --from=builder --chown=node:node /app/vm2-shim ./vm2-shim
+# Claude Metrics packages are resolved via file:./vendor/*.tgz in package.json resolutions
+COPY --from=builder --chown=node:node /app/vendor ./vendor
 
 # 3. Install production dependencies only. Cache mount lives under the node
 # user's home (not /root, which USER node can't write to) with uid/gid pinned
