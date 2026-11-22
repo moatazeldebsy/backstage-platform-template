@@ -55,6 +55,8 @@ services:
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
       # Claude Metrics: Anthropic Admin API key (docs/claude-metrics.md)
       ANTHROPIC_ADMIN_KEY: ${ANTHROPIC_ADMIN_KEY:-}
+      # Claude Metrics: OpenTelemetry ingest token Claude Code sends (dataSource: otel)
+      CLAUDE_METRICS_INGEST_TOKEN: ${CLAUDE_METRICS_INGEST_TOKEN:-}
       # External SaaS proxy tokens — empty values render an empty state in the Security tab.
       SONAR_TOKEN: ${SONAR_TOKEN:-}
       SNYK_TOKEN: ${SNYK_TOKEN:-}
