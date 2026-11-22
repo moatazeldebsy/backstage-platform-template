@@ -7502,7 +7502,7 @@ __metadata:
 
 "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz#./vendor/backstage-plugin-claude-metrics.tgz::hash=1808c5&locator=root%40workspace%3A."
+  resolution: "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz#./vendor/backstage-plugin-claude-metrics.tgz::hash=2a5be4&locator=root%40workspace%3A."
   dependencies:
     "@backstage/core-components": "npm:^0.18.15"
     "@backstage/errors": "npm:^1.3.2"
@@ -7520,17 +7520,17 @@ __metadata:
   peerDependencies:
     react: ^16.13.1 || ^17.0.0 || ^18.0.0
     react-router-dom: ^6.3.0
-  checksum: 10c0/10f4cfeb2c6ebc054d4f95a6a00d28e86debfa3ea90ee9547612fbc7e17cff730378f7d9bc6c84028b9d5d76789c2cae4b8d5f03c5cd2ece8550dc31ba433544
+  checksum: 10c0/14c95a15e35338835c6a6381eb9c766623c721728f429c8c3fc99050b07e6eb49d91c35bdd3aca0b5f8e3f6371da7d4979193af1a13327e1f2723d943e9932ed
   languageName: node
   linkType: hard
 
 "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz#./vendor/claude-metrics-lib.tgz::hash=f8448a&locator=root%40workspace%3A."
+  resolution: "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz#./vendor/claude-metrics-lib.tgz::hash=a365d6&locator=root%40workspace%3A."
   dependencies:
     "@anthropic-ai/sdk": "npm:1.5.0"
     date-holidays: "npm:3.38.0"
-  checksum: 10c0/ae9a5e1724bee44f8abf008706387f2812f54d4a62114b440b3e60ed4db23a93b9a3e277616495ac9b15cde2c896e992ed3b232377be5108cba33aba95a4d058
+  checksum: 10c0/b60d1d19a95b9888197d7d10b2608b3151b001bbb811e94ee2e2bf719363c423faabe9ee86443587ed689cd07ccf0725365410da7c75bd4226e62b127475666a
   languageName: node
   linkType: hard
 
