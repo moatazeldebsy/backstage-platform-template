@@ -7474,7 +7474,7 @@ __metadata:
 
 "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz#./vendor/backstage-plugin-claude-metrics-backend.tgz::hash=7dc3c7&locator=root%40workspace%3A."
+  resolution: "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz#./vendor/backstage-plugin-claude-metrics-backend.tgz::hash=9f3aac&locator=root%40workspace%3A."
   dependencies:
     "@backstage/backend-defaults": "npm:^0.18.1"
     "@backstage/backend-plugin-api": "npm:^1.11.0"
@@ -7486,22 +7486,23 @@ __metadata:
     "@internal/claude-metrics-lib": "npm:^0.1.0"
     express: "npm:^4.22.1"
     express-promise-router: "npm:^4.1.0"
-  checksum: 10c0/3378eac3a9d9fbca57765d835699d8261abc8c0b1fca606a722bd97fa793af3ffe50becbcc4ddde354a79df092ebb219680e36f1eb60d70279c68f74aea514aa
+    knex: "npm:^3.1.0"
+  checksum: 10c0/ff12d5cebf5a9b128ae0d8d573de09bb856ea4381f1b07b6e0353838b45b2d5cd5f60639c62ea7ec12b20ef62bd8626875335156258220a5e58898e034ba950a
   languageName: node
   linkType: hard
 
 "@internal/backstage-plugin-claude-metrics-common@file:./vendor/backstage-plugin-claude-metrics-common.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics-common@file:./vendor/backstage-plugin-claude-metrics-common.tgz#./vendor/backstage-plugin-claude-metrics-common.tgz::hash=6d078e&locator=root%40workspace%3A."
+  resolution: "@internal/backstage-plugin-claude-metrics-common@file:./vendor/backstage-plugin-claude-metrics-common.tgz#./vendor/backstage-plugin-claude-metrics-common.tgz::hash=583227&locator=root%40workspace%3A."
   dependencies:
     "@backstage/plugin-permission-common": "npm:^0.9.12"
-  checksum: 10c0/1d5a3ef0404777c530a8b541e2aef222fa5007a022917d152b94634e33b7e8978ace20b5eb229f1295ece014198109d85e91e807defc0fba59d463f34785924d
+  checksum: 10c0/69c6a4bee868926c3b96e39f023c4d7bcfef7c27ed7c748be2cba230a728f0ea948defb6d4ed28e1b9f225cf603592a0e8bc5146dbbb1e3a065d4011969b1267
   languageName: node
   linkType: hard
 
 "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz#./vendor/backstage-plugin-claude-metrics.tgz::hash=693a33&locator=root%40workspace%3A."
+  resolution: "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz#./vendor/backstage-plugin-claude-metrics.tgz::hash=2a5be4&locator=root%40workspace%3A."
   dependencies:
     "@backstage/core-components": "npm:^0.18.15"
     "@backstage/errors": "npm:^1.3.2"
@@ -7519,17 +7520,17 @@ __metadata:
   peerDependencies:
     react: ^16.13.1 || ^17.0.0 || ^18.0.0
     react-router-dom: ^6.3.0
-  checksum: 10c0/b01363ca19bb1ee215422b4c7302b04ca57c26f53a6eb8cd458b2826ce38aed361fc2019f0cff9844b6a5f58ab4dc2540f4ce93d4374d377d53d4c8e26a10cd5
+  checksum: 10c0/14c95a15e35338835c6a6381eb9c766623c721728f429c8c3fc99050b07e6eb49d91c35bdd3aca0b5f8e3f6371da7d4979193af1a13327e1f2723d943e9932ed
   languageName: node
   linkType: hard
 
 "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz::locator=root%40workspace%3A.":
   version: 0.1.0
-  resolution: "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz#./vendor/claude-metrics-lib.tgz::hash=0b6143&locator=root%40workspace%3A."
+  resolution: "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz#./vendor/claude-metrics-lib.tgz::hash=a365d6&locator=root%40workspace%3A."
   dependencies:
     "@anthropic-ai/sdk": "npm:1.5.0"
     date-holidays: "npm:3.38.0"
-  checksum: 10c0/62feede9eda048cfcfa3f7cfc9de5331864312768f1e4821f092e049e9e10ab91f6d6e2cc4f24aec9efb659540895e0c4d13015c0025e088f9d7af7c153266a8
+  checksum: 10c0/b60d1d19a95b9888197d7d10b2608b3151b001bbb811e94ee2e2bf719363c423faabe9ee86443587ed689cd07ccf0725365410da7c75bd4226e62b127475666a
   languageName: node
   linkType: hard
 
@@ -27030,6 +27031,51 @@ __metadata:
   languageName: node
   linkType: hard
 
+"knex@npm:^3.1.0":
+  version: 3.3.0
+  resolution: "knex@npm:3.3.0"
+  dependencies:
+    colorette: "npm:2.0.19"
+    commander: "npm:^10.0.0"
+    debug: "npm:4.3.4"
+    escalade: "npm:^3.1.1"
+    esm: "npm:^3.2.25"
+    get-package-type: "npm:^0.1.0"
+    getopts: "npm:2.3.0"
+    interpret: "npm:^2.2.0"
+    lodash: "npm:^4.18.1"
+    pg-connection-string: "npm:2.6.2"
+    rechoir: "npm:^0.8.0"
+    resolve-from: "npm:^5.0.0"
+    tarn: "npm:^3.1.0"
+    tildify: "npm:2.0.0"
+  peerDependencies:
+    pg-query-stream: ^4.14.0
+  peerDependenciesMeta:
+    better-sqlite3:
+      optional: true
+    mariadb:
+      optional: true
+    mysql:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
+      optional: true
+    pg-native:
+      optional: true
+    pg-query-stream:
+      optional: true
+    sqlite3:
+      optional: true
+    tedious:
+      optional: true
+  bin:
+    knex: bin/cli.js
+  checksum: 10c0/946fb4d0a55894075fbdd45d8bcd8d14a358f1a89f413e205ee7867b8b3c58eb897b49facd3062f2be2abedaeb6ae98b5a593e6247848830088ceb55af2b4e8a
+  languageName: node
+  linkType: hard
+
 "kubernetes-models@npm:^4.3.1":
   version: 4.5.1
   resolution: "kubernetes-models@npm:4.5.1"
@@ -35668,6 +35714,13 @@ __metadata:
   version: 3.0.2
   resolution: "tarn@npm:3.0.2"
   checksum: 10c0/ea2344e3d21936111176375bd6f34eba69a38ef1bc59434d523fd313166f8a28a47b0a847846c119f72dcf2c1e1231596d74ac3fcfc3cc73966b3d293a327269
+  languageName: node
+  linkType: hard
+
+"tarn@npm:^3.1.0":
+  version: 3.1.2
+  resolution: "tarn@npm:3.1.2"
+  checksum: 10c0/fae37a0f2a9ee4b0ba5c309b213a1111e65bbc72cab5056be26beebcfa2980613aa0dd66f054fa0433e0cc6951875137e37c0ac52edb56812fbf05957130a795
   languageName: node
   linkType: hard
 
