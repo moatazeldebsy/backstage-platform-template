@@ -505,7 +505,8 @@ techdocs:
 # individuals on Pro/Max). Set CLAUDE_METRICS_INGEST_TOKEN in local/backstage/.env and point
 # Claude Code at http://backstage.idp.local/api/claude-metrics/otlp. Without the token the
 # plugin still starts and ingest answers 503. Setup, privacy and troubleshooting:
-# https://github.com/moatazeldebsy/claude-metrics-viewer/blob/main/docs/opentelemetry.md
+# https://github.com/MoatazElDebsy/claude-metrics-viewer/blob/main/docs/opentelemetry.md
+# (mixed case on purpose: placeholders.conf rewrites the lowercase owner name when personalising)
 claudeMetrics:
   dataSource: otel
   otel:
