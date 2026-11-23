@@ -154,6 +154,6 @@ backend.add(import('@backstage-community/plugin-tech-radar-backend'));
 
 // Claude Metrics — Claude Code adoption and Anthropic API cost (/claude-metrics).
 // Managers only: claude-metrics.dashboard.read is granted in idpPermissionPolicy.ts.
-backend.add(import('@internal/backstage-plugin-claude-metrics-backend'));
+backend.add(import('@moatazeldebsy/backstage-plugin-claude-metrics-backend'));
 
 backend.start();

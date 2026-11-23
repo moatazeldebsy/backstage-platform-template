@@ -7472,68 +7472,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz::locator=root%40workspace%3A.":
-  version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics-backend@file:./vendor/backstage-plugin-claude-metrics-backend.tgz#./vendor/backstage-plugin-claude-metrics-backend.tgz::hash=9f3aac&locator=root%40workspace%3A."
-  dependencies:
-    "@backstage/backend-defaults": "npm:^0.18.1"
-    "@backstage/backend-plugin-api": "npm:^1.11.0"
-    "@backstage/config": "npm:^1.3.10"
-    "@backstage/errors": "npm:^1.3.2"
-    "@backstage/plugin-permission-common": "npm:^0.9.12"
-    "@backstage/types": "npm:^1.2.2"
-    "@internal/backstage-plugin-claude-metrics-common": "npm:^0.1.0"
-    "@internal/claude-metrics-lib": "npm:^0.1.0"
-    express: "npm:^4.22.1"
-    express-promise-router: "npm:^4.1.0"
-    knex: "npm:^3.1.0"
-  checksum: 10c0/ff12d5cebf5a9b128ae0d8d573de09bb856ea4381f1b07b6e0353838b45b2d5cd5f60639c62ea7ec12b20ef62bd8626875335156258220a5e58898e034ba950a
-  languageName: node
-  linkType: hard
-
-"@internal/backstage-plugin-claude-metrics-common@file:./vendor/backstage-plugin-claude-metrics-common.tgz::locator=root%40workspace%3A.":
-  version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics-common@file:./vendor/backstage-plugin-claude-metrics-common.tgz#./vendor/backstage-plugin-claude-metrics-common.tgz::hash=583227&locator=root%40workspace%3A."
-  dependencies:
-    "@backstage/plugin-permission-common": "npm:^0.9.12"
-  checksum: 10c0/69c6a4bee868926c3b96e39f023c4d7bcfef7c27ed7c748be2cba230a728f0ea948defb6d4ed28e1b9f225cf603592a0e8bc5146dbbb1e3a065d4011969b1267
-  languageName: node
-  linkType: hard
-
-"@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz::locator=root%40workspace%3A.":
-  version: 0.1.0
-  resolution: "@internal/backstage-plugin-claude-metrics@file:./vendor/backstage-plugin-claude-metrics.tgz#./vendor/backstage-plugin-claude-metrics.tgz::hash=2a5be4&locator=root%40workspace%3A."
-  dependencies:
-    "@backstage/core-components": "npm:^0.18.15"
-    "@backstage/errors": "npm:^1.3.2"
-    "@backstage/frontend-plugin-api": "npm:^0.18.2"
-    "@backstage/plugin-permission-common": "npm:^0.9.12"
-    "@backstage/plugin-permission-react": "npm:^0.5.6"
-    "@backstage/theme": "npm:^0.7.3"
-    "@backstage/ui": "npm:^0.19.0"
-    "@internal/backstage-plugin-claude-metrics-common": "npm:^0.1.0"
-    "@internal/claude-metrics-lib": "npm:^0.1.0"
-    "@internationalized/date": "npm:^3.12.0"
-    chart.js: "npm:^4.6.1"
-    react-chartjs-2: "npm:^5.3.0"
-    react-use: "npm:^17.2.4"
-  peerDependencies:
-    react: ^16.13.1 || ^17.0.0 || ^18.0.0
-    react-router-dom: ^6.3.0
-  checksum: 10c0/14c95a15e35338835c6a6381eb9c766623c721728f429c8c3fc99050b07e6eb49d91c35bdd3aca0b5f8e3f6371da7d4979193af1a13327e1f2723d943e9932ed
-  languageName: node
-  linkType: hard
-
-"@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz::locator=root%40workspace%3A.":
-  version: 0.1.0
-  resolution: "@internal/claude-metrics-lib@file:./vendor/claude-metrics-lib.tgz#./vendor/claude-metrics-lib.tgz::hash=a365d6&locator=root%40workspace%3A."
-  dependencies:
-    "@anthropic-ai/sdk": "npm:1.5.0"
-    date-holidays: "npm:3.38.0"
-  checksum: 10c0/b60d1d19a95b9888197d7d10b2608b3151b001bbb811e94ee2e2bf719363c423faabe9ee86443587ed689cd07ccf0725365410da7c75bd4226e62b127475666a
-  languageName: node
-  linkType: hard
-
 "@internal/engineering-intelligence-core@npm:^0.1.0, @internal/engineering-intelligence-core@workspace:packages/engineering-intelligence-core":
   version: 0.0.0-use.local
   resolution: "@internal/engineering-intelligence-core@workspace:packages/engineering-intelligence-core"
@@ -8820,6 +8758,68 @@ __metadata:
   version: 2.0.1
   resolution: "@microsoft/fetch-event-source@npm:2.0.1"
   checksum: 10c0/38c69e9b9990e6cee715c7bbfa2752f943b42575acadb36facf19bb831f1520c469f854277439154258e0e1dc8650cc85038230d1f451e3f6b62e8faeaa1126c
+  languageName: node
+  linkType: hard
+
+"@moatazeldebsy/backstage-plugin-claude-metrics-backend@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@moatazeldebsy/backstage-plugin-claude-metrics-backend@npm:0.1.0"
+  dependencies:
+    "@backstage/backend-defaults": "npm:^0.18.1"
+    "@backstage/backend-plugin-api": "npm:^1.11.0"
+    "@backstage/config": "npm:^1.3.10"
+    "@backstage/errors": "npm:^1.3.2"
+    "@backstage/plugin-permission-common": "npm:^0.9.12"
+    "@backstage/types": "npm:^1.2.2"
+    "@moatazeldebsy/backstage-plugin-claude-metrics-common": "npm:^0.1.0"
+    "@moatazeldebsy/claude-metrics-lib": "npm:^0.1.0"
+    express: "npm:^4.22.1"
+    express-promise-router: "npm:^4.1.0"
+    knex: "npm:^3.1.0"
+  checksum: 10c0/88f03977ea04be0474df8bbb9aabf8e1d672d6e395997e3348c415512297c5d01d0893e577f32c588bbf076d6f9159504c4a50673fd778caf895e30d9b4c9c2e
+  languageName: node
+  linkType: hard
+
+"@moatazeldebsy/backstage-plugin-claude-metrics-common@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@moatazeldebsy/backstage-plugin-claude-metrics-common@npm:0.1.0"
+  dependencies:
+    "@backstage/plugin-permission-common": "npm:^0.9.12"
+  checksum: 10c0/09e20aca26092a5746bfca63798f9c0456e8a688ac558887a7fe7d0bdba2fb694cf437ed7729f9b4e9fcbb86838057f55e0b057e29da398ff89ef9790e90b35b
+  languageName: node
+  linkType: hard
+
+"@moatazeldebsy/backstage-plugin-claude-metrics@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@moatazeldebsy/backstage-plugin-claude-metrics@npm:0.1.0"
+  dependencies:
+    "@backstage/core-components": "npm:^0.18.15"
+    "@backstage/errors": "npm:^1.3.2"
+    "@backstage/frontend-plugin-api": "npm:^0.18.2"
+    "@backstage/plugin-permission-common": "npm:^0.9.12"
+    "@backstage/plugin-permission-react": "npm:^0.5.6"
+    "@backstage/theme": "npm:^0.7.3"
+    "@backstage/ui": "npm:^0.19.0"
+    "@internationalized/date": "npm:^3.12.0"
+    "@moatazeldebsy/backstage-plugin-claude-metrics-common": "npm:^0.1.0"
+    "@moatazeldebsy/claude-metrics-lib": "npm:^0.1.0"
+    chart.js: "npm:^4.6.1"
+    react-chartjs-2: "npm:^5.3.0"
+    react-use: "npm:^17.2.4"
+  peerDependencies:
+    react: ^16.13.1 || ^17.0.0 || ^18.0.0
+    react-router-dom: ^6.3.0
+  checksum: 10c0/ca3d58d2dee0a5b6023484e72dba573481b1d323baf4477b7b72fc2f3d8370b77eb95ef4437d7b1d98c70c5563b4b06312b354835792b7c320b595c4d756432c
+  languageName: node
+  linkType: hard
+
+"@moatazeldebsy/claude-metrics-lib@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@moatazeldebsy/claude-metrics-lib@npm:0.1.0"
+  dependencies:
+    "@anthropic-ai/sdk": "npm:1.5.0"
+    date-holidays: "npm:3.39.2"
+  checksum: 10c0/7675645db411f0b40f54ba3aea8e7def551692038da9c50df32d2b3ff6d06b8ddaae6b367032a45ebf220342b501ec141e614bf2b3267c533bf8b6f5f413c7b1
   languageName: node
   linkType: hard
 
@@ -17801,11 +17801,11 @@ __metadata:
     "@backstage/plugin-user-settings": "npm:^0.9.8"
     "@backstage/theme": "npm:^0.7.3"
     "@backstage/ui": "npm:^0.19.0"
-    "@internal/backstage-plugin-claude-metrics": "npm:^0.1.0"
     "@internal/engineering-intelligence-core": "npm:^0.1.0"
     "@internal/scorecard-core": "npm:^0.1.0"
     "@material-ui/core": "npm:^4.12.2"
     "@material-ui/icons": "npm:^4.9.1"
+    "@moatazeldebsy/backstage-plugin-claude-metrics": "npm:^0.1.0"
     "@playwright/test": "npm:^1.32.3"
     "@testing-library/dom": "npm:^9.0.0"
     "@testing-library/jest-dom": "npm:^6.0.0"
@@ -18447,10 +18447,10 @@ __metadata:
     "@backstage/plugin-search-backend-node": "npm:^1.4.9"
     "@backstage/plugin-signals-backend": "npm:^0.3.20"
     "@backstage/plugin-techdocs-backend": "npm:^2.4.0"
-    "@internal/backstage-plugin-claude-metrics-backend": "npm:^0.1.0"
-    "@internal/backstage-plugin-claude-metrics-common": "npm:^0.1.0"
     "@internal/engineering-intelligence-core": "npm:^0.1.0"
     "@internal/scorecard-core": "npm:^0.1.0"
+    "@moatazeldebsy/backstage-plugin-claude-metrics-backend": "npm:^0.1.0"
+    "@moatazeldebsy/backstage-plugin-claude-metrics-common": "npm:^0.1.0"
     "@opentelemetry/api": "npm:^1.9.0"
     "@opentelemetry/exporter-prometheus": "npm:^0.222.0"
     "@opentelemetry/instrumentation": "npm:^0.222.0"
@@ -20812,7 +20812,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"date-holidays-parser@npm:^3.4.7":
+"date-holidays-parser@npm:^3.7.0":
   version: 3.7.0
   resolution: "date-holidays-parser@npm:3.7.0"
   dependencies:
@@ -20829,17 +20829,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"date-holidays@npm:3.38.0":
-  version: 3.38.0
-  resolution: "date-holidays@npm:3.38.0"
+"date-holidays@npm:3.39.2":
+  version: 3.39.2
+  resolution: "date-holidays@npm:3.39.2"
   dependencies:
-    date-holidays-parser: "npm:^3.4.7"
+    date-holidays-parser: "npm:^3.7.0"
     js-yaml: "npm:^5.5.0"
     lodash: "npm:^4.18.1"
     prepin: "npm:^1.0.3"
   bin:
     holidays2json: scripts/holidays2json.cjs
-  checksum: 10c0/9eb37f6ee355c04acb1b385c3a2a55bcf87ea531c3f3a63db44f002a60b1e88eb6f38541fc32d4765bf4584dbcbb4eb1090e7f6f161321323107b5d61c09f62a
+  checksum: 10c0/3847eec225f740419d9fc9ba6223441cbc7f72965e8290ca1c413d0af3b2b4758399c07bd9e4ab03bbb43614ce905d12d359a7bb10631d1efc77955d27fd6dc0
   languageName: node
   linkType: hard
 

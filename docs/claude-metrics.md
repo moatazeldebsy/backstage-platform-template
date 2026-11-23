@@ -5,7 +5,7 @@
 <!-- Upstream links use mixed case on purpose: scripts/placeholders.conf rewrites the lowercase
      owner name when the template is personalised, and these must keep pointing at the plugin's repo.
      GitHub owner names are case-insensitive. -->
-It comes from the [Claude Metrics Viewer](https://github.com/MoatazElDebsy/claude-metrics-viewer) Backstage plugins, installed from the prebuilt packages in `backstage/app/vendor/`. That repo's [integration guide](https://github.com/MoatazElDebsy/claude-metrics-viewer/blob/main/docs/backstage-integration.md) covers the plugins in general; this page covers this platform.
+It comes from the [Claude Metrics Viewer](https://github.com/MoatazElDebsy/claude-metrics-viewer) Backstage plugins, installed from npm: [`@moatazeldebsy/backstage-plugin-claude-metrics`](https://www.npmjs.com/package/@moatazeldebsy/backstage-plugin-claude-metrics) in `packages/app` and [`@moatazeldebsy/backstage-plugin-claude-metrics-backend`](https://www.npmjs.com/package/@moatazeldebsy/backstage-plugin-claude-metrics-backend) in `packages/backend`. To update, bump both versions and run `yarn install` in `backstage/app`. That repo's [integration guide](https://github.com/MoatazElDebsy/claude-metrics-viewer/blob/main/docs/backstage-integration.md) covers the plugins in general; this page covers this platform.
 
 ## Who can see it
 

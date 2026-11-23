@@ -11,7 +11,7 @@ import {
   isPermission,
   isResourcePermission,
 } from '@backstage/plugin-permission-common';
-import { claudeMetricsReadPermission } from '@internal/backstage-plugin-claude-metrics-common';
+import { claudeMetricsReadPermission } from '@moatazeldebsy/backstage-plugin-claude-metrics-common';
 import {
   catalogConditions,
   createCatalogConditionalDecision,
