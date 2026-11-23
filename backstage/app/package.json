@@ -143,11 +143,7 @@
     "postcss-selector-parser@npm:^6.0.5": "^7.1.6",
     "postcss-selector-parser@npm:^6.0.9": "^7.1.6",
     "@graphql-tools/schema@npm:^8.5.0": "^10.1.3",
-    "@graphql-tools/utils@npm:^8.8.0": "^12.0.3",
-    "@internal/claude-metrics-lib": "file:./vendor/claude-metrics-lib.tgz",
-    "@internal/backstage-plugin-claude-metrics-common": "file:./vendor/backstage-plugin-claude-metrics-common.tgz",
-    "@internal/backstage-plugin-claude-metrics": "file:./vendor/backstage-plugin-claude-metrics.tgz",
-    "@internal/backstage-plugin-claude-metrics-backend": "file:./vendor/backstage-plugin-claude-metrics-backend.tgz"
+    "@graphql-tools/utils@npm:^8.8.0": "^12.0.3"
   },
   "jest": {
     "coverageProvider": "v8",
