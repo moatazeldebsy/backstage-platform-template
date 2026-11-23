@@ -1,0 +1,38 @@
+# Resilience policy for the AI gateway (kubernetes/ml-platform/ai-gateway.yaml).
+# Checked, generated and tested by raac (https://github.com/moatazeldebsy/raac);
+# see ../README.md for how to run it.
+apiVersion: raac.dev/v1alpha1
+kind: ResiliencePolicy
+metadata:
+  service: ai-gateway
+  namespace: ml-platform
+  owner: platform-team
+spec:
+  workload:
+    minReplicas: 2
+    podDisruptionBudget: { minAvailable: 1 }
+  dependencies:
+    - { name: litellm, required: true, timeout: 120s }
+  slo:
+    availability: 99
+    latency: { p95: 5s }           # 5 is a bucket of agentgateway's duration histogram
+    sli:
+      preset: http-histogram
+      metric: agentgateway_request_duration_seconds
+      codeLabel: status
+      selector: { service: ai-gateway, protocol: llm }   # model traffic only, not MCP
+  chaos:
+    # LiteLLM gets 2s slower: the gateway should still answer within 5s.
+    - { name: slow-litellm, type: latency, target: litellm, latency: 2s, duration: 60s }
+    # One LiteLLM pod dies. With a single replica this is expected to FAIL
+    # until LiteLLM runs 2+ replicas behind a PDB.
+    - { name: kill-litellm-pod, type: pod-kill, target: litellm, duration: 60s }
+  test:
+    traffic:
+      # Anthropic Messages shape, as agents send it. "raac-test" is the mock
+      # model in kubernetes/ml-platform/litellm.yaml: no Anthropic calls, no cost.
+      path: /v1/messages
+      method: POST
+      rps: 20
+      headers: { Content-Type: application/json }
+      body: '{"model":"raac-test","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}'

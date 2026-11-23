@@ -57,6 +57,18 @@ data:
         litellm_params:
           model: bedrock/anthropic.claude-sonnet-4-6-v1:0
           aws_region_name: os.environ/AWS_REGION
+      # Free test model for `raac test` (resilience/ml-platform/README.md).
+      # mock_response makes LiteLLM answer by itself: no provider call, no
+      # cost, no API key, so chaos tests can send steady traffic through
+      # ai-gateway -> LiteLLM without spending Anthropic credit. agentgateway's
+      # "*" catch-all already routes "raac-test" here. Verified against
+      # v1.100.1: POST /v1/messages {"model":"raac-test",...} returns an
+      # Anthropic-shaped message ("pong") in well under a second.
+      - model_name: raac-test
+        litellm_params:
+          model: openai/raac-test
+          api_key: not-used
+          mock_response: "pong"
     general_settings:
       # Inbound auth for callers of this proxy (agentgateway, and anyone using
       # the /ui spend dashboard). Distinct from the provider credentials above,
