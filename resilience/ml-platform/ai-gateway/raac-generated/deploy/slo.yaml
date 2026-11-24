@@ -18,8 +18,8 @@ spec:
       description: 99% of ai-gateway requests succeed
       sli:
         events:
-          errorQuery: sum(rate(agentgateway_request_duration_seconds_count{protocol="llm",service="ai-gateway",status=~"5.."}[{{.window}}]))
-          totalQuery: sum(rate(agentgateway_request_duration_seconds_count{protocol="llm",service="ai-gateway"}[{{.window}}]))
+          errorQuery: sum(rate(agentgateway_request_duration_seconds_count{namespace="ml-platform",protocol="llm",status=~"5.."}[{{.window}}]))
+          totalQuery: sum(rate(agentgateway_request_duration_seconds_count{namespace="ml-platform",protocol="llm"}[{{.window}}]))
       alerting:
         name: AiGatewayErrorBudgetBurn
         pageAlert:
@@ -33,8 +33,8 @@ spec:
       description: 95% of ai-gateway requests complete within 5s; 5s must be an exported histogram bucket
       sli:
         events:
-          errorQuery: (sum(rate(agentgateway_request_duration_seconds_count{protocol="llm",service="ai-gateway"}[{{.window}}])) - sum(rate(agentgateway_request_duration_seconds_bucket{protocol="llm",service="ai-gateway",le=~"5(\\.0)?"}[{{.window}}])))
-          totalQuery: sum(rate(agentgateway_request_duration_seconds_count{protocol="llm",service="ai-gateway"}[{{.window}}]))
+          errorQuery: (sum(rate(agentgateway_request_duration_seconds_count{namespace="ml-platform",protocol="llm"}[{{.window}}])) - sum(rate(agentgateway_request_duration_seconds_bucket{namespace="ml-platform",protocol="llm",le=~"5(\\.0)?"}[{{.window}}])))
+          totalQuery: sum(rate(agentgateway_request_duration_seconds_count{namespace="ml-platform",protocol="llm"}[{{.window}}]))
       alerting:
         name: AiGatewayLatencyP95ErrorBudgetBurn
         pageAlert:
