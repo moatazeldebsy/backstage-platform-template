@@ -1,0 +1,19 @@
+# Resilience policy for LiteLLM (kubernetes/ml-platform/litellm.yaml).
+# No SLO or test traffic here: this LiteLLM version serves /metrics only with
+# a key, so its health is measured from ai-gateway's side instead (see
+# ../ai-gateway/raac.yaml).
+apiVersion: raac.dev/v1alpha1
+kind: ResiliencePolicy
+metadata:
+  service: litellm
+  namespace: ml-platform
+  owner: platform-team
+spec:
+  workload:
+    minReplicas: 2
+    podDisruptionBudget: { minAvailable: 1 }
+  dependencies:
+    - name: anthropic-api
+      external: true
+      required: true
+      timeout: 120s
