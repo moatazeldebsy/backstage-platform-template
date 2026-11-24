@@ -1,6 +1,6 @@
 # ml-platform resilience (raac)
 
-`raac.yaml` files declaring what ai-gateway and LiteLLM must tolerate, checked, generated and tested by [raac](https://github.com/moatazeldebsy/raac) v0.2.0+. The manifests they are checked against live in `kubernetes/ml-platform/`.
+`raac.yaml` files declaring what ai-gateway and LiteLLM must tolerate, checked, generated and tested by [raac](https://github.com/moatazeldebsy/raac) v0.2.1+ (v0.2.0 generates latency chaos that never takes effect). The manifests they are checked against live in `kubernetes/ml-platform/`.
 
 This folder is deliberately outside `kubernetes/`: `raac-generated/chaos/` holds Chaos Mesh experiments, and those must never be picked up by ArgoCD or a `kubectl apply -R`.
 
