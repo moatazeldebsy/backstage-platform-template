@@ -15,7 +15,7 @@ spec:
       - ml-platform
     labelSelectors:
       app: ai-gateway
-  direction: to
+  direction: from
   target:
     mode: all
     selector:
