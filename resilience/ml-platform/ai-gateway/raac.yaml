@@ -20,7 +20,11 @@ spec:
       preset: http-histogram
       metric: agentgateway_request_duration_seconds
       codeLabel: status
-      selector: { service: ai-gateway, protocol: llm }   # model traffic only, not MCP
+      # namespace + protocol, not service: the service label only exists where a
+      # ServiceMonitor scrapes (the platform's Prometheus Operator); raac test
+      # --kind's Prometheus scrapes pod annotations. Only ai-gateway emits
+      # agentgateway_* metrics in ml-platform, so this matches it in both.
+      selector: { namespace: ml-platform, protocol: llm }   # model traffic only, not MCP
   chaos:
     # LiteLLM gets 2s slower: the gateway should still answer within 5s.
     - { name: slow-litellm, type: latency, target: litellm, latency: 2s, duration: 60s }
