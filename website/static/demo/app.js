@@ -403,6 +403,8 @@
 
   function parts() { return location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(function (p) { try { return decodeURIComponent(p); } catch (e) { return p; } }); }
   function current() { return parts()[0] || ''; }
+  // Own-property lookup, so URL segments like "__proto__" or "constructor" never resolve to built-ins.
+  function own(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : undefined; }
   function navItem(it, cur) {
     return html`<a class="nav-item" href="#/${it.path}" ${it.path === cur ? raw('aria-current="page"') : ''}>${icon(it.icon)}<span>${it.title}</span></a>`;
   }
@@ -537,10 +539,11 @@
     var c = comp(name);
     if (!c) return notFound('Entity was not found');
     var tabsList = entityTabs(c), t = tabsList.filter(function (x) { return x[0] === tab; })[0];
-    if (!t) return notFound('This entity has no "' + tab + '" tab.');
+    var renderTab = own(TAB, tab || 'overview');
+    if (!t || typeof renderTab !== 'function') return notFound('This entity has no "' + tab + '" tab.');
     var tm = team(c.owner), base = entityHref('component', c.name);
     return html`${entityHeader('service', 'Component — ' + c.type, c.name, html`${metaItem('Owner', html`${icon('group', 16)}${tm ? tm.display : c.owner}`)}${metaItem('Lifecycle', c.lifecycle)}`, 'Component:' + c.name)}
-      ${entityTabsNav(base, tabsList, tab)}<div class="content">${TAB[tab || 'overview'](c)}</div>`;
+      ${entityTabsNav(base, tabsList, tab)}<div class="content">${renderTab(c)}</div>`;
   }
   function aboutCard(e, fields, links) {
     return html`<section class="card"><div class="card-head"><h2>About</h2><div class="btn-row"><span class="icon-btn sm" aria-hidden="true">${icon('refresh', 20)}</span><span class="icon-btn sm" aria-hidden="true">${icon('edit', 20)}</span></div></div>
@@ -1581,7 +1584,8 @@
     if (r === 'create' && p[1] === 'tasks') return p[2] ? pageTask(p[2]) : pageTasks();
     if (r === 'create' && p[1] === 'actions') return pageActions();
     if (r === 'docs' && p[1]) return docsReader(p[3], p[2], p[4], false);
-    if (PAGES[r] && !p[1]) return PAGES[r]();
+    var page = own(PAGES, r);
+    if (typeof page === 'function' && !p[1]) return page();
     return notFound();
   }
   var TITLES = {};
@@ -1615,6 +1619,7 @@
   /* ---------- state binding ---------- */
   function setPath(path, value) {
     var keys = path.split('.'), o = S;
+    if (keys.some(function (k) { return k === '__proto__' || k === 'constructor' || k === 'prototype'; })) return;
     for (var i = 0; i < keys.length - 1; i++) { if (o[keys[i]] == null) o[keys[i]] = {}; o = o[keys[i]]; }
     var last = keys[keys.length - 1];
     o[last] = typeof o[last] === 'number' ? Number(value) : typeof o[last] === 'boolean' ? value === 'true' : value;
