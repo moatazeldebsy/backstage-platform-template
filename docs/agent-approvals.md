@@ -104,6 +104,24 @@ Base URL: `http://approval-service.idp.local` (local) · `http://approval-servic
 | `POST` | `/approvals/:id/decide` | `{decision: approved\|denied, decided_by}` | the updated approval; 409 if already decided; 403 if `decided_by` is the requester approving their own request |
 | `GET` | `/healthz` · `/ready` · `/metrics` | — | health, readiness, Prometheus metrics |
 
+### Decider token
+
+`POST /approvals/:id/decide`, `/consent/grant` and `/consent/revoke` require `Authorization: Bearer <DECIDER_TOKEN>`. Without it they return **401**. The other endpoints stay open to the MCP servers. The token's job is to make sure only Backstage can record a human decision: `idpApprovalDecision.ts` sends it along with the verified `decided_by`. Before this, anything that could reach approval-service could approve under any name. Locally that was anything on your machine, through `approval-service.idp.local`.
+
+| Where | What holds the token |
+|---|---|
+| approval-service | `DECIDER_TOKEN` from Secret `approval-service-auth` (namespace `services-dev`) |
+| Backstage, local | `APPROVAL_SERVICE_DECIDER_TOKEN` in `local/backstage/.env`, passed through `docker-compose.yml` |
+| Backstage, AWS | `APPROVAL_SERVICE_DECIDER_TOKEN` from Secret `backstage-approval-service` (namespace `backstage`), via an optional `envFrom` |
+
+`bootstrap-ai.sh --adp` creates all three. It reuses an existing token, and restarts approval-service and Backstage when the value changes. It **fails closed**: if `DECIDER_TOKEN` is unset, those three endpoints return **503** rather than accepting unauthenticated calls. If Backstage has no token, it logs a warning at startup and approve/deny fails with 401.
+
+To call them by hand as an admin (granting consent, the end-to-end test below):
+
+```bash
+DECIDER_TOKEN=$(kubectl get secret approval-service-auth -n services-dev -o jsonpath='{.data.DECIDER_TOKEN}' | base64 -d)
+```
+
 `decide` is guarded by `WHERE status = 'pending'`, so a second decision on the same approval returns **409** rather than overwriting the first — decisions are immutable once made.
 
 ### Audit log
@@ -149,6 +167,7 @@ ID=$(curl -s http://approval-service.idp.local/approvals \
 
 # 3. approve it (or use the Backstage UI)
 curl -s http://approval-service.idp.local/approvals/$ID/decide \
+  -H "authorization: Bearer $DECIDER_TOKEN" \
   -H 'content-type: application/json' \
   -d '{"decision":"approved","decided_by":"your.name"}'
 ```
@@ -189,7 +208,7 @@ consent_grants (id, user_ref, agent, scope, granted_at, expires_at, revoked_at)
 | `GET` | `/consent/check` | `?user_ref=&agent=&scope=` | `{granted, expires_at?}` — `false` if missing, revoked, or expired |
 | `GET` | `/consent` | `?user_ref=` | `{total, grants[]}` — a user's own grants |
 
-`idp-mcp-server`'s `scaffold_service`, and `argocd-mcp-server`/`github-mcp-server`'s `sync_app` / `rollback_app` / `approve_pr`, call `GET /consent/check` immediately before their existing `requireApproval()`/policy check on a real (non-dry-run) call. Same fail-open shape as Phase 4: the check is skipped — not denied — when `APPROVAL_SERVICE_URL` is unset, or when there's no verified `userRef` (a call that didn't come through `idpAiIdentityProxy.ts`). A denial returns a structured message naming the agent, user, and scope rather than a bare error, since there is no self-service "grant consent" UI yet (self-service grant/revoke via `/approvals` is the natural next slice — today an admin calls `POST /consent/grant` directly).
+`idp-mcp-server`'s `scaffold_service`, and `argocd-mcp-server`/`github-mcp-server`'s `sync_app` / `rollback_app` / `approve_pr`, call `GET /consent/check` immediately before their existing `requireApproval()`/policy check on a real (non-dry-run) call. Same fail-open shape as Phase 4: the check is skipped — not denied — when `APPROVAL_SERVICE_URL` is unset, or when there's no verified `userRef` (a call that didn't come through `idpAiIdentityProxy.ts`). A denial returns a structured message naming the agent, user, and scope rather than a bare error, since there is no self-service "grant consent" UI yet (self-service grant/revoke via `/approvals` is the natural next slice — today an admin calls `POST /consent/grant` directly, with the [decider token](#decider-token)).
 
 Consent and approval are independent gates that both apply to the same call: consent answers "did the user agree this agent may act for them", approval answers "did a human reviewer sign off on this specific action". A `[AUDIT] consent_granted` / `consent_revoked` / `consent_check_denied` line is emitted for each; `approval_requested` now also carries `user_ref` when the caller is on the identity-verified path.
 
@@ -205,3 +224,5 @@ Consent and approval are independent gates that both apply to the same call: con
 | Pod crash-loops on start | Postgres unreachable — locally the compose Postgres must be up and reachable at `host.docker.internal:5432`; on AWS `approval-service-db` is copied from `backstage-secrets`, which requires `bootstrap.sh` to have run |
 | Policy edits have no effect | Policy is cached — `kubectl rollout restart deployment/approval-service -n services-dev` |
 | `409` on every decide | The approval was already decided; decisions are one-shot by design |
+| Approve/deny fails with `401` | Backstage has no `APPROVAL_SERVICE_DECIDER_TOKEN`, or it doesn't match `approval-service-auth`. Re-run `bootstrap-ai.sh --adp`; locally it recreates the Backstage container |
+| Approve/deny fails with `503` | approval-service started without `DECIDER_TOKEN`. The Secret was created after the pod started: `kubectl rollout restart deployment/approval-service -n services-dev` |

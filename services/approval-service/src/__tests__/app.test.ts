@@ -12,7 +12,7 @@ jest.mock('../store.js', () => ({
   listConsentGrants: jest.fn(),
 }));
 
-import { createApp } from '../app.js';
+import { createApp as createAppWith } from '../app.js';
 import {
   createApproval, getApproval, listApprovals, decideApproval,
   grantConsent, revokeConsent, checkConsent, listConsentGrants,
@@ -26,6 +26,10 @@ const mockGrantConsent = grantConsent as jest.Mock;
 const mockRevokeConsent = revokeConsent as jest.Mock;
 const mockCheckConsent = checkConsent as jest.Mock;
 const mockListConsentGrants = listConsentGrants as jest.Mock;
+
+const TOKEN = 'test-decider-token';
+const AUTH = { Authorization: `Bearer ${TOKEN}` };
+const createApp = () => createAppWith({ deciderToken: TOKEN });
 
 beforeEach(() => jest.resetAllMocks());
 
@@ -103,7 +107,7 @@ describe('POST /approvals/:id/decide', () => {
   it('approves a pending approval', async () => {
     mockDecideApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'approved', decided_by: 'jane' });
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved', decided_by: 'jane' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'approved', decided_by: 'jane' });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('approved');
   });
@@ -111,26 +115,26 @@ describe('POST /approvals/:id/decide', () => {
   it('409s when the approval was already decided or does not exist', async () => {
     mockDecideApproval.mockResolvedValueOnce(null);
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'denied', decided_by: 'jane' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'denied', decided_by: 'jane' });
     expect(res.status).toBe(409);
   });
 
   it('400s on an invalid decision value', async () => {
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'maybe', decided_by: 'jane' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'maybe', decided_by: 'jane' });
     expect(res.status).toBe(400);
   });
 
   it('400s when decided_by is missing', async () => {
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'approved' });
     expect(res.status).toBe(400);
   });
 
   it('403s when the requester tries to approve their own request', async () => {
     mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending', requested_by_user: 'user:default/jane' });
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved', decided_by: 'user:default/jane' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'approved', decided_by: 'user:default/jane' });
     expect(res.status).toBe(403);
     expect(mockDecideApproval).not.toHaveBeenCalled();
   });
@@ -139,7 +143,7 @@ describe('POST /approvals/:id/decide', () => {
     mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending', requested_by_user: 'user:default/jane' });
     mockDecideApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'denied', decided_by: 'user:default/jane' });
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'denied', decided_by: 'user:default/jane' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'denied', decided_by: 'user:default/jane' });
     expect(res.status).toBe(200);
   });
 
@@ -147,7 +151,7 @@ describe('POST /approvals/:id/decide', () => {
     mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending', requested_by_user: 'user:default/jane' });
     mockDecideApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'approved', decided_by: 'user:default/sam' });
     const app = createApp();
-    const res = await request(app).post('/approvals/abc-123/decide').send({ decision: 'approved', decided_by: 'user:default/sam' });
+    const res = await request(app).post('/approvals/abc-123/decide').set(AUTH).send({ decision: 'approved', decided_by: 'user:default/sam' });
     expect(res.status).toBe(200);
   });
 });
@@ -156,7 +160,7 @@ describe('POST /consent/grant', () => {
   it('creates a standing consent grant', async () => {
     mockGrantConsent.mockResolvedValueOnce({ id: 'g-1', user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service', granted_at: 'now', expires_at: null, revoked_at: null });
     const app = createApp();
-    const res = await request(app).post('/consent/grant').send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
+    const res = await request(app).post('/consent/grant').set(AUTH).send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
     expect(res.status).toBe(201);
     expect(res.body.scope).toBe('scaffold_service');
     expect(mockGrantConsent).toHaveBeenCalledWith('user:default/jane', 'idp-assistant', 'scaffold_service', null);
@@ -164,7 +168,7 @@ describe('POST /consent/grant', () => {
 
   it('400s when a required field is missing', async () => {
     const app = createApp();
-    const res = await request(app).post('/consent/grant').send({ user_ref: 'user:default/jane', agent: 'idp-assistant' });
+    const res = await request(app).post('/consent/grant').set(AUTH).send({ user_ref: 'user:default/jane', agent: 'idp-assistant' });
     expect(res.status).toBe(400);
   });
 });
@@ -173,7 +177,7 @@ describe('POST /consent/revoke', () => {
   it('revokes an active grant', async () => {
     mockRevokeConsent.mockResolvedValueOnce({ id: 'g-1', user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service', granted_at: 'now', expires_at: null, revoked_at: 'now' });
     const app = createApp();
-    const res = await request(app).post('/consent/revoke').send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
+    const res = await request(app).post('/consent/revoke').set(AUTH).send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
     expect(res.status).toBe(200);
     expect(res.body.revoked_at).toBe('now');
   });
@@ -181,7 +185,7 @@ describe('POST /consent/revoke', () => {
   it('404s when there is no active grant to revoke', async () => {
     mockRevokeConsent.mockResolvedValueOnce(null);
     const app = createApp();
-    const res = await request(app).post('/consent/revoke').send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
+    const res = await request(app).post('/consent/revoke').set(AUTH).send({ user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' });
     expect(res.status).toBe(404);
   });
 });
@@ -223,5 +227,39 @@ describe('GET /consent', () => {
     const app = createApp();
     const res = await request(app).get('/consent');
     expect(res.status).toBe(400);
+  });
+});
+
+describe('decider token', () => {
+  it.each([
+    ['/approvals/abc-123/decide', { decision: 'approved', decided_by: 'user:default/sam' }],
+    ['/consent/grant', { user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' }],
+    ['/consent/revoke', { user_ref: 'user:default/jane', agent: 'idp-assistant', scope: 'scaffold_service' }],
+  ])('401s %s without the token, and never touches the store', async (path, body) => {
+    const res = await request(createApp()).post(path).send(body);
+    expect(res.status).toBe(401);
+    expect(mockDecideApproval).not.toHaveBeenCalled();
+    expect(mockGrantConsent).not.toHaveBeenCalled();
+    expect(mockRevokeConsent).not.toHaveBeenCalled();
+  });
+
+  it('401s with a wrong token', async () => {
+    const res = await request(createApp()).post('/approvals/abc-123/decide')
+      .set({ Authorization: 'Bearer nope' }).send({ decision: 'approved', decided_by: 'user:default/sam' });
+    expect(res.status).toBe(401);
+    expect(mockDecideApproval).not.toHaveBeenCalled();
+  });
+
+  it('fails closed with 503 when no token is configured', async () => {
+    const res = await request(createAppWith({ deciderToken: '' })).post('/approvals/abc-123/decide')
+      .set({ Authorization: 'Bearer ' }).send({ decision: 'approved', decided_by: 'user:default/sam' });
+    expect(res.status).toBe(503);
+    expect(mockDecideApproval).not.toHaveBeenCalled();
+  });
+
+  it('leaves agent-facing endpoints open', async () => {
+    mockGetApproval.mockResolvedValueOnce({ id: 'abc-123', status: 'pending' });
+    expect((await request(createApp()).get('/approvals/abc-123')).status).toBe(200);
+    expect((await request(createApp()).post('/policy/check').send({ action: 'sync_app', target: 'x' })).status).toBe(200);
   });
 });
