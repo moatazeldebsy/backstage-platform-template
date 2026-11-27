@@ -91,7 +91,7 @@ After a successful scaffold, call `set_user_memory` to record the service name a
 ## Intent Routing — tools by domain
 
 **Platform / IDP** (scaffold services, check metrics, discover catalog, list deployments):
-  catalog_search, catalog_semantic_search, get_service_metrics, list_templates, get_template_params, scaffold_service, list_deployments
+  catalog_search, catalog_semantic_search, get_service_metrics, list_templates, get_template_params, scaffold_service, list_deployments, get_approval_status
 
 **Engineering productivity / DX Core 4** (Speed, Effectiveness, Quality, Impact; team-level only — never rank or evaluate individuals with it):
   get_core4_report
@@ -123,6 +123,7 @@ After a successful scaffold, call `set_user_memory` to record the service name a
    c. if any required fields are missing, ask for them ALL in one message
    d. when all required fields are present (from the current or any previous message in this conversation), call scaffold_service IMMEDIATELY
    NEVER ask "Should I proceed?", "Would you like me to scaffold?", "Can you confirm?", or any variation. NEVER respond with "how can I help you with this?" when you already know the user's intent.
+   e. if scaffold_service returns status "pending_approval", nothing was created: tell the user, give them the estimated cost and approvals_url, say a teammate must approve it, and stop. When they say it is approved, call get_approval_status, then call scaffold_service again with the SAME values and the approval_id. Never change values on a retry.
 5. Context awareness: this is a multi-turn conversation. If you previously asked the user for parameter values (e.g., namespace name, service name, owner, description) and the user's latest message contains those values, USE THEM IMMEDIATELY to call scaffold_service. Do not ask "what would you like to do?" — you already know.
 6. The minimum required fields for any service or resource template are: a primary name/identifier, owner. If those are present, scaffold immediately. Map user-provided names directly to the template's primary identifier field (namespace name, service name, component name, etc.).
 7. For catalog/metric/deployment/test/contract/release/cost questions: call the relevant tool immediately.
@@ -130,7 +131,7 @@ After a successful scaffold, call `set_user_memory` to record the service name a
 9. Transparency before creation — when about to call scaffold_service, state exactly what you are creating in the format: "Creating: [service-name] | Template: [template-ref] | Owner: [owner] | Repo: [repo-name]" — this is the user-visible audit trail. Do this in the SAME message, before the tool call result appears.
 10. Dry-run support — if the user says "dry run", "preview", "show me what would be created", or any equivalent, pass `dry_run: true` to scaffold_service and present the preview. Do NOT create the service until the user explicitly proceeds.
 11. Rate limit awareness — if you find yourself about to call scaffold_service more than twice in a single session, pause and summarise what you have already created. Do not create the same service name twice.
-12. Release operations (sync/rollback): always use dry_run: true first and confirm with the user before the real action.
+12. Release operations (sync/rollback): always use dry_run: true first and confirm with the user before the real action. If the live call says approval is required, call request_approval (action = the tool name, target = the app name), give the user the approval_id, and stop; once get_approval_status shows approved, retry with approval_id.
 13. Cost questions: call get_team_spend + forecast_budget together for a complete picture; always show utilization_pct."""
 
 
@@ -238,6 +239,10 @@ TOOL_DEFINITIONS = [
     _tool("rollback_app", "Roll an application back to a previous revision. "
           "Use dry_run=true first.",
           ["app_name"], app_name="string", revision="string", dry_run="boolean"),
+    _tool("request_approval", "Request human approval for a mutating action. Returns an approval_id.",
+          ["action", "target"], action="string", target="string", context="object"),
+    _tool("get_approval_status", "Check whether a requested approval is pending, approved or denied.",
+          ["approval_id"], approval_id="string"),
 
     # ── Cost / FinOps (cost-mcp-server) ──────────────────────────────────────
     _tool("get_team_spend", "Current and month-to-date spend for a team.",
@@ -399,6 +404,12 @@ TOOL_STUB_RESPONSES: dict[str, str] = {
     }),
     "rollback_app": json.dumps({
         "status": "success", "dryRun": True, "targetRevision": "9f2c1ab",
+    }),
+    "request_approval": json.dumps({
+        "id": "appr-123", "action": "rollback_app", "target": "payments-api", "status": "pending",
+    }),
+    "get_approval_status": json.dumps({
+        "id": "appr-123", "status": "approved", "decided_by": "user:default/jane",
     }),
 
     # ── Cost / FinOps ────────────────────────────────────────────────────────
