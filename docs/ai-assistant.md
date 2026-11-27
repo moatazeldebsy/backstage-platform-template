@@ -63,9 +63,10 @@ for the portal and the CLI and routes by intent. Specialists are reachable at
 | `incident-agent` | Sonnet | Alert triage; triggered by critical alerts | `--agents all` |
 | `security-agent` | Sonnet | Read-only: vulnerable deps, secret rotation, policy violations | `--agents all` |
 | `onboarding-agent` | Haiku | Template, catalog and docs discovery | `--agents all` |
+| `provisioning-agent` | Sonnet | Turns a resource request into a golden-path template, shows the cost and team budget, and submits it for human approval — see [Agent Approvals](agent-approvals.md#scaffolding-through-an-agent) | `--agents all` |
 
 ```bash
-./scripts/bootstrap-ai.sh --agents all          # all nine
+./scripts/bootstrap-ai.sh --agents all          # all ten
 ./scripts/bootstrap-ai.sh --agents idp,security # a subset (re-running prunes the rest)
 ./scripts/bootstrap-ai.sh --agents list
 ```

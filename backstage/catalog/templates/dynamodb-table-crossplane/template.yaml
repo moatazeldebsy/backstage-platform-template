@@ -3,6 +3,7 @@ kind: Template
 metadata:
   name: dynamodb-table-crossplane
   annotations:
+    idp.io/estimated-monthly-usd: "usage-based"
     backstage.io/techdocs-ref: dir:.
   title: DynamoDB Table (Crossplane)
   description: |

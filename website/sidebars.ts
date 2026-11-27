@@ -125,6 +125,7 @@ const sidebars: SidebarsConfig = {
             doc('design/adr-0007-ai-gateway', 'ADR-0007: AI Gateway'),
             doc('design/adr-0008-litellm-multiprovider-gateway', 'ADR-0008: LiteLLM multi-provider gateway'),
             doc('design/adr-0009-single-region-multi-az', 'ADR-0009: Single-region, multi-AZ'),
+            doc('design/agentic-platform-opportunities', 'Agentic platform: opportunities'),
           ],
         },
       ],

@@ -1220,6 +1220,37 @@ interface Approval {
   decided_by: string | null;
 }
 
+// Scaffold approvals (gateScaffold in services/idp-mcp-server) carry a summary,
+// cost estimate, reason and the exact values; anything else shows as raw JSON.
+export function ApprovalContext({ context }: { context: Record<string, unknown> }) {
+  if (Object.keys(context).length === 0) return null;
+  if (typeof context.summary !== 'string') {
+    return (
+      <Typography variant="body2" color="textSecondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>
+        {JSON.stringify(context)}
+      </Typography>
+    );
+  }
+  const cost = String(context.estimated_monthly_usd ?? 'unknown');
+  const values = context.values && typeof context.values === 'object' ? Object.entries(context.values as Record<string, unknown>) : [];
+  return (
+    <Box mb={1}>
+      <Typography variant="body2">{context.summary}</Typography>
+      {context.reason ? (
+        <Typography variant="body2" color="textSecondary">Reason: {String(context.reason)}</Typography>
+      ) : null}
+      <Typography variant="body2" color="textSecondary">
+        Estimated cost: {/^\d+(\.\d+)?$/.test(cost) ? `$${cost}/month at template defaults` : cost}
+      </Typography>
+      {values.length > 0 && (
+        <Typography component="pre" variant="caption" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '4px 0 0' }}>
+          {values.map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join('\n')}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 function ApprovalsPage() {
   const fetchApi = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
@@ -1334,11 +1365,7 @@ function ApprovalsPage() {
                 requested {new Date(a.requested_at).toLocaleString()}
               </Typography>
             </Box>
-            {Object.keys(a.context ?? {}).length > 0 && (
-              <Typography variant="body2" color="textSecondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>
-                {JSON.stringify(a.context)}
-              </Typography>
-            )}
+            <ApprovalContext context={a.context ?? {}} />
             {a.status === 'pending' ? (
               <Box display="flex" style={{ gap: 8 }}>
                 <Button
