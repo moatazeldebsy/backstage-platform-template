@@ -75,6 +75,11 @@ spec:
             - secretRef:
                 name: backstage-langfuse
                 optional: true
+            # APPROVAL_SERVICE_DECIDER_TOKEN for approve/deny (idpApprovalDecision.ts).
+            # Created by bootstrap-ai.sh --adp; optional so Backstage starts without it.
+            - secretRef:
+                name: backstage-approval-service
+                optional: true
           env:
             - name: POSTGRES_HOST
               valueFrom:

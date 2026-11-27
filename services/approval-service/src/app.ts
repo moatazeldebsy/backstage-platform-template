@@ -1,4 +1,5 @@
-import express, { Express } from 'express';
+import express, { Express, RequestHandler } from 'express';
+import { timingSafeEqual } from 'crypto';
 import { register } from 'prom-client';
 import { checkPolicy } from './policy.js';
 import {
@@ -32,9 +33,33 @@ export function isSchemaReady(): boolean {
   return schemaReady;
 }
 
-export function createApp(): Express {
+// Bearer-token check for the endpoints that record a human decision or a user's
+// consent. Only the Backstage backend holds DECIDER_TOKEN (idpApprovalDecision.ts
+// sends it with the verified decider), so nothing else that can reach this
+// service can approve under a made-up name or grant consent for another user.
+// Fails closed: with no token configured these endpoints return 503.
+function requireDecider(token: string): RequestHandler {
+  const expected = Buffer.from(token);
+  return (req, res, next) => {
+    if (!token) {
+      res.status(503).json({ error: 'decisions are disabled: DECIDER_TOKEN is not configured on approval-service' });
+      return;
+    }
+    const header = req.get('authorization') ?? '';
+    const given = Buffer.from(header.startsWith('Bearer ') ? header.slice(7) : '');
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+      auditLog({ event: 'decider_auth_refused', path: req.path, has_token: given.length > 0 });
+      res.status(401).json({ error: 'a valid decider token is required' });
+      return;
+    }
+    next();
+  };
+}
+
+export function createApp(opts: { deciderToken?: string } = {}): Express {
   const app = express();
   app.use(express.json());
+  const decider = requireDecider(opts.deciderToken ?? process.env.DECIDER_TOKEN ?? '');
 
   // Liveness: the process is up and serving. Deliberately independent of the
   // database — a dependency being down is not a reason for the kubelet to kill
@@ -110,7 +135,7 @@ export function createApp(): Express {
   });
 
   // POST /approvals/:id/decide { decision: "approved"|"denied", decided_by } -> human decision
-  app.post('/approvals/:id/decide', async (req, res) => {
+  app.post('/approvals/:id/decide', decider, async (req, res) => {
     const { decision, decided_by } = req.body as { decision?: string; decided_by?: string };
     if (decision !== 'approved' && decision !== 'denied') {
       res.status(400).json({ error: 'decision must be "approved" or "denied"' });
@@ -147,7 +172,7 @@ export function createApp(): Express {
   // call should pass both gates once identity-verified user_ref is available.
 
   // POST /consent/grant { user_ref, agent, scope, expires_at? } -> upsert a standing grant
-  app.post('/consent/grant', async (req, res) => {
+  app.post('/consent/grant', decider, async (req, res) => {
     const { user_ref, agent, scope, expires_at } = req.body as { user_ref?: string; agent?: string; scope?: string; expires_at?: string };
     if (!user_ref || !agent || !scope) {
       res.status(400).json({ error: 'user_ref, agent, and scope are required' });
@@ -159,7 +184,7 @@ export function createApp(): Express {
   });
 
   // POST /consent/revoke { user_ref, agent, scope } -> revoke a standing grant
-  app.post('/consent/revoke', async (req, res) => {
+  app.post('/consent/revoke', decider, async (req, res) => {
     const { user_ref, agent, scope } = req.body as { user_ref?: string; agent?: string; scope?: string };
     if (!user_ref || !agent || !scope) {
       res.status(400).json({ error: 'user_ref, agent, and scope are required' });

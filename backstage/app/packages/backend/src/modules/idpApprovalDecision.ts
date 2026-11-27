@@ -22,12 +22,14 @@ export interface ApprovalDecisionOptions {
   logger: LoggerService;
   /** approval-service base URL, e.g. http://approval-service.services-dev.svc.cluster.local:3009 */
   approvalServiceUrl: string;
+  /** Bearer token approval-service requires on /decide (APPROVAL_SERVICE_DECIDER_TOKEN). */
+  deciderToken?: string;
   /** Injectable for tests. */
   fetchImpl?: typeof fetch;
 }
 
 export function createApprovalDecisionRouter(opts: ApprovalDecisionOptions): Router {
-  const { httpAuth, logger, approvalServiceUrl } = opts;
+  const { httpAuth, logger, approvalServiceUrl, deciderToken } = opts;
   const fetchImpl = opts.fetchImpl ?? fetch;
 
   const router = Router();
@@ -55,7 +57,10 @@ export function createApprovalDecisionRouter(opts: ApprovalDecisionOptions): Rou
     try {
       upstream = await fetchImpl(target, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(deciderToken ? { Authorization: `Bearer ${deciderToken}` } : {}),
+        },
         // decided_by comes from verified credentials only, never req.body.
         body: JSON.stringify({ decision, decided_by: userRef }),
       });
@@ -105,7 +110,14 @@ export const idpApprovalDecisionPlugin = createBackendPlugin({
           logger.info('idp-approvals: no /approval-service proxy endpoint configured — route disabled');
           return;
         }
-        httpRouter.use(createApprovalDecisionRouter({ httpAuth, logger, approvalServiceUrl }));
+        // Written by bootstrap-ai.sh --adp (local/backstage/.env locally, the
+        // backstage-approval-service Secret on AWS). Without it approval-service
+        // refuses every decision, so say so at startup rather than on first click.
+        const deciderToken = process.env.APPROVAL_SERVICE_DECIDER_TOKEN;
+        if (!deciderToken) {
+          logger.warn('idp-approvals: APPROVAL_SERVICE_DECIDER_TOKEN is not set — approval-service will refuse approve/deny');
+        }
+        httpRouter.use(createApprovalDecisionRouter({ httpAuth, logger, approvalServiceUrl, deciderToken }));
         // Every route requires a user via httpAuth.credentials(..., { allow: ['user'] }),
         // same as idpAiIdentityProxy.ts — no addAuthPolicy override needed.
         logger.info(`idp-approvals initialized (target: ${approvalServiceUrl})`);

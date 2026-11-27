@@ -53,6 +53,15 @@ resources:
 env:
   - name: PORT
     value: "3009"
+  # Bearer token required on /decide and /consent/grant|revoke. Created by
+  # bootstrap-ai.sh --adp and shared only with Backstage. Optional so the pod
+  # starts before --adp has run; without it those endpoints fail closed (503).
+  - name: DECIDER_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-auth
+        key: DECIDER_TOKEN
+        optional: true
   # Reuses the Backstage Postgres instance (pgvector image) rather than standing up
   # new infra — see docs/agentic-platform.md Phase 4. In local Kind, the postgres
   # container from local/backstage/docker-compose.yml is only reachable from cluster

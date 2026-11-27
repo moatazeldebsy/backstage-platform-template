@@ -545,6 +545,8 @@ if $DESTROY; then
   helm uninstall approval-service    --namespace services-dev 2>/dev/null || true
   kubectl delete secret incident-mcp-server-secrets -n services-dev 2>/dev/null || true
   kubectl delete secret approval-service-db          -n services-dev 2>/dev/null || true
+  kubectl delete secret approval-service-auth        -n services-dev 2>/dev/null || true
+  kubectl delete secret backstage-approval-service   -n backstage    2>/dev/null || true
   kubectl delete configmap approval-service-policy   -n services-dev 2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig.yaml"         2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/modelconfig-haiku.yaml"   2>/dev/null || true
@@ -2640,6 +2642,61 @@ else
       kubectl create namespace services-dev --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
       kubectl apply -f "${REPO_ROOT}/kubernetes/kagent/policies/configmap.yaml"
       check "ConfigMap approval-service-policy ready"
+
+      # Decider token (docs/agent-approvals.md): approval-service requires it on
+      # /decide and /consent/grant|revoke, and only Backstage gets a copy, so
+      # nothing else that can reach the service can approve under a made-up name.
+      # Reused when it already exists; generated on the first --adp run.
+      _dt="$(kubectl get secret approval-service-auth -n services-dev -o jsonpath='{.data.DECIDER_TOKEN}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+      _dt_new=false
+      if [[ -z "$_dt" ]]; then
+        _dt="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+        _dt_new=true
+      fi
+      kubectl create secret generic approval-service-auth -n services-dev \
+        --from-literal=DECIDER_TOKEN="$_dt" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+      check "Secret approval-service-auth ready"
+      # Env from a Secret is read at pod start, so a running pod needs a restart.
+      if $_dt_new && kubectl get deployment approval-service -n services-dev >/dev/null 2>&1; then
+        kubectl rollout restart deployment/approval-service -n services-dev >/dev/null
+      fi
+
+      if [[ "$DEPLOY_MODE" == "aws" ]]; then
+        _dt_bs="$(kubectl get secret backstage-approval-service -n backstage -o jsonpath='{.data.APPROVAL_SERVICE_DECIDER_TOKEN}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+        if [[ "$_dt_bs" != "$_dt" ]]; then
+          kubectl create secret generic backstage-approval-service -n backstage \
+            --from-literal=APPROVAL_SERVICE_DECIDER_TOKEN="$_dt" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+          check "Secret backstage-approval-service ready"
+          if kubectl get deployment backstage -n backstage >/dev/null 2>&1; then
+            kubectl rollout restart deployment/backstage -n backstage >/dev/null
+            info "  Restarted Backstage to pick up the approval decider token"
+          fi
+        fi
+      else
+        _dt_env="${REPO_ROOT}/local/backstage/.env"
+        touch "$_dt_env"
+        if ! grep -qx "APPROVAL_SERVICE_DECIDER_TOKEN=${_dt}" "$_dt_env"; then
+          if grep -q "^APPROVAL_SERVICE_DECIDER_TOKEN=" "$_dt_env"; then
+            sed -i.bak "s|^APPROVAL_SERVICE_DECIDER_TOKEN=.*|APPROVAL_SERVICE_DECIDER_TOKEN=${_dt}|" "$_dt_env" && rm -f "${_dt_env}.bak"
+          else
+            echo "APPROVAL_SERVICE_DECIDER_TOKEN=${_dt}" >> "$_dt_env"
+          fi
+          check "APPROVAL_SERVICE_DECIDER_TOKEN written to local/backstage/.env"
+          # Compose reads .env only when it creates the container (same as
+          # LITELLM_MASTER_KEY above), so a running Backstage needs a recreate.
+          if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "backstage-backstage-1"; then
+            _dt_compose="docker compose -f ${REPO_ROOT}/local/backstage/docker-compose.yml"
+            [[ "${_provider:-kind}" == "rancher-desktop" ]] && \
+              _dt_compose="${_dt_compose} -f ${REPO_ROOT}/local/backstage/docker-compose.rancher.yml"
+            if $_dt_compose up -d --no-build backstage >/dev/null 2>&1; then
+              check "Backstage restarted with APPROVAL_SERVICE_DECIDER_TOKEN"
+            else
+              warn "  Could not recreate Backstage automatically. Run:"
+              warn "    ${_dt_compose} up -d --no-build backstage"
+            fi
+          fi
+        fi
+      fi
 
       if [[ "$DEPLOY_MODE" == "aws" ]]; then
         # approval-service reuses Backstage's own RDS Postgres — copy the

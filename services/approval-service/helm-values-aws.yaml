@@ -57,6 +57,15 @@ resources:
 env:
   - name: PORT
     value: "3009"
+  # Bearer token required on /decide and /consent/grant|revoke. Created by
+  # bootstrap-ai.sh --adp and shared only with Backstage. Optional so the pod
+  # starts before --adp has run; without it those endpoints fail closed (503).
+  - name: DECIDER_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: approval-service-auth
+        key: DECIDER_TOKEN
+        optional: true
   # Reuses Backstage's own RDS Postgres instance — credentials are copied
   # from the backstage-secrets secret (namespace: backstage) into
   # approval-service-db (namespace: services-dev) by bootstrap-ai.sh --adp, since

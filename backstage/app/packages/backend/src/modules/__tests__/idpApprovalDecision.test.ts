@@ -13,6 +13,7 @@ function setup(fetchImpl: jest.Mock) {
       httpAuth: fakeHttpAuth(),
       logger: logger as any,
       approvalServiceUrl: 'http://approval.test',
+      deciderToken: 'decider-secret',
       fetchImpl: fetchImpl as unknown as typeof fetch,
     }),
   );
@@ -38,6 +39,7 @@ describe('createApprovalDecisionRouter', () => {
       const [target, init] = upstream.mock.calls[0];
       expect(target).toBe('http://approval.test/approvals/a1/decide');
       expect(JSON.parse(init.body)).toEqual({ decision: 'approved', decided_by: 'user:default/alice' });
+      expect(init.headers.Authorization).toBe('Bearer decider-secret');
     } finally {
       await srv.close();
     }
