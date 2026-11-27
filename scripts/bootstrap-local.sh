@@ -1130,6 +1130,26 @@ if [[ -f "${ROOT_DIR}/local/backstage/.env" ]]; then
   fi
 fi
 
+# Generate CLAUDE_METRICS_INGEST_TOKEN if it is missing or blank: the bearer token
+# Claude Code sends to /api/claude-metrics/otlp (docs/claude-metrics.md). Without
+# it the Claude Metrics page waits for data forever and ingest answers 503.
+# Same rule as above: an existing token is never replaced, because every Claude
+# Code profile already pointed at it would start getting 401s.
+_cm_new=""
+if [[ -f "${ROOT_DIR}/local/backstage/.env" ]]; then
+  _cm_line="$(grep -E '^CLAUDE_METRICS_INGEST_TOKEN=' "${ROOT_DIR}/local/backstage/.env" || true)"
+  if [[ -z "${_cm_line#CLAUDE_METRICS_INGEST_TOKEN=}" ]]; then
+    _cm_new="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+    if [[ -n "$_cm_line" ]]; then
+      sed -i.bak "s|^CLAUDE_METRICS_INGEST_TOKEN=.*|CLAUDE_METRICS_INGEST_TOKEN=${_cm_new}|" \
+        "${ROOT_DIR}/local/backstage/.env" && rm -f "${ROOT_DIR}/local/backstage/.env.bak"
+    else
+      echo "CLAUDE_METRICS_INGEST_TOKEN=${_cm_new}" >> "${ROOT_DIR}/local/backstage/.env"
+    fi
+    log "  Generated CLAUDE_METRICS_INGEST_TOKEN in local/backstage/.env"
+  fi
+fi
+
 # Mirror GITHUB_ORG into local/backstage/.env so docker compose picks it up
 # without needing --env-file local/.env on every restart command.
 if [[ -n "${GITHUB_ORG:-}" && -f "${ROOT_DIR}/local/backstage/.env" ]]; then
@@ -1972,6 +1992,20 @@ timer_end "13. ApplicationSet"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 _print_url_banner
+
+# Printed only on the run that created the token, so it isn't echoed every time.
+# Editing the user's shell profile is left to them.
+if [[ -n "${_cm_new:-}" ]]; then
+  echo ""
+  echo "Claude Metrics: to send your Claude Code usage to Backstage, add to ~/.zshrc (or ~/.bashrc):"
+  echo ""
+  echo "  export CLAUDE_CODE_ENABLE_TELEMETRY=1"
+  echo "  export OTEL_METRICS_EXPORTER=otlp"
+  echo "  export OTEL_EXPORTER_OTLP_ENDPOINT=http://backstage.idp.local/api/claude-metrics/otlp"
+  echo "  export OTEL_EXPORTER_OTLP_HEADERS=\"Authorization=Bearer ${_cm_new}\""
+  echo ""
+  echo "  The token is CLAUDE_METRICS_INGEST_TOKEN in local/backstage/.env. See docs/claude-metrics.md."
+fi
 
 # ── --full: chain Backstage build + start after the main bootstrap ───────────
 if $RUN_BACKSTAGE_AFTER; then

@@ -20,6 +20,25 @@ Everyone else, guests included, gets "You don't have access to Claude Metrics" a
 
 Out of the box the dashboard serves a seeded 1,200-person demo organization (`claudeMetrics.dataSource: mock` in `backstage/app-config.yaml`), so it works with no key and no outbound calls. The page header says **Data source: mock**.
 
+## Real data from Claude Code (OpenTelemetry, local)
+
+Locally the page reads Claude Code's own OpenTelemetry metrics (`claudeMetrics.dataSource: otel` in `app-config.local.yaml`). It needs no Admin key, so it works on Pro and Max plans too.
+
+1. `./scripts/bootstrap-local.sh` generates `CLAUDE_METRICS_INGEST_TOKEN` in `local/backstage/.env` if it's empty. It never replaces an existing token, because Claude Code profiles already using it would start getting 401s.
+2. On the run that creates the token, the bootstrap prints four `export` lines. Add them to `~/.zshrc` (or `~/.bashrc`):
+
+   ```bash
+   export CLAUDE_CODE_ENABLE_TELEMETRY=1
+   export OTEL_METRICS_EXPORTER=otlp
+   export OTEL_EXPORTER_OTLP_ENDPOINT=http://backstage.idp.local/api/claude-metrics/otlp
+   export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer <CLAUDE_METRICS_INGEST_TOKEN>"
+   ```
+
+   To see the token again: `grep CLAUDE_METRICS_INGEST_TOKEN local/backstage/.env`.
+3. Open a new terminal and run a Claude Code session. The dashboard appears within about a minute of the first export.
+
+If you set the token by hand on a running stack, recreate the container so it's picked up: `docker compose -f local/backstage/docker-compose.yml up -d --no-build backstage`.
+
 ## Real data: the Anthropic Admin API key
 
 Real data needs an **Anthropic Admin API key** (`sk-ant-admin…`):
