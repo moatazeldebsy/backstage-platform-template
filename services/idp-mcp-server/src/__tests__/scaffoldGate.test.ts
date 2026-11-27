@@ -98,7 +98,7 @@ describe('scaffold_service approval gate', () => {
     expect(res.approval_id).toBe('appr-1');
     expect(res.estimated_monthly_usd).toBe('5');
     expect(approvalBody.action).toBe('scaffold_service');
-    expect(approvalBody.target).toBe('s3-bucket-crossplane');
+    expect(approvalBody.target).toBe('default/s3-bucket-crossplane');
     const ctx = approvalBody.context as Record<string, unknown>;
     expect(ctx.reason).toBe('orders need storage');
     expect(ctx.values_sha256).toMatch(/^[0-9a-f]{64}$/);
@@ -121,7 +121,7 @@ describe('scaffold_service approval gate', () => {
     // The hash covers the enriched values scaffold_service actually sends.
     const enriched = { ...VALUES, repoUrl: (await import('../utils.js')).normalizeRepoUrl({ ...VALUES }) };
     routeFetch({
-      'GET /approvals/appr-1': () => makeResponse({ status: 'approved', action: 'scaffold_service', target: 's3-bucket-crossplane', context: { values: enriched } }),
+      'GET /approvals/appr-1': () => makeResponse({ status: 'approved', action: 'scaffold_service', target: 'default/s3-bucket-crossplane', context: { values: enriched } }),
       ...scaffolderRoutes,
     });
     const res = await callScaffold(mod, { template_ref: TEMPLATE, values: VALUES, approval_id: 'appr-1' });
@@ -130,9 +130,9 @@ describe('scaffold_service approval gate', () => {
   });
 
   it.each<[string, Record<string, unknown> | 'FORGED' | null, string]>([
-    ['values changed', { status: 'approved', action: 'scaffold_service', target: 's3-bucket-crossplane', context: { values: { ...VALUES, name: 'other-bucket' } } }, 'values differ'],
+    ['values changed', { status: 'approved', action: 'scaffold_service', target: 'default/s3-bucket-crossplane', context: { values: { ...VALUES, name: 'other-bucket' } } }, 'values differ'],
     ['shown different values than its stored hash', 'FORGED', 'values differ'],
-    ['different template', { status: 'approved', action: 'scaffold_service', target: 'rds-database-crossplane', context: {} }, 'different action or template'],
+    ['different template', { status: 'approved', action: 'scaffold_service', target: 'default/rds-database-crossplane', context: {} }, 'different action or template'],
     ['still pending', null, 'status is pending'],
     ['denied', null, 'status is denied'],
   ])('refuses an approval that is %s', async (_label, approvalOverride, problem) => {
@@ -141,8 +141,8 @@ describe('scaffold_service approval gate', () => {
     const status = problem.includes('pending') ? 'pending' : 'denied';
     const approval = approvalOverride === 'FORGED'
       // A stored hash of the real values, but the approver was shown other values.
-      ? { status: 'approved', action: 'scaffold_service', target: 's3-bucket-crossplane', context: { values: { name: 'harmless' }, values_sha256: mod.valuesSha256(enriched) } }
-      : approvalOverride ?? { status, action: 'scaffold_service', target: 's3-bucket-crossplane', context: { values: enriched } };
+      ? { status: 'approved', action: 'scaffold_service', target: 'default/s3-bucket-crossplane', context: { values: { name: 'harmless' }, values_sha256: mod.valuesSha256(enriched) } }
+      : approvalOverride ?? { status, action: 'scaffold_service', target: 'default/s3-bucket-crossplane', context: { values: enriched } };
     routeFetch({ 'GET /approvals/appr-1': () => makeResponse(approval), ...scaffolderRoutes });
 
     const res = await callScaffold(mod, { template_ref: TEMPLATE, values: VALUES, approval_id: 'appr-1' });
@@ -158,6 +158,18 @@ describe('scaffold_service approval gate', () => {
     const res = await callScaffold(mod, { template_ref: 'template:default/slo-definition', values: { name: 'x' } });
     expect(res.task_id).toBe('task-1');
     expect(calledUrls().some(u => u.includes('POST') && u.endsWith('/approvals'))).toBe(false);
+  });
+
+  it('checks policy against the namespace-qualified, lower-cased template ref', async () => {
+    const mod = await load();
+    let policyBody: Record<string, unknown> = {};
+    routeFetch({
+      'POST /policy/check': init => { policyBody = JSON.parse(init?.body ?? '{}'); return makeResponse({ requires_approval: true, reason: 'r' }); },
+      'GET /api/catalog/entities/by-name/': () => makeResponse({ metadata: {} }),
+      'POST /approvals': () => makeResponse({ id: 'appr-3', status: 'pending' }, 201),
+    });
+    await callScaffold(mod, { template_ref: 'template:Evil/slo-definition', values: { name: 'x' } });
+    expect(policyBody.target).toBe('evil/slo-definition');
   });
 
   it('fails open with an audit line when approval-service is not deployed', async () => {
@@ -180,7 +192,7 @@ describe('request_approval', () => {
     const client = new Client({ name: 'test', version: '1.0.0' }, { capabilities: {} });
     await client.connect(ct);
     const result = await client.callTool({ name: 'request_approval', arguments: {
-      action: 'scaffold_service', target: 's3-bucket-crossplane', context: { summary: 'harmless', values_sha256: 'x' } } }) as { content: Array<{ text?: string }> };
+      action: 'scaffold_service', target: 'default/s3-bucket-crossplane', context: { summary: 'harmless', values_sha256: 'x' } } }) as { content: Array<{ text?: string }> };
     expect(result.content[0].text).toContain('Call scaffold_service directly');
     expect(fetchMock()).not.toHaveBeenCalled();
   });

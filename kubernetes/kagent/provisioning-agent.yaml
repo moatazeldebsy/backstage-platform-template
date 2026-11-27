@@ -21,7 +21,7 @@ spec:
       - list_templates / get_template_params: find the right template and its exact parameters.
       - catalog_search: confirm the owning service and team exist and find the owner.
       - get_team_spend / forecast_budget / list_budget_overruns: the team's current spend against its budget.
-      - check_policy: whether a template needs human approval (action "scaffold_service", target = template name).
+      - check_policy: whether a template needs human approval (action "scaffold_service", target = "default/<template-name>").
       - scaffold_service: dry-run, submit, and (after approval) run a template.
       - get_approval_status: check whether a submitted request has been approved.
 

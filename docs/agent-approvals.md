@@ -44,7 +44,7 @@ Beyond "is it approved", `requireApproval()` rejects a mismatched `action`/`targ
 
 ### Scaffolding through an agent
 
-`scaffold_service` runs any golden-path template, including the ones that create AWS resources, ECR repos with IAM roles, namespaces and clusters, so it is gated too. The target is the template name (`s3-bucket-crossplane`, not `template:default/s3-bucket-crossplane`). The flow differs from `sync_app` in one way: **`scaffold_service` files the approval request itself**, so the agent can't describe the request differently from what will run.
+`scaffold_service` runs any golden-path template, including the ones that create AWS resources, ECR repos with IAM roles, namespaces and clusters, so it is gated too. The target is the template's `namespace/name`, lower-cased (`default/s3-bucket-crossplane`), so a same-named template registered in another catalog namespace can't match an auto-approve rule. The flow differs from `sync_app` in one way: **`scaffold_service` files the approval request itself**, so the agent can't describe the request differently from what will run.
 
 1. The agent calls `scaffold_service` without `approval_id`. If the policy requires approval, nothing is created. The tool files an approval whose context holds a summary, the agent's `reason`, the template's `idp.io/estimated-monthly-usd` annotation (`unknown` if missing), the exact values and `values_sha256`. It returns `status: pending_approval` with the `approval_id` and the approvals URL.
 2. A teammate other than the requester approves it on `/approvals`, which shows the summary, reason, cost and values.
@@ -65,7 +65,7 @@ Templates that only open a PR on an existing repo, or only touch local Kind, are
 | `rollback_app` | `*` | yes | Reverts a live deployment regardless of environment |
 | `approve_pr` | `*` | yes | Merge-enabling action |
 | `request_changes` | `*` | no | Blocks merge rather than enabling it |
-| `scaffold_service` | `slo-definition`, `enable-datadog-apm`, `enable-langfuse-tracing`, `enable-security-scanning`, `deploy-to-kind` | no | Opens a PR on an existing repo, or deploys to local Kind only |
+| `scaffold_service` | `default/slo-definition`, `default/enable-datadog-apm`, `default/enable-langfuse-tracing`, `default/enable-security-scanning`, `default/deploy-to-kind` | no | Opens a PR on an existing repo, or deploys to local Kind only |
 | `scaffold_service` | `*` | yes | Creates repos, cloud resources, IAM, namespaces or secrets |
 
 `targetPattern` supports exact match, a `prefix-*` glob, and `*`. **An action with no matching rule fails safe** — it requires approval (`matchedRule: "default-fallback"`). Adding a new mutating tool therefore defaults to gated, not open.

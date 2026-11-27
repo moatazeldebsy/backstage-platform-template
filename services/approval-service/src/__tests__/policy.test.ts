@@ -21,11 +21,15 @@ describe('checkPolicy (default policy)', () => {
     expect(result.requiresApproval).toBe(false);
   });
 
-  it.each(['slo-definition', 'enable-security-scanning', 'deploy-to-kind'])('auto-approves the PR-only/local template %s', template => {
+  it.each(['default/slo-definition', 'default/enable-security-scanning', 'default/deploy-to-kind'])('auto-approves the PR-only/local template %s', template => {
     expect(checkPolicy('scaffold_service', template).requiresApproval).toBe(false);
   });
 
-  it.each(['s3-bucket-crossplane', 'rds-database-crossplane', 'eks-cluster', 'nodejs-service', 'enable-contract-testing'])('requires approval to scaffold %s', template => {
+  it('requires approval for an auto-approved name registered in another namespace', () => {
+    expect(checkPolicy('scaffold_service', 'evil/slo-definition').requiresApproval).toBe(true);
+  });
+
+  it.each(['default/s3-bucket-crossplane', 'default/rds-database-crossplane', 'default/eks-cluster', 'default/nodejs-service', 'default/enable-contract-testing'])('requires approval to scaffold %s', template => {
     const result = checkPolicy('scaffold_service', template);
     expect(result.requiresApproval).toBe(true);
     expect(result.matchedRule).toBe('scaffold_service:*');

@@ -136,7 +136,10 @@ export async function gateScaffold(opts: {
   agentId: string; userRef: string; approvalId?: string; reason?: string;
 }): Promise<ScaffoldGateResult> {
   const { action, templateRef, values, agentId, userRef, approvalId, reason } = opts;
-  const target = parseTemplateRef(templateRef).name;
+  // Namespace-qualified and lower-cased (catalog refs are case-insensitive), so a
+  // same-named template registered in another namespace can't match an auto rule.
+  const { namespace, name } = parseTemplateRef(templateRef);
+  const target = `${namespace}/${name}`.toLowerCase();
   if (!APPROVAL_SERVICE_URL) {
     auditLog({ action: 'approval_gate_disabled', tool: action, target, agent: agentId,
       warning: 'APPROVAL_SERVICE_URL is unset — this call ran without a policy check' });
@@ -171,7 +174,7 @@ export async function gateScaffold(opts: {
 
   const estimate = await templateCostEstimate(templateRef);
   const context = {
-    summary: `${agentId} wants to run template ${target}${values['name'] ? ` for "${String(values['name'])}"` : ''}`,
+    summary: `${agentId} wants to run template ${name}${values['name'] ? ` for "${String(values['name'])}"` : ''}`,
     template: templateRef, values, values_sha256: hash, estimated_monthly_usd: estimate,
     reason: reason ?? '', policy_reason: policy.reason,
   };

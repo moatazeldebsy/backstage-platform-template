@@ -38,11 +38,11 @@ data:
         "requiresApproval": false,
         "reason": "Requesting changes blocks merge rather than enabling it — safe to auto-approve."
       },
-      { "action": "scaffold_service", "targetPattern": "slo-definition", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
-      { "action": "scaffold_service", "targetPattern": "enable-datadog-apm", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
-      { "action": "scaffold_service", "targetPattern": "enable-langfuse-tracing", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
-      { "action": "scaffold_service", "targetPattern": "enable-security-scanning", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
-      { "action": "scaffold_service", "targetPattern": "deploy-to-kind", "requiresApproval": false, "reason": "Deploys to the local Kind cluster only." },
+      { "action": "scaffold_service", "targetPattern": "default/slo-definition", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
+      { "action": "scaffold_service", "targetPattern": "default/enable-datadog-apm", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
+      { "action": "scaffold_service", "targetPattern": "default/enable-langfuse-tracing", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
+      { "action": "scaffold_service", "targetPattern": "default/enable-security-scanning", "requiresApproval": false, "reason": "Opens a pull request on an existing repo — the PR review is the gate." },
+      { "action": "scaffold_service", "targetPattern": "default/deploy-to-kind", "requiresApproval": false, "reason": "Deploys to the local Kind cluster only." },
       {
         "action": "scaffold_service",
         "targetPattern": "*",
