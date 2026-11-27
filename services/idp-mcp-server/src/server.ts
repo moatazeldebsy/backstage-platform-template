@@ -3,6 +3,7 @@ import { z } from 'zod';
 import fetch, { RequestInit } from 'node-fetch';
 import { Counter, Histogram } from 'prom-client';
 import fs from 'fs';
+import { createHash } from 'crypto';
 import { TtlCache, sanitizeUserId, normalizeRepoUrl, parseTemplateRef, parseMemoryValue } from './utils.js';
 import { instrumentTools } from './telemetry.js';
 
@@ -97,6 +98,95 @@ export async function checkConsent(userRef: string, agent: string, scope: string
   const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/consent/check?${qs.toString()}`);
   if (!res.ok) throw new Error(`approval-service error ${res.status}: ${await res.text()}`);
   return res.json() as Promise<{ granted: boolean }>;
+}
+
+// ── Scaffold approval gate (docs/agent-approvals.md) ──────────────────────
+// An approval is bound to the action, the template and a hash of the exact
+// values, so an approved request can't be replayed with different parameters.
+
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj).sort().map(k => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+export function valuesSha256(values: Record<string, unknown>): string {
+  return createHash('sha256').update(canonicalJson(values)).digest('hex');
+}
+
+async function templateCostEstimate(templateRef: string): Promise<string> {
+  try {
+    const { namespace, name } = parseTemplateRef(templateRef);
+    const entity = await fetchCatalog(`/api/catalog/entities/by-name/Template/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`) as {
+      metadata?: { annotations?: Record<string, string> };
+    };
+    return entity.metadata?.annotations?.['idp.io/estimated-monthly-usd'] ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+export type ScaffoldGateResult = { proceed: true } | { proceed: false; response: Record<string, unknown> };
+
+export async function gateScaffold(opts: {
+  action: string; templateRef: string; values: Record<string, unknown>;
+  agentId: string; userRef: string; approvalId?: string; reason?: string;
+}): Promise<ScaffoldGateResult> {
+  const { action, templateRef, values, agentId, userRef, approvalId, reason } = opts;
+  const target = parseTemplateRef(templateRef).name;
+  if (!APPROVAL_SERVICE_URL) {
+    auditLog({ action: 'approval_gate_disabled', tool: action, target, agent: agentId,
+      warning: 'APPROVAL_SERVICE_URL is unset — this call ran without a policy check' });
+    return { proceed: true };
+  }
+  const hash = valuesSha256(values);
+
+  if (approvalId) {
+    const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/approvals/${encodeURIComponent(approvalId)}`);
+    if (!res.ok) throw new Error(`Could not verify approval ${approvalId}: HTTP ${res.status}`);
+    const approval = await res.json() as { status: string; action: string; target: string; context?: { values?: Record<string, unknown> } };
+    let problem = '';
+    if (approval.action !== action || approval.target !== target) problem = 'it was requested for a different action or template';
+    // Hash the values the approver was shown, not a stored hash, so what was displayed is what runs.
+    else if (!approval.context?.values || valuesSha256(approval.context.values) !== hash) problem = 'the values differ from the ones that were approved';
+    else if (approval.status !== 'approved') problem = `its status is ${approval.status}`;
+    if (problem) {
+      auditLog({ action: `${action}_approval_rejected`, agent: agentId, user_ref: userRef || undefined, approval_id: approvalId, target, problem });
+      return { proceed: false, response: { error: 'approval_not_valid', approval_id: approvalId,
+        message: `Approval ${approvalId} can't be used: ${problem}. Do not change the values; if they must change, call ${action} again without approval_id to request a new approval.` } };
+    }
+    auditLog({ action: `${action}_approval_verified`, agent: agentId, user_ref: userRef || undefined, approval_id: approvalId, target });
+    return { proceed: true };
+  }
+
+  const policyRes = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/policy/check`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, target }),
+  });
+  if (!policyRes.ok) throw new Error(`approval-service error ${policyRes.status}: ${await policyRes.text()}`);
+  const policy = await policyRes.json() as { requires_approval: boolean; reason: string };
+  if (!policy.requires_approval) return { proceed: true };
+
+  const estimate = await templateCostEstimate(templateRef);
+  const context = {
+    summary: `${agentId} wants to run template ${target}${values['name'] ? ` for "${String(values['name'])}"` : ''}`,
+    template: templateRef, values, values_sha256: hash, estimated_monthly_usd: estimate,
+    reason: reason ?? '', policy_reason: policy.reason,
+  };
+  const createRes = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/approvals`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, agent: agentId, target, context, requested_by_user: userRef || undefined }),
+  });
+  if (!createRes.ok) throw new Error(`approval-service error ${createRes.status}: ${await createRes.text()}`);
+  const approval = await createRes.json() as { id: string; status: string };
+  auditLog({ action: `${action}_approval_requested`, agent: agentId, user_ref: userRef || undefined, approval_id: approval.id, target, estimated_monthly_usd: estimate });
+  return { proceed: false, response: {
+    status: 'pending_approval', approval_id: approval.id, template: templateRef, estimated_monthly_usd: estimate,
+    approvals_url: `${BACKSTAGE_EXTERNAL_URL}/approvals`,
+    message: `This template needs human approval (${policy.reason}). Nothing was created. Tell the user to approve it at the approvals page, then call ${action} again with the same values and approval_id.`,
+  } };
 }
 
 export async function fetchK8s(path: string) {
@@ -208,8 +298,10 @@ export function createServer(agentId = 'unknown', userRef = '') {
       template_ref: z.string().describe('Template entity ref, e.g. template:default/nodejs-service'),
       values: z.record(z.string(), z.unknown()).describe('Template parameter values.'),
       dry_run: z.boolean().optional().describe('If true, validate and preview without calling the Backstage API.'),
+      approval_id: z.string().optional().describe('The approval_id from an earlier pending_approval response. Retry with exactly the same values.'),
+      reason: z.string().optional().describe('Why this is needed, shown to the human approver.'),
     },
-    async ({ template_ref, values, dry_run }) => {
+    async ({ template_ref, values, dry_run, approval_id, reason }) => {
       const end = toolDuration.startTimer({ server: SERVER_NAME, tool: 'scaffold_service' });
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_service', agent: agentId });
       let outcome = 'success';
@@ -244,6 +336,12 @@ export function createServer(agentId = 'unknown', userRef = '') {
               }, null, 2),
             }],
           };
+        }
+
+        const gate = await gateScaffold({ action: 'scaffold_service', templateRef: template_ref, values: enrichedValues, agentId, userRef, approvalId: approval_id, reason });
+        if (!gate.proceed) {
+          outcome = 'gated';
+          return { content: [{ type: 'text' as const, text: JSON.stringify(gate.response, null, 2) }] };
         }
 
         const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -573,6 +671,12 @@ export function createServer(agentId = 'unknown', userRef = '') {
       try {
         if (!APPROVAL_SERVICE_URL) {
           return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Approval service not deployed — Phase 4 not enabled.' }) }] };
+        }
+        // scaffold_service files its own approval with the exact values; one filed
+        // here could show the approver a context that doesn't match what runs.
+        if (action === 'scaffold_service') {
+          outcome = 'denied';
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'Call scaffold_service directly; it requests its own approval when the template needs one.' }) }] };
         }
         const res = await fetchWithTimeout(`${APPROVAL_SERVICE_URL}/approvals`, {
           method: 'POST',

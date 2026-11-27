@@ -77,7 +77,7 @@ The authoritative list; other pages defer to it.
 
 | Flag | Default | What it does |
 |---|---|---|
-| `--agents <list>` | `idp,qa,release,cost,platform,contract` | Agents to install (one pod each). `all` adds `incident`, `security`, `onboarding`; `none` installs only the runtime and UI; `list` prints them. Re-running **prunes** the rest. See [Local Setup](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them) |
+| `--agents <list>` | `idp,qa,release,cost,platform,contract` | Agents to install (one pod each). `all` adds `incident`, `security`, `onboarding`, `provisioning`; `none` installs only the runtime and UI; `list` prints them. Re-running **prunes** the rest. See [Local Setup](local-setup.md#machine-requirements-and-what-to-do-if-you-dont-have-them) |
 | `--adp` | off | Add the [Agentic Development Platform](agentic-platform.md) and its approval gate |
 | `--ollama` | off | Deploy a local Ollama model so agents can run without `ANTHROPIC_API_KEY` |
 | `--skip-gateway` | — | Skip the AI Gateway. Agents then have **no tools and no model**; only for debugging MCP servers ([ADR-0007](design/adr-0007-ai-gateway.md)) |

@@ -3,6 +3,7 @@ kind: Template
 metadata:
   name: sqs-queue-crossplane
   annotations:
+    idp.io/estimated-monthly-usd: "usage-based"
     backstage.io/techdocs-ref: dir:.
   title: SQS Queue (Crossplane)
   description: |

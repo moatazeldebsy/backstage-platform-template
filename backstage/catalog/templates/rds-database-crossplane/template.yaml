@@ -3,6 +3,7 @@ kind: Template
 metadata:
   name: rds-database-crossplane
   annotations:
+    idp.io/estimated-monthly-usd: "15"
     backstage.io/techdocs-ref: dir:.
   title: RDS Postgres (Crossplane)
   description: |

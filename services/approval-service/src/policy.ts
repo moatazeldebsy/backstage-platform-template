@@ -15,6 +15,12 @@ const DEFAULT_POLICY: PolicyRule[] = [
   { action: 'rollback_app', targetPattern: '*', requiresApproval: true, reason: 'ArgoCD rollback always requires approval — it reverts a live deployment.' },
   { action: 'approve_pr', targetPattern: '*', requiresApproval: true, reason: 'Approving a PR is a merge-enabling action — require human sign-off.' },
   { action: 'request_changes', targetPattern: '*', requiresApproval: false, reason: 'Requesting changes blocks merge rather than enabling it — safe to auto-approve.' },
+  // scaffold_service: target is the template name. Templates that only open a PR
+  // on an existing repo, or only touch the local Kind cluster, run without approval.
+  ...['slo-definition', 'enable-datadog-apm', 'enable-langfuse-tracing', 'enable-security-scanning', 'deploy-to-kind'].map(t => (
+    { action: 'scaffold_service', targetPattern: t, requiresApproval: false, reason: 'Opens a pull request on an existing repo or deploys to local Kind only — the PR review is the gate.' }
+  )),
+  { action: 'scaffold_service', targetPattern: '*', requiresApproval: true, reason: 'Creates repos, cloud resources, IAM, namespaces or secrets — require human approval.' },
 ];
 
 function targetMatches(pattern: string, target: string): boolean {

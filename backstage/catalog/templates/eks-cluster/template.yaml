@@ -3,6 +3,7 @@ kind: Template
 metadata:
   name: eks-cluster
   annotations:
+    idp.io/estimated-monthly-usd: "285"
     backstage.io/techdocs-ref: dir:.
   title: Kubernetes Cluster (EKS)
   description: Provision an EKS cluster with autoscaling node groups and platform addons (ingress-nginx, cert-manager, ArgoCD, Prometheus).

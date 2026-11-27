@@ -144,7 +144,7 @@ done
 # Resolved here rather than at install time so that a typo fails in the first
 # second instead of twenty minutes into MLflow and Langfuse.
 AGENTS_DEFAULT="idp,qa,release,cost,platform,contract"
-AGENTS_ALL="idp,qa,release,cost,platform,contract,incident,security,onboarding"
+AGENTS_ALL="idp,qa,release,cost,platform,contract,incident,security,onboarding,provisioning"
 
 if [[ "${AGENTS:-}" == "list" ]]; then
   echo "Available KAgent agents (one pod each):"
@@ -533,6 +533,7 @@ if $DESTROY; then
     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/release-agent.yaml"     2>/dev/null || true
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/cost-agent.yaml"        2>/dev/null || true
+  kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/provisioning-agent.yaml" 2>/dev/null || true
   # ADP components (docs/agentic-platform.md) — torn down unconditionally so a
   # destroy always fully cleans up regardless of which --adp phases were applied.
   kubectl delete -f "${REPO_ROOT}/kubernetes/kagent/incident-agent.yaml"      2>/dev/null || true
