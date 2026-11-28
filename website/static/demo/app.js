@@ -375,7 +375,7 @@
     searchQ: 'payments', searchType: 'all',
     apiOpen: null, apiQ: '',
     copilotRepo: '',
-    settingsTab: 'general',
+    settingsTab: 'general', cmTab: 'overview',
     importStep: 0, importUrl: 'https://github.com/moatazeldebsy/loyalty-points/blob/main/catalog-info.yaml',
     docSearch: ''
   };
@@ -396,7 +396,7 @@
     ['finops', 'Cost Overview', 'money'], ['devex-survey', 'DevEx Survey', 'feedback'], ['docs', 'Docs', 'docs'], ['dora', 'DORA', 'trending'],
     ['core4', 'DX Core 4', 'dashboard'], ['engineering-intelligence', 'Engineering Intelligence', 'insights'], ['incidents', 'Incidents', 'warning'],
     ['kagent', 'KAgent', 'bot'], ['learning-center', 'Learning Center', 'school'], ['litellm-spend', 'LiteLLM Spend', 'key'], ['mlflow', 'MLflow', 'science'],
-    ['profile', 'My Profile', 'person'], ['onboarding', 'Onboarding', 'wave'], ['catalog-import', 'Register Existing Component', 'add'],
+    ['profile', 'My Profile', 'person'], ['onboarding', 'Onboarding', 'wave'], ['catalog-import', 'Register Existing Component', 'add'], ['claude-metrics', 'Claude Metrics', 'insights'],
     ['scorecard', 'Scorecard', 'trophy'], ['search-page', 'Search', 'search'], ['slo', 'SLOs', 'target'], ['support', 'Support', 'help'], ['tech-radar', 'Tech Radar', 'radar']
   ].map(function (r) { return { path: r[0], title: r[1], icon: r[2] }; }).sort(function (a, b) { return a.title.localeCompare(b.title); });
   var NAV_ALL = PINNED.concat(REST).concat([{ path: 'settings', title: 'Settings', icon: 'gear' }]);
@@ -1379,6 +1379,14 @@
           <div class="muted small" style="margin-top:4px">${r.d.kind} · …${r.d.text}…</div></a>`;
       }) : html`<p class="muted">No results above the similarity threshold.</p>`}</div>`);
   }
+  // Mirrors ApprovalContext in the real Approvals page: scaffold approvals carry
+  // a summary, reason, cost estimate and the exact values that will run.
+  function approvalContext(a) {
+    if (!a.summary) return html`<div class="muted" style="margin:12px 0 8px">${JSON.stringify({ reason: a.reason })}</div>`;
+    var cost = /^\d+(\.\d+)?$/.test(a.cost || '') ? '$' + a.cost + '/month at template defaults' : (a.cost || 'unknown');
+    return html`<div style="margin:12px 0 8px"><div>${a.summary}</div><div class="muted small">Reason: ${a.reason}</div><div class="muted small">Estimated cost: ${cost}</div>
+      <pre class="mono small" style="margin:6px 0 0;white-space:pre-wrap">${Object.keys(a.values || {}).map(function (k) { return k + ': ' + a.values[k]; }).join('\n')}</pre></div>`;
+  }
   function pageApprovals() {
     var list = S.approvals.filter(function (a) { return S.approvalsFilter === 'all' || a.status === 'pending'; });
     var col = { pending: 'primary', approved: 'secondary', denied: '' };
@@ -1389,7 +1397,7 @@
       ${list.length ? list.map(function (a) {
         return html`<section class="card" style="margin-bottom:12px"><div class="card-body"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
             <div class="btn-row">${chip(a.status, 'sm ' + col[a.status])}<span>${a.agent} → <span class="mono">${a.tool}</span> on <span class="mono">${a.target}</span></span></div><span class="muted small">requested ${a.requested}</span></div>
-          <div class="muted" style="margin:12px 0 8px">${JSON.stringify({ reason: a.reason })}</div>
+          ${approvalContext(a)}
           ${a.status === 'pending' ? html`<div class="small muted" style="margin-bottom:10px">${a.policy || ''}</div><div class="btn-row"><button type="button" class="btn contained sm" data-action="decide" data-key="${a.id}" data-value="approved">Approve</button><button type="button" class="btn outlined sm" data-action="decide" data-key="${a.id}" data-value="denied">Deny</button></div>`
             : html`<div class="muted small">${a.status} by ${a.decided_by} at ${a.decided}</div>`}</div></section>`;
       }) : html`<div class="card card-body muted">No approval requests${S.approvalsFilter === 'pending' ? ' pending' : ''}.</div>`}`);
@@ -1406,6 +1414,35 @@
         ${card('Code Completions by Editor (latest day)', table(['Editor', 'Suggestions', 'Acceptances', 'Rate'], [['VS Code', 1420, 471, '33.2%'], ['JetBrains', 610, 172, '28.2%'], ['Neovim', 88, 27, '30.7%']], { num: [1, 2, 3] }))}</div>
       <div class="grid g2 mt">${card('Seat Utilization by Team', table(['Team', 'Seats', 'Acceptance'], c.teams.map(function (t) { return [t[0], t[1], pct(t[2])]; }), { num: [1, 2] }))}
         ${cardBody('Cost / ROI', table(['', ''], [['Seats', String(seatsTotal)], ['Monthly cost', money(cost, 0) + ' ($19/seat)'], ['Active seats', c.active + ' (' + pct(c.active / seatsTotal * 100, 0) + ')'], ['Est. hours saved / month', '≈ 410 h']], { cls: 'plain' }))}</div>`);
+  }
+  // Claude Metrics (@moatazeldebsy/backstage-plugin-claude-metrics). Locally it reads
+  // Claude Code's own OpenTelemetry metrics (docs/claude-metrics.md); with an
+  // Anthropic Admin key it reads the org's Claude Code and API usage instead.
+  function pageClaudeMetrics() {
+    var n = 28, labels = dayLabels(n), tab = S.cmTab;
+    var dau = series('cm-dau', n, 38, 6, 0.35), sess = dau.map(function (v, i) { return v * (2.6 + 0.3 * Math.sin(i / 2)); });
+    var added = series('cm-add', n, 5200, 1400, 0.3), removed = added.map(function (v) { return v * 0.38; });
+    var cost = series('cm-cost', n, 61, 14, 0.25), sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+    var models = [['claude-sonnet-4-6', 48.2, 6.1, 1210.4], ['claude-opus-4-8', 9.8, 1.4, 512.7], ['claude-haiku-4-5', 22.6, 2.9, 96.3]];
+    var tools = [['Edit', 9120, 640], ['Write', 2310, 205], ['MultiEdit', 1480, 96], ['NotebookEdit', 120, 18]];
+    var tabs = [['overview', 'Overview'], ['models', 'Models'], ['tools', 'Tools'], ['departments', 'Departments']], body;
+    if (tab === 'models') body = card('Tokens and cost by model', table(['Model', 'Input tokens (M)', 'Output tokens (M)', 'Cost'], models.map(function (m) { return [html`<code>${m[0]}</code>`, num(m[1], 1), num(m[2], 1), money(m[3])]; }), { num: [1, 2, 3] }));
+    else if (tab === 'tools') body = card('Tool acceptance', table(['Tool', 'Accepted', 'Rejected', 'Acceptance'], tools.map(function (t) { return [t[0], num(t[1]), num(t[2]), pct(t[1] / (t[1] + t[2]) * 100, 1)]; }), { num: [1, 2, 3] }));
+    else if (tab === 'departments') body = card('By department', table(['Department', 'Active users', 'Sessions', 'Lines added', 'Cost'], D.teams.map(function (t) {
+      var r = rng('cm' + t.name), u = Math.max(2, Math.round(t.members * (0.5 + r() * 0.45)));
+      return [t.display, u, num(u * (40 + r() * 30)), num(u * (2600 + r() * 2200)), money(u * (28 + r() * 30))];
+    }), { num: [1, 2, 3, 4] }));
+    else body = html`<div class="grid g2">${cardBody('Daily active users', lineChart([{ name: 'Active users', values: dau, color: '#1976d2' }], { labels: labels, label: 'Daily active users' }))}
+        ${cardBody('Daily sessions', lineChart([{ name: 'Sessions', values: sess, color: '#43a047' }], { labels: labels, label: 'Daily sessions' }))}</div>
+      <div class="grid g2 mt">${cardBody('Lines of code per day', lineChart([{ name: 'Added', values: added, color: '#8e24aa' }, { name: 'Removed', values: removed, color: '#e53935' }], { labels: labels, label: 'Lines of code per day' }))}
+        ${cardBody('Daily cost', lineChart([{ name: 'Cost (USD)', values: cost, color: '#f57c00' }], { labels: labels, label: 'Daily cost' }))}</div>`;
+    return html`${pluginBar('claude-metrics', 'insights')}${header('tool', 'Claude Metrics', 'Claude Code adoption and Claude API usage & cost')}<div class="content">
+      <div class="btn-row" style="margin-bottom:16px">${chip('Data source: OpenTelemetry', 'sm')}${demoChip()}<span class="muted small">Point Claude Code at <code>/api/claude-metrics/otlp</code> with the token from <code>CLAUDE_METRICS_INGEST_TOKEN</code>; <code>bootstrap-local.sh</code> generates it and prints the exports.</span></div>
+      <h2 style="font-size:20px;margin:0 0 12px">Adoption &amp; cost</h2>
+      <div class="grid g4">${statCardTop('Active users (28 d)', num(Math.round(Math.max.apply(null, dau) * 1.4)), '#1976d2')}${statCardTop('Sessions', num(sum(sess)), '#43a047')}${statCardTop('Lines added', num(sum(added)), '#8e24aa')}${statCardTop('Cost', money(sum(cost), 0), '#f57c00')}</div>
+      <div class="grid g4 mt">${statCardTop('Commits', num(1284), '#00897b')}${statCardTop('Pull requests', num(342), '#5e35b1')}${statCardTop('Edit acceptance', pct(sum(tools.map(function (t) { return t[1]; })) / sum(tools.map(function (t) { return t[1] + t[2]; })) * 100, 1), '#3949ab')}${statCardTop('Lines added per commit', num(sum(added) / 1284, 0), '#6d4c41')}</div>
+      <nav class="tabs mt" aria-label="Dashboard sections">${tabs.map(function (t) { return html`<a href="#/claude-metrics" data-action="set" data-key="cmTab" data-value="${t[0]}" ${t[0] === tab ? raw('aria-current="page"') : ''}>${t[1]}</a>`; })}</nav>
+      <div class="mt">${body}</div></div>`;
   }
   function eiScores() {
     var avg = function (i) { return Math.round(D.teams.reduce(function (s, t) { return s + D.teamScores[t.name][i]; }, 0) / D.teams.length); };
@@ -1450,6 +1487,7 @@
   var PROMPTS = [
     ['Metrics & Catalog', [['List my services', 'List all services in the catalog'], ['Check hello-service metrics', 'Show me the request rate, error rate and latency for hello-service'], ['List deployments', 'List all running Kubernetes deployments and their health'], ['Find payment services', 'Find all services related to payments']]],
     ['Scaffolding', [['Scaffold a Go service', 'Scaffold a new Go microservice'], ['Add a Playwright suite', 'Add a Playwright E2E test suite to an existing service']]],
+    ['Provisioning (provisioning-agent)', [['Request a Postgres database', 'I need a Postgres database for orders-service'], ['Request an S3 bucket', 'I need an S3 bucket for search-api'], ['It is approved', 'It has been approved, please go ahead']]],
     ['Delivery & Cost', [['Check ArgoCD apps', 'List all ArgoCD applications and their sync status'], ['Team budget status', 'Show me all teams over 80% budget utilisation'], ['Rightsizing savings', 'What are the top rightsizing opportunities to reduce cost?']]],
     ['Contracts', [['List contracts', 'List all registered API contracts'], ['Check breaking changes', 'Detect breaking changes across all registered API contracts'], ['Validate compatibility', 'Validate compatibility between all consumer and provider contracts'], ['Discover contracts', 'Auto-discover contracts for all services in the catalog']]]
   ];
@@ -1483,6 +1521,41 @@
       refreshIf('ai-assistant'); scrollChat();
     }, 700);
   }
+  // provisioning-agent flow (kubernetes/kagent/provisioning-agent.yaml): request ->
+  // dry run with cost and team budget -> pending approval on Agent Approvals ->
+  // retry with the same values once a human approves -> PR with the Claim.
+  var PROV = {
+    rds: { tpl: 'rds-database-crossplane', field: 'dbName', suffix: '-db', cost: '15', extra: { instanceClass: 'db.t4g.micro', allocatedStorage: 20 } },
+    s3: { tpl: 's3-bucket-crossplane', field: 'bucketName', suffix: '-bucket', cost: 'usage-based', extra: { versioning: true } },
+    sqs: { tpl: 'sqs-queue-crossplane', field: 'queueName', suffix: '-queue', cost: 'usage-based', extra: { fifo: false } }
+  };
+  function provisioningReply(t, c) {
+    if (S.prov && /approved|go ahead|it'?s done|proceed/.test(t)) {
+      var a = S.approvals.filter(function (x) { return x.id === S.prov.id; })[0];
+      if (!a || a.status === 'pending') return html`<p>I checked <code>get_approval_status</code> for <strong>${S.prov.id}</strong>: it's still <strong>pending</strong>, so I haven't created anything. Approve it on <a href="#/approvals">Agent Approvals</a>, then tell me.</p>`;
+      var p = S.prov; S.prov = null;
+      if (a.status === 'denied') return html`<p><strong>${p.id}</strong> was denied by ${a.decided_by}, so nothing was created. If the request needs to change, ask again and I'll file a new approval.</p>`;
+      var id = startTask(tpl(p.kind.tpl), { name: p.values[p.kind.field], owner: p.owner, desc: '', target: 'aws', service: p.values.ownerService });
+      return html`<p><strong>✅ Approved by ${a.decided_by}.</strong> I re-ran <code>scaffold_service</code> with the <em>same</em> values and <code>approval_id: ${p.id}</code>. The gate checks the values match what was approved, so nothing can change in between.</p>
+        ${kv([['Template', html`<code>template:default/${p.kind.tpl}</code>`], ['Pull request', html`<code>crossplane/${p.kind.tpl.split('-')[0]}/${p.values[p.kind.field]}</code> adds <code>services/${p.values.ownerService}/claims/${p.values[p.kind.field]}.yaml</code>`], ['Task ID', html`<code>${id}</code>`]])}
+        <p style="margin-top:8px">🔗 <a href="#/create/tasks/${id}">View scaffolder task</a>. On merge, ArgoCD syncs the Claim and Crossplane creates the resource.</p>`;
+    }
+    var kind = /postgres|database|\brds\b|\bdb\b/.test(t) ? PROV.rds : /bucket|\bs3\b/.test(t) ? PROV.s3 : /queue|\bsqs\b/.test(t) ? PROV.sqs : null;
+    if (!kind || !/need|want|provision|request|give me|create/.test(t)) return null;
+    var svc = c ? c.name : 'orders-service', comp = D.components.filter(function (x) { return x.name === svc; })[0];
+    var owner = comp ? comp.owner : D.user.team, team = D.teams.filter(function (x) { return x.name === owner; })[0];
+    var values = Object.assign({}, kind.extra); values[kind.field] = svc + kind.suffix; values.ownerService = svc; values.owner = 'group:default/' + owner;
+    var aid = 'APR-' + (319 + S.approvals.filter(function (x) { return x.agent === 'provisioning-agent'; }).length);
+    var reason = svc + ' (' + owner + ') needs ' + (kind === PROV.rds ? 'a Postgres database' : kind === PROV.s3 ? 'an S3 bucket' : 'an SQS queue') + '.';
+    S.approvals.unshift({ id: aid, agent: 'provisioning-agent', tool: 'scaffold_service', target: 'default/' + kind.tpl, status: 'pending', requested: ago(0),
+      summary: 'provisioning-agent wants to run template ' + kind.tpl + ' for "' + values[kind.field] + '"', reason: reason, cost: kind.cost, values: values,
+      policy: 'scaffold_service:* — creates repos, cloud resources, IAM, namespaces or secrets; needs a human' });
+    S.prov = { id: aid, kind: kind, values: values, owner: owner };
+    return html`<p>I mapped that to <strong>${tpl(kind.tpl).t}</strong> and ran a dry run (<code>scaffold_service</code> with <code>dry_run: true</code>):</p>
+      ${kv(Object.keys(values).map(function (k) { return [k, html`<code>${String(values[k])}</code>`]; }))}
+      <p style="margin-top:8px"><strong>Cost:</strong> ${kind.cost === 'usage-based' ? 'usage-based' : '$' + kind.cost + '/month at template defaults'}. <strong>${team ? team.display : owner}</strong> has spent ${team ? money(team.spend, 0) + ' of ' + money(team.budget, 0) + ' (' + pct(team.spend / team.budget * 100, 0) + ')' : 'an unknown share'} of its budget this month.</p>
+      <p>⏳ <code>check_policy</code> says this template needs a human, so I submitted it as <strong>${aid}</strong>. <strong>Nothing has been created yet.</strong> A teammate other than you approves it on <a href="#/approvals">Agent Approvals</a> (in this demo you can approve it yourself), then tell me it's approved.</p>`;
+  }
   function kv(rows) { return html`<table class="plain"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>${rows.map(function (r) { return html`<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td></tr>`; })}</tbody></table>`; }
   function reply(text) {
     var t = text.toLowerCase(), c = D.components.slice().sort(function (a, b) { return b.name.length - a.name.length; }).filter(function (x) { return t.indexOf(x.name) >= 0; })[0];
@@ -1500,6 +1573,8 @@
       }
       return html`<p>No problem — nothing was created.</p>`;
     }
+    var prov = provisioningReply(t, c);
+    if (prov) return prov;
     if (/playwright|e2e/.test(t) && /add|suite|test/.test(t)) {
       S.pending = { template: 'playwright-e2e-suite', name: (c ? c.name : 'checkout-web') + '-e2e', owner: 'qa-team', service: c ? c.name : 'checkout-web' };
       return html`<p>I can add a <strong>Playwright E2E Test Suite</strong> with these parameters:</p>${kv([['Target service', html`<code>${S.pending.service}</code>`], ['Suite name', html`<code>${S.pending.name}</code>`], ['Owner', html`<code>group:default/qa-team</code>`], ['Mode', 'Add to existing repo (opens a PR)']])}
@@ -1572,7 +1647,7 @@
   var PAGES = {
     '': pageHome, catalog: pageCatalog, create: pageCreate, 'api-docs': pageApiDocs, docs: pageDocsIndex, 'tech-radar': pageRadar, announcements: pageAnnouncements,
     'catalog-import': pageImport, finops: pageFinops, 'ai-search': pageAISearch, 'ai-assistant': pageAssistant, approvals: pageApprovals, incidents: pageIncidents,
-    copilot: pageCopilot, dora: pageDora, scorecard: pageScorecardPlatform, slo: pageSloPlatform, argocd: pageArgo, activity: pageActivity, apis: pageApiExplorer,
+    copilot: pageCopilot, 'claude-metrics': pageClaudeMetrics, dora: pageDora, scorecard: pageScorecardPlatform, slo: pageSloPlatform, argocd: pageArgo, activity: pageActivity, apis: pageApiExplorer,
     onboarding: pageOnboarding, 'learning-center': pageLearning, calculator: pageCalculator, profile: pageProfile, 'search-page': pageSearchCustom, admin: pageAdmin,
     kagent: pageKagent, langfuse: pageLangfuse, 'litellm-spend': pageLitellm, mlflow: pageMlflow, support: pageSupport, 'engineering-intelligence': pageEI,
     core4: pageCore4, 'devex-survey': pageSurvey, settings: pageSettings, search: pageSearchStock

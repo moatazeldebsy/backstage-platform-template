@@ -36,9 +36,10 @@ A Backstage developer portal, golden-path Helm chart, 59 scaffold templates, an 
 - **Shift-left quality**: a Bronze/Silver/Gold scorecard, PR quality gates and contract testing. See [Shift-Left Quality](docs/shift-left.md).
 - **AI/ML platform**: KAgent agents, 8 MCP servers, MLflow and Langfuse, all behind one AI Gateway and LiteLLM. See [AI Assistant](docs/ai-assistant.md).
 - **Observability**: Prometheus, Grafana, Loki, Tempo, Sloth SLOs, DORA and FinOps. See [DORA + FinOps](docs/dora-finops.md).
+- **Claude Metrics**: Claude Code adoption, sessions, lines of code, cost and tool acceptance in Backstage. Locally it reads Claude Code's own OpenTelemetry metrics; `bootstrap-local.sh` generates the ingest token and prints the exports. See [Claude Metrics](docs/claude-metrics.md).
 - **Engineering Intelligence**: evidence-backed health scores and a maturity model built from the platform's own telemetry. See [docs](docs/engineering-intelligence/product-vision.md).
 - **Infrastructure**: Terraform for the foundation plus Crossplane for per-service resources, in one AWS region across three AZs. See [Crossplane vs Terraform](docs/crossplane-vs-terraform.md) and [ADR-0009](docs/design/adr-0009-single-region-multi-az.md).
-- **Opt-in extra**: the [Agentic Development Platform](docs/agentic-platform.md), which adds agents behind a human-approval gate.
+- **Opt-in extra**: the [Agentic Development Platform](docs/agentic-platform.md), which adds agents behind a risk-tiered human-approval gate. A provisioning agent turns "I need a Postgres for orders-service" into the right Crossplane template, shows the cost and team budget, and waits for a teammate's approval before it opens the PR.
 
 ## Quick start
 

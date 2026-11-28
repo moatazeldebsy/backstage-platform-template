@@ -23,15 +23,21 @@ Without `--adp`, the base AI stack is unchanged.
 | Cost: budget alerts → analysis | `cost-agent` + `cost-mcp-server` | `kubernetes/kagent/cost-agent.yaml` |
 | Incidents: open incidents, alert history, runbooks, updates | `incident-agent` + `incident-mcp-server` | `kubernetes/kagent/incident-agent.yaml` |
 | Security: Dependabot alerts, secret-rotation status, Kyverno violations (read-only) | `security-agent` + `security-mcp-server` | `kubernetes/kagent/security-agent.yaml` |
+| Provisioning: request → template → dry run → cost and team budget → approval → PR | `provisioning-agent` (reuses `idp-mcp-server` and `cost-mcp-server`; `--agents provisioning`) | `kubernetes/kagent/provisioning-agent.yaml` |
 | Onboarding: catalog and docs answers | `onboarding-agent` (reuses `idp-mcp-server`) | `kubernetes/kagent/onboarding-agent.yaml` |
 | Event-driven triggers: GitHub, Alertmanager and ArgoCD webhooks routed to the right agent | `agent-event-router` | `services/agent-event-router/src/router.ts` |
 | **Approval gate** for mutating actions, with an `/approvals` page in Backstage | `approval-service` | [Agent Approvals](agent-approvals.md) |
 
 The gate is enforced in the tool servers, not only in prompts: `sync_app`,
-`rollback_app` and `approve_pr` refuse a real call without an approved
-`approval_id`. Which actions need approval is set in
-`kubernetes/kagent/policies/configmap.yaml` (by default `rollback_app` always,
-`sync_app` on `prod-*` apps). Every decision is written to the audit log.
+`rollback_app`, `approve_pr` and `scaffold_service` refuse a real call without an
+approved `approval_id`. For scaffolding, the approval is bound to the template and
+a hash of the exact values, and carries a cost estimate; see
+[Agent Approvals → Scaffolding through an agent](agent-approvals.md#scaffolding-through-an-agent).
+Which actions need approval is set in `kubernetes/kagent/policies/configmap.yaml`
+(by default `rollback_app` always, `sync_app` on `prod-*` apps, and every template
+except the PR-only ones). Only Backstage can record a decision: approval-service
+requires a [decider token](agent-approvals.md#decider-token) that agents and MCP
+servers don't have. Every decision is written to the audit log.
 
 ## KAgent or LangGraph
 
