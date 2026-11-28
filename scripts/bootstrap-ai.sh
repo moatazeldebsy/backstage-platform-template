@@ -1342,10 +1342,23 @@ if [[ -n "${GITHUB_TOKEN:-}" ]]; then
   for _mcp_ns in "${MCP_SECRET_NAMESPACES[@]}"; do
     kubectl get namespace "$_mcp_ns" &>/dev/null || continue
     info "Creating github-mcp-server-token secret in ${_mcp_ns}..."
-    kubectl create secret generic github-mcp-server-token \
+    _gh_out="$(kubectl create secret generic github-mcp-server-token \
       --namespace "$_mcp_ns" \
       --from-literal=token="${GITHUB_TOKEN}" \
-      --dry-run=client -o yaml | kubectl apply -f -
+      --dry-run=client -o yaml | kubectl apply -f -)"
+    echo "$_gh_out"
+    # The consumers read the token as an optional secretKeyRef, which a pod
+    # resolves only when it starts. A pod that started before this secret
+    # existed (ArgoCD often deploys them first) runs with an empty token, and
+    # every GitHub call — get_runbook included — fails with 401 Bad credentials.
+    if [[ "$_gh_out" != *unchanged* ]]; then
+      for _gh_dep in github-mcp-server incident-mcp-server security-mcp-server; do
+        if kubectl get deployment "$_gh_dep" -n "$_mcp_ns" &>/dev/null; then
+          kubectl rollout restart deployment/"$_gh_dep" -n "$_mcp_ns" >/dev/null
+          info "  Restarted ${_gh_dep} in ${_mcp_ns} to pick up the token"
+        fi
+      done
+    fi
   done
   check "Secret github-mcp-server-token ready"
 else
