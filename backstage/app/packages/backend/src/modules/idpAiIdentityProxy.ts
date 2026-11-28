@@ -29,9 +29,20 @@ export interface IdentityProxyOptions {
   logger: LoggerService;
   /** KAgent base URL, e.g. http://kagent.idp.local */
   kagentUrl: string;
+  /**
+   * URL of an agent's own A2A endpoint, with `{agent}` standing for the agent
+   * name, e.g. http://{agent}.kagent.svc.cluster.local:8080. The KAgent
+   * controller's A2A proxy at `kagentUrl` drops custom headers, so identity
+   * only reaches the MCP servers when the agent pod is called directly.
+   * Unset → controller only.
+   */
+  agentUrlTemplate?: string;
   /** Injectable for tests. */
   fetchImpl?: typeof fetch;
 }
+
+// Connection errors that mean the request was never sent to an agent.
+const NOT_DELIVERED = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
 
 /**
  * The proxy route on its own, so it can be tested without a backend (#321).
@@ -39,7 +50,7 @@ export interface IdentityProxyOptions {
  * from the caller's verified credentials and nothing the client sent.
  */
 export function createIdentityProxyRouter(opts: IdentityProxyOptions): Router {
-  const { httpAuth, logger, kagentUrl } = opts;
+  const { httpAuth, logger, kagentUrl, agentUrlTemplate } = opts;
   const fetchImpl = opts.fetchImpl ?? fetch;
 
   const router = Router();
@@ -61,23 +72,55 @@ export function createIdentityProxyRouter(opts: IdentityProxyOptions): Router {
       return;
     }
 
-    const target = `${kagentUrl}/a2a/kagent/${encodeURIComponent(req.params.agent)}`;
-    let upstream: Response;
-    try {
-      upstream = await fetchImpl(target, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // The only identity header that matters — set from verified
-          // credentials, never from req.get('x-backstage-user').
-          'X-Backstage-User': userRef,
-        },
-        body: JSON.stringify(req.body),
-      });
-    } catch (err) {
-      logger.warn(`idp-ai-identity: request to KAgent failed: ${err}`);
-      res.status(502).json({ error: 'KAgent request failed' });
-      return;
+    const agent = encodeURIComponent(req.params.agent);
+    const init: RequestInit = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Set from verified credentials, never from req.get('x-backstage-user').
+        'X-Backstage-User': userRef,
+        // The agent forwards both to its MCP tool calls (allowedHeaders on the
+        // Agent's mcpServer tool), where they become the approval's requester
+        // and agent.
+        'X-Agent-ID': req.params.agent.slice(0, 64),
+      },
+      body: JSON.stringify(req.body),
+    };
+
+    let upstream: Response | undefined;
+    if (agentUrlTemplate) {
+      const direct = agentUrlTemplate.split('{agent}').join(agent);
+      try {
+        const directRes = await fetchImpl(direct, init);
+        // 404: the local ingress has no route for this agent (only the
+        // built-in agents get one). Anything else is the agent's own answer.
+        if (directRes.status !== 404) upstream = directRes;
+      } catch (err) {
+        // Fall back only when the request never reached an agent. A failure
+        // after it was delivered (reset mid-turn) must not re-run the turn
+        // through the controller: the agent may already have scaffolded.
+        if (!NOT_DELIVERED.has((err as { cause?: { code?: string } }).cause?.code ?? '')) {
+          logger.warn(`idp-ai-identity: request to agent ${req.params.agent} failed: ${err}`);
+          res.status(502).json({ error: 'KAgent request failed' });
+          return;
+        }
+      }
+      if (!upstream) {
+        logger.warn(
+          `idp-ai-identity: agent ${req.params.agent} not reachable at ${direct}; ` +
+            'falling back to the KAgent controller, which drops X-Backstage-User',
+        );
+      }
+    }
+
+    if (!upstream) {
+      try {
+        upstream = await fetchImpl(`${kagentUrl}/a2a/kagent/${agent}`, init);
+      } catch (err) {
+        logger.warn(`idp-ai-identity: request to KAgent failed: ${err}`);
+        res.status(502).json({ error: 'KAgent request failed' });
+        return;
+      }
     }
 
     res.status(upstream.status);
@@ -110,13 +153,16 @@ export const idpAiIdentityProxyPlugin = createBackendPlugin({
         // Same env var / default idpDeployAgent.ts and idpSetupContractTesting.ts
         // already use to reach KAgent from the backend.
         const kagentUrl = process.env.KAGENT_EXTERNAL_URL ?? 'http://kagent.idp.local';
+        const agentUrlTemplate = process.env.KAGENT_AGENT_URL;
 
-        httpRouter.use(createIdentityProxyRouter({ httpAuth, logger, kagentUrl }));
+        httpRouter.use(createIdentityProxyRouter({ httpAuth, logger, kagentUrl, agentUrlTemplate }));
         // Every route here already requires an authenticated user via
         // httpAuth.credentials(..., { allow: ['user'] }) — no separate
         // addAuthPolicy override needed, same reasoning as idpLearningCenter.ts.
 
-        logger.info(`idp-ai-identity proxy initialized (target: ${kagentUrl})`);
+        logger.info(
+          `idp-ai-identity proxy initialized (agents: ${agentUrlTemplate ?? 'none'}, controller: ${kagentUrl})`,
+        );
       },
     });
   },

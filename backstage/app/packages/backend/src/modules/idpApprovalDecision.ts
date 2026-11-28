@@ -28,6 +28,12 @@ export interface ApprovalDecisionOptions {
   fetchImpl?: typeof fetch;
 }
 
+// The tools the MCP servers check consent for (scope = tool name):
+// idp-mcp-server scaffold_service, argocd-mcp-server sync_app/rollback_app,
+// github-mcp-server approve_pr.
+export const CONSENT_SCOPES = ['scaffold_service', 'sync_app', 'rollback_app', 'approve_pr'] as const;
+const AGENT_NAME = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+
 export function createApprovalDecisionRouter(opts: ApprovalDecisionOptions): Router {
   const { httpAuth, logger, approvalServiceUrl, deciderToken } = opts;
   const fetchImpl = opts.fetchImpl ?? fetch;
@@ -35,16 +41,40 @@ export function createApprovalDecisionRouter(opts: ApprovalDecisionOptions): Rou
   const router = Router();
   router.use(express.json());
 
-  // POST /api/idp-approvals/approvals/:id/decide { decision }
-  router.post('/approvals/:id/decide', async (req, res, next) => {
-    let userRef: string;
+  const forward = async (res: express.Response, path: string, init?: RequestInit) => {
+    let upstream: Response;
     try {
-      const credentials = await httpAuth.credentials(req, { allow: ['user'] });
-      userRef = credentials.principal.userEntityRef;
+      upstream = await fetchImpl(`${approvalServiceUrl}${path}`, init);
     } catch (err) {
-      next(err);
+      logger.warn(`idp-approvals: request to approval-service failed: ${err}`);
+      res.status(502).json({ error: 'approval-service request failed' });
       return;
     }
+    res.status(upstream.status);
+    const contentType = upstream.headers.get('content-type');
+    if (contentType) res.setHeader('content-type', contentType);
+    res.send(await upstream.text());
+  };
+
+  const caller = async (req: express.Request, next: express.NextFunction) => {
+    try {
+      const credentials = await httpAuth.credentials(req, { allow: ['user'] });
+      return credentials.principal.userEntityRef;
+    } catch (err) {
+      next(err);
+      return undefined;
+    }
+  };
+
+  const deciderHeaders = {
+    'Content-Type': 'application/json',
+    ...(deciderToken ? { Authorization: `Bearer ${deciderToken}` } : {}),
+  };
+
+  // POST /api/idp-approvals/approvals/:id/decide { decision }
+  router.post('/approvals/:id/decide', async (req, res, next) => {
+    const userRef = await caller(req, next);
+    if (!userRef) return;
 
     const { decision } = (req.body ?? {}) as { decision?: unknown };
     if (decision !== 'approved' && decision !== 'denied') {
@@ -52,29 +82,46 @@ export function createApprovalDecisionRouter(opts: ApprovalDecisionOptions): Rou
       return;
     }
 
-    const target = `${approvalServiceUrl}/approvals/${encodeURIComponent(req.params.id)}/decide`;
-    let upstream: Response;
-    try {
-      upstream = await fetchImpl(target, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(deciderToken ? { Authorization: `Bearer ${deciderToken}` } : {}),
-        },
-        // decided_by comes from verified credentials only, never req.body.
-        body: JSON.stringify({ decision, decided_by: userRef }),
-      });
-    } catch (err) {
-      logger.warn(`idp-approvals: request to approval-service failed: ${err}`);
-      res.status(502).json({ error: 'approval-service request failed' });
-      return;
-    }
-
-    res.status(upstream.status);
-    const contentType = upstream.headers.get('content-type');
-    if (contentType) res.setHeader('content-type', contentType);
-    res.send(await upstream.text());
+    await forward(res, `/approvals/${encodeURIComponent(req.params.id)}/decide`, {
+      method: 'POST',
+      headers: deciderHeaders,
+      // decided_by comes from verified credentials only, never req.body.
+      body: JSON.stringify({ decision, decided_by: userRef }),
+    });
   });
+
+  // Self-service consent (docs/agent-approvals.md#consent-grants). The user is
+  // always the signed-in caller, so nobody can grant or revoke for someone else.
+
+  // GET /api/idp-approvals/consent -> the caller's own grants
+  router.get('/consent', async (req, res, next) => {
+    const userRef = await caller(req, next);
+    if (!userRef) return;
+    await forward(res, `/consent?${new URLSearchParams({ user_ref: userRef })}`);
+  });
+
+  // POST /api/idp-approvals/consent/grant|revoke { agent, scope }
+  for (const op of ['grant', 'revoke'] as const) {
+    router.post(`/consent/${op}`, async (req, res, next) => {
+      const userRef = await caller(req, next);
+      if (!userRef) return;
+      const { agent, scope } = (req.body ?? {}) as { agent?: unknown; scope?: unknown };
+      if (typeof agent !== 'string' || !AGENT_NAME.test(agent)) {
+        res.status(400).json({ error: 'agent must be a Kubernetes resource name' });
+        return;
+      }
+      if (typeof scope !== 'string' || !(CONSENT_SCOPES as readonly string[]).includes(scope)) {
+        res.status(400).json({ error: `scope must be one of ${CONSENT_SCOPES.join(', ')}` });
+        return;
+      }
+      await forward(res, `/consent/${op}`, {
+        method: 'POST',
+        headers: deciderHeaders,
+        // user_ref comes from verified credentials only, never req.body.
+        body: JSON.stringify({ user_ref: userRef, agent, scope }),
+      });
+    });
+  }
 
   return router;
 }

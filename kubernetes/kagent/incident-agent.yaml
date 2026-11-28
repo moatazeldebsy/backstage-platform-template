@@ -57,6 +57,8 @@ spec:
           kind: RemoteMCPServer
           name: ai-gateway
           namespace: kagent
+          # Who the agent acts for, set by Backstage's idp-ai-identity proxy.
+          allowedHeaders: [x-backstage-user, x-agent-id]
           toolNames:
             - get_open_incidents
             - get_alert_history

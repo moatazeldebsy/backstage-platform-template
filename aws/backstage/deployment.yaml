@@ -250,6 +250,10 @@ spec:
               value: "http://BACKSTAGE_ALB_URL"
             - name: KAGENT_EXTERNAL_URL
               value: "http://KAGENT_ALB_URL"
+            # Each agent's own A2A endpoint, used by idpAiIdentityProxy.ts. The
+            # controller behind KAGENT_EXTERNAL_URL drops X-Backstage-User.
+            - name: KAGENT_AGENT_URL
+              value: "http://{agent}.kagent.svc.cluster.local:8080/"
             - name: CONTRACT_MCP_EXTERNAL_URL
               value: "http://contract-mcp-server.services-dev.svc.cluster.local:3003"
             # Read by idpProvisionLitellmKey.ts's resolveLitellmBaseUrl() (ADR-0008).

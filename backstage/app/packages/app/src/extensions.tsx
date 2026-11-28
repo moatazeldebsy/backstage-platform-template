@@ -1251,6 +1251,128 @@ export function ApprovalContext({ context }: { context: Record<string, unknown> 
   );
 }
 
+// Self-service consent (docs/agent-approvals.md#consent-grants). An agent can
+// scaffold, sync, roll back or approve a PR for a user only after that user
+// allows it here. Requests go through the backend's idp-approvals route, which
+// takes the user from the signed-in session.
+const CONSENT_SCOPES = ['scaffold_service', 'sync_app', 'rollback_app', 'approve_pr'];
+
+interface ConsentGrant {
+  id: string;
+  agent: string;
+  scope: string;
+  granted_at: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+}
+
+export function AgentConsent({ fetchApi, base }: { fetchApi: Pick<FetchApi, 'fetch'>; base: string }) {
+  const [grants, setGrants] = useState<ConsentGrant[]>([]);
+  const [agents, setAgents] = useState<string[]>([]);
+  const [agent, setAgent] = useState('');
+  const [scope, setScope] = useState(CONSENT_SCOPES[0]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadGrants = async () => {
+    try {
+      const resp = await fetchApi.fetch(`${base}/api/idp-approvals/consent`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = (await resp.json()) as { grants: ConsentGrant[] };
+      const now = Date.now();
+      setGrants(data.grants.filter(g => !g.revoked_at && (!g.expires_at || Date.parse(g.expires_at) > now)));
+    } catch (err: any) {
+      setError(`Could not load your agent permissions: ${err.message}`);
+    }
+  };
+
+  useEffect(() => {
+    loadGrants();
+    fetchApi
+      .fetch(`${base}/api/proxy/kagent/api/agents`)
+      .then(r => (r.ok ? r.json() : { data: [] }))
+      .then((body: any) => {
+        const names: string[] = (body?.data ?? [])
+          .map((a: any) => a?.agent?.metadata?.name)
+          .filter((n: any): n is string => typeof n === 'string' && n.length > 0)
+          .sort();
+        setAgents(names);
+        setAgent(names[0] ?? '');
+      })
+      .catch(() => setAgents([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const change = async (op: 'grant' | 'revoke', body: { agent: string; scope: string }) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const resp = await fetchApi.fetch(`${base}/api/idp-approvals/consent/${op}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        const data = (await resp.json().catch(() => ({}))) as any;
+        throw new Error(data.error ?? `HTTP ${resp.status}`);
+      }
+      await loadGrants();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Paper elevation={1} style={{ padding: '12px 16px', marginBottom: 16 }}>
+      <Typography variant="subtitle1">Agent permissions</Typography>
+      <Typography variant="body2" color="textSecondary" style={{ marginBottom: 8 }}>
+        An agent can run these actions for you only after you allow it. Actions the policy gates still need a teammate&apos;s approval.
+      </Typography>
+      <Box display="flex" alignItems="center" style={{ gap: 8 }} mb={1}>
+        <TextField
+          select
+          size="small"
+          label="Agent"
+          value={agent}
+          onChange={e => setAgent(e.target.value)}
+          style={{ minWidth: 200 }}
+          disabled={agents.length === 0}
+        >
+          {agents.map(a => (
+            <MenuItem key={a} value={a}>{a}</MenuItem>
+          ))}
+        </TextField>
+        <TextField select size="small" label="Action" value={scope} onChange={e => setScope(e.target.value)} style={{ minWidth: 180 }}>
+          {CONSENT_SCOPES.map(sc => (
+            <MenuItem key={sc} value={sc}>{sc}</MenuItem>
+          ))}
+        </TextField>
+        <Button variant="contained" color="primary" size="small" disabled={busy || !agent} onClick={() => change('grant', { agent, scope })}>
+          Allow
+        </Button>
+      </Box>
+      {error && <Typography color="error" variant="body2">{error}</Typography>}
+      {grants.length === 0 ? (
+        <Typography variant="body2" color="textSecondary">You haven&apos;t allowed any agent to act for you.</Typography>
+      ) : (
+        grants.map(g => (
+          <Box key={g.id} display="flex" alignItems="center" style={{ gap: 8 }}>
+            <Typography variant="body2">
+              <code>{g.agent}</code> may run <code>{g.scope}</code>
+              {g.expires_at ? ` until ${new Date(g.expires_at).toLocaleString()}` : ''}
+            </Typography>
+            <Button size="small" disabled={busy} onClick={() => change('revoke', { agent: g.agent, scope: g.scope })}>
+              Revoke
+            </Button>
+          </Box>
+        ))
+      )}
+    </Paper>
+  );
+}
+
 function ApprovalsPage() {
   const fetchApi = useApi(fetchApiRef);
   const configApi = useApi(configApiRef);
@@ -1318,6 +1440,7 @@ function ApprovalsPage() {
     <Page themeId="tool">
       <Header title="Agent Approvals" subtitle="Human-in-the-loop gate for agent-initiated mutating actions" />
       <Content>
+        <AgentConsent fetchApi={fetchApi} base={base} />
         <Box mb={2} display="flex" alignItems="center" style={{ gap: 8 }}>
           <Button
             variant={filter === 'pending' ? 'contained' : 'outlined'}

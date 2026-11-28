@@ -41,6 +41,8 @@ export function buildAgentYaml(opts: {
           kind: RemoteMCPServer
           name: ai-gateway
           namespace: kagent
+          # Who the agent acts for, set by Backstage's idp-ai-identity proxy.
+          allowedHeaders: [x-backstage-user, x-agent-id]
           toolNames:
 ${toolNames.map(t => `            - ${t}`).join('\n')}`
     : `    tools: []`;

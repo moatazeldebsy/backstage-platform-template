@@ -513,6 +513,7 @@ if $DESTROY; then
   else
     kubectl delete -f "${REPO_ROOT}/local/kagent/ingress.yaml"              2>/dev/null || true
     kubectl delete -f "${REPO_ROOT}/local/kagent/ingress-idp-assistant.yaml" 2>/dev/null || true
+    kubectl delete -f "${REPO_ROOT}/local/kagent/ingress-agents.yaml"        2>/dev/null || true
   fi
 
   # KAgent Helm releases + resources
@@ -2353,9 +2354,13 @@ EOF
     kubectl delete ingress kagent-ui idp-assistant -n kagent --ignore-not-found 2>/dev/null || true
     kubectl apply -f "${REPO_ROOT}/local/kagent/ingress.yaml"
     kubectl apply -f "${REPO_ROOT}/local/kagent/ingress-idp-assistant.yaml"
+    # Backstage reaches agents here so X-Backstage-User survives (the
+    # controller's A2A proxy drops it).
+    kubectl apply -f "${REPO_ROOT}/local/kagent/ingress-agents.yaml"
     check "IDP + QA + Contract agents defined (claude-haiku-4-5-20251001)"
     check "KAgent UI ingress → http://kagent.idp.local"
     check "IDP Assistant ingress → http://idp-assistant.idp.local"
+    check "Agent A2A ingress → http://kagent-agents.idp.local/<agent>/"
 
     # ── 5c. SSR resolution ────────────────────────────────────────────────────
     # Next.js SSR API calls are routed via ui.backendInternalUrl in
