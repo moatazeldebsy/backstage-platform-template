@@ -1,0 +1,21 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: orders-bucket-e2e
+  description: S3 bucket orders-bucket-e2e in eu-west-1 — managed by Crossplane
+  annotations:
+    backstage.io/managed-by-location: url:https://github.com/moatazeldebsy/backstage-platform-template/blob/main/services/hello-service/claims/orders-bucket-e2e.yaml
+  labels:
+    aws-region: eu-west-1
+    provisioner: crossplane
+  tags:
+    - s3
+    - storage
+    - aws
+    - crossplane
+spec:
+  type: storage
+  owner: group:default/platform-team
+  system: internal-developer-platform
+  dependencyOf:
+    - component:hello-service
