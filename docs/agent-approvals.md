@@ -214,6 +214,13 @@ Consent and approval are independent gates that both apply to the same call: con
 
 ---
 
+## Known limitations
+
+Found in a local end-to-end run on KAgent 0.10.0 (November 2026). Not fixed yet.
+
+- **Agent and user identity don't reach the MCP servers.** Backstage sends `X-Backstage-User` (and the agent name) on the A2A request, but the KAgent controller's A2A proxy at `kagent.idp.local` drops custom headers before the agent pod sees them. So approvals record the agent as its HTTP client (`Go-http-client/1.1`) with an empty `requested_by_user`. The self-approval check and the per-user consent check then skip themselves. The agentgateway passes the headers through, and an Agent with `allowedHeaders: [x-backstage-user, x-agent-id]` forwards them when called directly at its own Service. The fix is a path to the agent that skips the controller, or a controller that forwards them.
+- **Agent-run templates don't get their parameter defaults.** Backstage applies a template's JSON-schema `default`s only in the browser form; its scaffolder API leaves missing values blank. A template run through `scaffold_service` that relies on defaults renders empty fields: `region:` and `versioning:` in an S3 claim, which the `platform-outputs` CI check rejects.
+
 ## Troubleshooting
 
 | Symptom | Cause |
