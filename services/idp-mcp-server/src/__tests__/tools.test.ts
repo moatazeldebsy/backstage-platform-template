@@ -137,7 +137,8 @@ describe('get_service_metrics', () => {
 // ── scaffold_service ──────────────────────────────────────────────────────────
 
 describe('scaffold_service', () => {
-  it('returns dry_run preview without calling the Backstage API', async () => {
+  it('returns dry_run preview without calling the scaffolder', async () => {
+    fetchMock().mockResolvedValueOnce(makeResponse({ spec: { parameters: [] } })); // GET template (defaults)
     const client = await buildClient();
     const result = await client.callTool({
       name: 'scaffold_service',
@@ -146,12 +147,15 @@ describe('scaffold_service', () => {
     const parsed = parseResult(result as Parameters<typeof parseResult>[0]) as { dry_run: boolean; template: string };
     expect(parsed.dry_run).toBe(true);
     expect(parsed.template).toBe('template:default/nodejs-service');
-    expect(fetchMock()).not.toHaveBeenCalled();
+    // Only the template lookup for defaults; no scaffolder call.
+    expect(fetchMock()).toHaveBeenCalledTimes(1);
+    expect(fetchMock().mock.calls[0][0]).toContain('/api/catalog/entities/by-name/Template/default/nodejs-service');
   });
 
   it('polls until task completes and returns task_id + status', async () => {
     // POST → creates task; second call → status=completed
     fetchMock()
+      .mockResolvedValueOnce(makeResponse({ spec: { parameters: [] } }))  // GET template (defaults)
       .mockResolvedValueOnce(makeResponse({ id: 'task-123' }, 201))       // POST /tasks
       .mockResolvedValueOnce(makeResponse({ status: 'completed', output: { serviceUrl: 'http://hello' } })); // GET /tasks/:id
 
@@ -492,6 +496,7 @@ describe('get_service_metrics — custom metric', () => {
 describe('scaffold_service — task failure', () => {
   it('returns status:failed when scaffolder task fails', async () => {
     fetchMock()
+      .mockResolvedValueOnce(makeResponse({ spec: { parameters: [] } }))  // GET template (defaults)
       .mockResolvedValueOnce(makeResponse({ id: 'task-failed' }, 201))
       .mockResolvedValueOnce(makeResponse({ status: 'failed', output: null }));
     const client = await buildClient();

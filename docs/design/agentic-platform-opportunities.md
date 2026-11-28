@@ -30,7 +30,9 @@ Autonomy is **risk-tiered**:
 4. **Event-driven runs are fire-and-forget.** The event router discards the agent's reply, so a proposed fix goes nowhere unless the agent acts through its own tools.
 5. **No durable audit store.** Audit lines go to stdout and Loki. Nothing answers "everything provisioning-agent did last month, and who approved it" without a log query.
 6. **Shared credentials.** All agents scaffold with the MCP server's single `BACKSTAGE_TOKEN`, so the scaffolder sees the server, not the agent or the user.
-7. **No cost gate.** Cost is now shown on the approval, but nothing stops a request that would push a team over budget. `terraform/policies/require-tags.rego` exists but isn't wired into CI.
+7. **Identity is lost behind the KAgent controller** (found in the live test). Approvals record no requesting user and the agent as `Go-http-client/1.1`, so the self-approval and consent checks skip themselves. See [Agent Approvals → Known limitations](../agent-approvals.md#known-limitations).
+8. **Agent-run templates skip their parameter defaults** (found in the live test). The scaffolder API doesn't apply JSON-schema defaults, so omitted values render blank.
+9. **No cost gate.** Cost is now shown on the approval, but nothing stops a request that would push a team over budget. `terraform/policies/require-tags.rego` exists but isn't wired into CI.
 
 ## Opportunities, ranked
 

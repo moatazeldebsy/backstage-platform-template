@@ -197,3 +197,40 @@ describe('request_approval', () => {
     expect(fetchMock()).not.toHaveBeenCalled();
   });
 });
+
+describe('template defaults', () => {
+  const entity = { spec: { parameters: [
+    { properties: { bucketName: { type: 'string' }, awsRegion: { type: 'string', default: 'eu-west-1' }, versioning: { type: 'boolean', default: true } } },
+    { properties: { repoUrl: { type: 'string' } } },
+  ] } };
+
+  it('fills omitted parameters from the template defaults, and keeps values the caller set', async () => {
+    const mod = await load(false);
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    routeFetch({ 'GET /api/catalog/entities/by-name/Template/default/s3-bucket-crossplane': () => makeResponse(entity) });
+    const res = await callScaffold(mod, { template_ref: TEMPLATE, values: { bucketName: 'b1', versioning: false }, dry_run: true });
+    const values = res.values as Record<string, unknown>;
+    expect(values.awsRegion).toBe('eu-west-1');
+    expect(values.versioning).toBe(false);
+  });
+
+  it('puts the filled-in values on the approval the human sees', async () => {
+    const mod = await load();
+    let approvalBody: Record<string, unknown> = {};
+    routeFetch({
+      'GET /api/catalog/entities/by-name/Template/default/s3-bucket-crossplane': () => makeResponse(entity),
+      'POST /policy/check': () => makeResponse({ requires_approval: true, reason: 'r' }),
+      'POST /approvals': init => { approvalBody = JSON.parse(init?.body ?? '{}'); return makeResponse({ id: 'a', status: 'pending' }, 201); },
+    });
+    await callScaffold(mod, { template_ref: TEMPLATE, values: { bucketName: 'b1' } });
+    const shown = (approvalBody.context as { values: Record<string, unknown> }).values;
+    expect(shown.awsRegion).toBe('eu-west-1');
+    expect(shown.versioning).toBe(true);
+  });
+
+  it('leaves the values alone when the template cannot be read', async () => {
+    const mod = await load(false);
+    routeFetch({});
+    expect(await mod.applyTemplateDefaults(TEMPLATE, { bucketName: 'b1' })).toEqual({ bucketName: 'b1' });
+  });
+});
