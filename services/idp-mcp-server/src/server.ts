@@ -129,6 +129,33 @@ async function templateCostEstimate(templateRef: string): Promise<string> {
   }
 }
 
+// Backstage applies a template's JSON-schema `default`s only in the browser form;
+// its scaffolder API renders an omitted parameter as blank. Fill the gaps from the
+// template itself so an agent-run template matches a portal run (an S3 claim with
+// an empty region fails validation). Runs before the dry run and the approval, so
+// the approver sees the values that will really be used. Leaves the values as they
+// are if the template can't be read.
+export async function applyTemplateDefaults(templateRef: string, values: Record<string, unknown>): Promise<Record<string, unknown>> {
+  let params: Array<{ properties?: Record<string, { default?: unknown }> }>;
+  try {
+    const { namespace, name } = parseTemplateRef(templateRef);
+    const entity = await fetchCatalog(`/api/catalog/entities/by-name/Template/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`) as {
+      spec?: { parameters?: typeof params | typeof params[number] };
+    };
+    const raw = entity.spec?.parameters ?? [];
+    params = Array.isArray(raw) ? raw : [raw];
+  } catch {
+    return values;
+  }
+  const filled: Record<string, unknown> = { ...values };
+  for (const step of params) {
+    for (const [key, prop] of Object.entries(step.properties ?? {})) {
+      if (filled[key] === undefined && prop && prop.default !== undefined) filled[key] = prop.default;
+    }
+  }
+  return filled;
+}
+
 export type ScaffoldGateResult = { proceed: true } | { proceed: false; response: Record<string, unknown> };
 
 export async function gateScaffold(opts: {
@@ -309,7 +336,7 @@ export function createServer(agentId = 'unknown', userRef = '') {
       agentToolCalls.inc({ server: SERVER_NAME, tool: 'scaffold_service', agent: agentId });
       let outcome = 'success';
       try {
-        const enrichedValues: Record<string, unknown> = { ...values };
+        const enrichedValues: Record<string, unknown> = await applyTemplateDefaults(template_ref, { ...values });
         enrichedValues['repoUrl'] = normalizeRepoUrl(enrichedValues);
 
         auditLog({ action: 'scaffold_service_requested', agent: agentId, user_ref: userRef || undefined, template: template_ref, service: enrichedValues['name'], dry_run: !!dry_run });
