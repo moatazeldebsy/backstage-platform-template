@@ -8,7 +8,7 @@ metadata:
 spec:
   parameters:
     bucketName: orders-bucket-e2e
-    region: 
+    region: eu-west-1
     owner: group:default/platform-team
-    versioning: 
+    versioning: true
     costCenter: engineering
