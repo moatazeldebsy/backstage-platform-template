@@ -1,0 +1,14 @@
+apiVersion: idp.platform/v1alpha1
+kind: S3Bucket
+metadata:
+  name: orders-bucket-e2e
+  namespace: services-dev
+  labels:
+    idp.platform/owner-service: hello-service
+spec:
+  parameters:
+    bucketName: orders-bucket-e2e
+    region: 
+    owner: group:default/platform-team
+    versioning: 
+    costCenter: engineering
