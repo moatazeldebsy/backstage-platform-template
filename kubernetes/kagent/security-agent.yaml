@@ -45,6 +45,8 @@ spec:
           kind: RemoteMCPServer
           name: ai-gateway
           namespace: kagent
+          # Who the agent acts for, set by Backstage's idp-ai-identity proxy.
+          allowedHeaders: [x-backstage-user, x-agent-id]
           toolNames:
             - list_vulnerable_deps
             - get_secret_rotation_status

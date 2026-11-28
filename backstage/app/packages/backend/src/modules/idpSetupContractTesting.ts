@@ -113,6 +113,8 @@ spec:
           kind: RemoteMCPServer
           name: ai-gateway
           namespace: kagent
+          # Who the agent acts for, set by Backstage's idp-ai-identity proxy.
+          allowedHeaders: [x-backstage-user, x-agent-id]
           toolNames:
             - fetch_service_contract
             - auto_discover_contracts

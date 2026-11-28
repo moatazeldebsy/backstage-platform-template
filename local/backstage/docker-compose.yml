@@ -73,6 +73,9 @@ services:
       # Sent by idpApprovalDecision.ts on approve/deny; approval-service refuses
       # decisions without it. Written to local/backstage/.env by bootstrap-ai.sh --adp.
       APPROVAL_SERVICE_DECIDER_TOKEN: ${APPROVAL_SERVICE_DECIDER_TOKEN:-}
+      # Each agent's own A2A endpoint (local/kagent/ingress-agents.yaml), used by
+      # idpAiIdentityProxy.ts so X-Backstage-User reaches the MCP servers.
+      KAGENT_AGENT_URL: "http://kagent-agents.idp.local/{agent}/"
       # Langfuse public-API key pair, base64'd as "publicKey:secretKey" — referenced
       # by the /langfuse proxy behind the AI Observability page. Written to
       # local/backstage/.env by `bootstrap-ai.sh --langfuse`; it must be listed here
@@ -131,6 +134,7 @@ services:
       - "opencost.idp.local:host-gateway"
       - "mlflow.idp.local:host-gateway"
       - "kagent.idp.local:host-gateway"
+      - "kagent-agents.idp.local:host-gateway"
       # Without this, langfuse.idp.local resolves to 127.0.0.1 inside the container,
       # so the /langfuse proxy loops back into Backstage's own port 3000 and times
       # out with a 504 that confusingly names backstage.idp.local as the target.

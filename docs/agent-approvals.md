@@ -193,6 +193,14 @@ Phase 4 answers "did *some* authorized human sign off on this specific call". It
 
 `backstage/app/packages/backend/src/modules/idpAiIdentityProxy.ts` replaces that path. The AI Assistant chat page now POSTs to `POST /api/idp-ai-identity/a2a/kagent/:agent` instead of `/api/proxy/kagent/a2a/kagent/:agent`. The new route resolves the caller's identity server-side via `httpAuth.credentials(req, { allow: ['user'] })` — the same pattern `idpLearningCenter.ts` uses — ignores any client-supplied `X-Backstage-User`, and sets the header itself before forwarding to KAgent (`KAGENT_EXTERNAL_URL`, same env var `idpDeployAgent.ts` / `idpSetupContractTesting.ts` already use). A forged header in the incoming browser request never reaches KAgent.
 
+The route calls the agent's own pod, not the KAgent controller. The controller's A2A proxy (`kagent.idp.local/a2a/...`) drops custom headers, so in a November 2026 live run on KAgent 0.10.0 every approval recorded the agent as `Go-http-client/1.1` with an empty `requested_by_user`, and the self-approval and consent checks skipped themselves. The direct path has three parts:
+
+- `KAGENT_AGENT_URL` holds the agent URL, with `{agent}` standing for the agent name. On AWS it's `http://{agent}.kagent.svc.cluster.local:8080/` (`aws/backstage/deployment.yaml`). Locally Backstage runs in Docker Compose, outside the cluster, so it's `http://kagent-agents.idp.local/{agent}/`, an ingress (`local/kagent/ingress-agents.yaml`) that `bootstrap-ai.sh` applies. On an existing setup, re-run `bootstrap-ai.sh` to create the ingress and rebuild Backstage to pick up the code and `KAGENT_AGENT_URL`. Until then Backstage falls back to the controller, as before.
+- The route sends `X-Backstage-User` and `X-Agent-ID` (the agent name) to the agent.
+- Every Agent's `mcpServer` tool lists `allowedHeaders: [x-backstage-user, x-agent-id]`, so the agent forwards both on its MCP tool calls. That covers the manifests in `kubernetes/kagent/`, the CRs `idpDeployAgent.ts` and `idpSetupContractTesting.ts` generate, and the `ai-agent-kagent` template.
+
+The local ingress lists only the built-in agents. Any other agent (one scaffolded from a template, say) gets a 404 there, and the route falls back to the controller with a logged warning, so that agent's calls still carry no identity locally. On AWS every agent resolves directly. The fallback only happens when the request never reached an agent (404, DNS failure, refused connection). A connection that fails mid-turn returns 502 instead of re-running the turn through the controller, because the agent may already have acted.
+
 ### Consent grants
 
 A new `consent_grants` table on the same approval-service Postgres records standing authorizations: *user X allows agent Y to use tool Z*, with an optional expiry.
@@ -208,18 +216,13 @@ consent_grants (id, user_ref, agent, scope, granted_at, expires_at, revoked_at)
 | `GET` | `/consent/check` | `?user_ref=&agent=&scope=` | `{granted, expires_at?}` — `false` if missing, revoked, or expired |
 | `GET` | `/consent` | `?user_ref=` | `{total, grants[]}` — a user's own grants |
 
-`idp-mcp-server`'s `scaffold_service`, and `argocd-mcp-server`/`github-mcp-server`'s `sync_app` / `rollback_app` / `approve_pr`, call `GET /consent/check` immediately before their existing `requireApproval()`/policy check on a real (non-dry-run) call. Same fail-open shape as Phase 4: the check is skipped — not denied — when `APPROVAL_SERVICE_URL` is unset, or when there's no verified `userRef` (a call that didn't come through `idpAiIdentityProxy.ts`). A denial returns a structured message naming the agent, user, and scope rather than a bare error, since there is no self-service "grant consent" UI yet (self-service grant/revoke via `/approvals` is the natural next slice — today an admin calls `POST /consent/grant` directly, with the [decider token](#decider-token)).
+`idp-mcp-server`'s `scaffold_service`, and `argocd-mcp-server`/`github-mcp-server`'s `sync_app` / `rollback_app` / `approve_pr`, call `GET /consent/check` immediately before their existing `requireApproval()`/policy check on a real (non-dry-run) call. Same fail-open shape as Phase 4: the check is skipped — not denied — when `APPROVAL_SERVICE_URL` is unset, or when there's no verified `userRef` (a call that didn't come through `idpAiIdentityProxy.ts`). A denial returns a structured message naming the agent, user, and scope rather than a bare error.
+
+Consent is default-deny: with no grant, the call is refused. Now that identity reaches the MCP servers ([Verified identity](#verified-identity)), this applies to every user who talks to an agent through Backstage, so each user has to allow an agent before it can act for them. They do that on **`/approvals` → Agent permissions**: pick an agent and an action (`scaffold_service`, `sync_app`, `rollback_app` or `approve_pr`), click **Allow**, and **Revoke** to take it back. The page calls `GET /api/idp-approvals/consent` and `POST /api/idp-approvals/consent/grant|revoke` (`idpApprovalDecision.ts`), which take `user_ref` from the signed-in session and add the decider token, so nobody can grant or revoke for someone else. A grant only means the agent may ask: a call the policy gates still needs a teammate's approval.
 
 Consent and approval are independent gates that both apply to the same call: consent answers "did the user agree this agent may act for them", approval answers "did a human reviewer sign off on this specific action". A `[AUDIT] consent_granted` / `consent_revoked` / `consent_check_denied` line is emitted for each; `approval_requested` now also carries `user_ref` when the caller is on the identity-verified path.
 
 ---
-
-## Known limitations
-
-Found in a local end-to-end run on KAgent 0.10.0 (November 2026). Not fixed yet.
-
-- **Agent and user identity don't reach the MCP servers.** Backstage sends `X-Backstage-User` (and the agent name) on the A2A request, but the KAgent controller's A2A proxy at `kagent.idp.local` drops custom headers before the agent pod sees them. So approvals record the agent as its HTTP client (`Go-http-client/1.1`) with an empty `requested_by_user`. The self-approval check and the per-user consent check then skip themselves. The agentgateway passes the headers through, and an Agent with `allowedHeaders: [x-backstage-user, x-agent-id]` forwards them when called directly at its own Service. The fix is a path to the agent that skips the controller, or a controller that forwards them.
-- **Agent-run templates don't get their parameter defaults.** Backstage applies a template's JSON-schema `default`s only in the browser form; its scaffolder API leaves missing values blank. A template run through `scaffold_service` that relies on defaults renders empty fields: `region:` and `versioning:` in an S3 claim, which the `platform-outputs` CI check rejects.
 
 ## Troubleshooting
 

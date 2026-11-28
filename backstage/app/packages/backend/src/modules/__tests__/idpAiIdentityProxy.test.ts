@@ -8,18 +8,33 @@ import { TEST_USER_HEADER, fakeHttpAuth, serve } from './routerHarness';
 
 const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn(), child: jest.fn() };
 
-function setup(fetchImpl: jest.Mock) {
+const rpcBody = { jsonrpc: '2.0', method: 'message/send', params: { message: { parts: [] } }, id: 1 };
+
+function setup(fetchImpl: jest.Mock, agentUrlTemplate?: string) {
   return serve(
     createIdentityProxyRouter({
       httpAuth: fakeHttpAuth(),
       logger: logger as any,
       kagentUrl: 'http://kagent.test',
+      agentUrlTemplate,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     }),
   );
 }
 
-const rpcBody = { jsonrpc: '2.0', method: 'message/send', params: { message: { parts: [] } }, id: 1 };
+const DIRECT = 'http://{agent}.kagent.test:8080/';
+
+function connError(code: string) {
+  return new TypeError('fetch failed', { cause: Object.assign(new Error(code), { code }) });
+}
+
+async function send(srv: { url: string }, agent = 'provisioning-agent') {
+  return fetch(`${srv.url}/a2a/kagent/${agent}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', [TEST_USER_HEADER]: 'user:default/alice' },
+    body: JSON.stringify(rpcBody),
+  });
+}
 
 describe('createIdentityProxyRouter', () => {
   afterEach(() => jest.clearAllMocks());
@@ -102,5 +117,69 @@ describe('createIdentityProxyRouter', () => {
     } finally {
       await srv.close();
     }
+  });
+
+  // The KAgent controller's A2A proxy drops custom headers, so identity only
+  // reaches the MCP servers when the agent pod is called directly.
+  describe('direct agent calls', () => {
+    it('calls the agent pod with the verified user and agent id', async () => {
+      const upstream = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+      const srv = await setup(upstream, DIRECT);
+      try {
+        const res = await send(srv);
+        expect(res.status).toBe(200);
+        expect(upstream).toHaveBeenCalledTimes(1);
+        const [target, init] = upstream.mock.calls[0];
+        expect(target).toBe('http://provisioning-agent.kagent.test:8080/');
+        expect(init.headers['X-Backstage-User']).toBe('user:default/alice');
+        expect(init.headers['X-Agent-ID']).toBe('provisioning-agent');
+      } finally {
+        await srv.close();
+      }
+    });
+
+    it.each([
+      ['a 404 from the ingress', () => Promise.resolve(new Response('no route', { status: 404 }))],
+      ['an unresolvable host', () => Promise.reject(connError('ENOTFOUND'))],
+      ['a refused connection', () => Promise.reject(connError('ECONNREFUSED'))],
+    ])('falls back to the controller on %s', async (_label, direct) => {
+      const upstream = jest
+        .fn()
+        .mockImplementationOnce(direct)
+        .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+      const srv = await setup(upstream, DIRECT);
+      try {
+        const res = await send(srv, 'my-scaffolded-agent');
+        expect(res.status).toBe(200);
+        expect(upstream).toHaveBeenCalledTimes(2);
+        expect(upstream.mock.calls[1][0]).toBe('http://kagent.test/a2a/kagent/my-scaffolded-agent');
+        expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('falling back'));
+      } finally {
+        await srv.close();
+      }
+    });
+
+    it('does not re-run the turn through the controller when the agent call fails after delivery', async () => {
+      const upstream = jest.fn().mockRejectedValue(connError('ECONNRESET'));
+      const srv = await setup(upstream, DIRECT);
+      try {
+        const res = await send(srv);
+        expect(res.status).toBe(502);
+        expect(upstream).toHaveBeenCalledTimes(1);
+      } finally {
+        await srv.close();
+      }
+    });
+
+    it('passes the agent\'s own error status through', async () => {
+      const upstream = jest.fn().mockResolvedValue(new Response('{}', { status: 500 }));
+      const srv = await setup(upstream, DIRECT);
+      try {
+        expect((await send(srv)).status).toBe(500);
+        expect(upstream).toHaveBeenCalledTimes(1);
+      } finally {
+        await srv.close();
+      }
+    });
   });
 });

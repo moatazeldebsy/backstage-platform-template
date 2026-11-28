@@ -1,0 +1,101 @@
+# Direct route to each built-in agent's own A2A endpoint, for Backstage's
+# idp-ai-identity proxy (KAGENT_AGENT_URL in local/backstage/docker-compose.yml).
+#
+# The KAgent controller's A2A proxy behind kagent.idp.local drops custom
+# headers, so X-Backstage-User / X-Agent-ID never reached the MCP servers and
+# approvals had no requester. Calling the agent pod directly keeps them; the
+# Agent's allowedHeaders then forwards them to its tool calls.
+#
+# Only the built-in agents (kubernetes/kagent/) are listed. Any other agent
+# gets a 404 here and Backstage falls back to the controller, without identity.
+# On AWS, Backstage runs in-cluster and uses <agent>.kagent.svc directly.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kagent-agents
+  namespace: kagent
+  labels:
+    app: kagent-agents
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Same as kagent-ui: an agent turn chaining MCP calls can take minutes.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kagent-agents.idp.local
+      http:
+        paths:
+          - path: /contract-assistant(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: contract-assistant
+                port:
+                  number: 8080
+          - path: /cost-agent(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: cost-agent
+                port:
+                  number: 8080
+          - path: /idp-assistant(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: idp-assistant
+                port:
+                  number: 8080
+          - path: /incident-agent(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: incident-agent
+                port:
+                  number: 8080
+          - path: /onboarding-agent(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: onboarding-agent
+                port:
+                  number: 8080
+          - path: /platform-assistant(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: platform-assistant
+                port:
+                  number: 8080
+          - path: /provisioning-agent(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: provisioning-agent
+                port:
+                  number: 8080
+          - path: /qa-assistant(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: qa-assistant
+                port:
+                  number: 8080
+          - path: /release-agent(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: release-agent
+                port:
+                  number: 8080
+          - path: /security-agent(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: security-agent
+                port:
+                  number: 8080

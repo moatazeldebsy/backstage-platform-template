@@ -147,3 +147,90 @@ describe('resolveApprovalServiceUrl', () => {
     expect(resolveApprovalServiceUrl({ '/approval-service': { target: 'http://a:3009' } })).toBe('http://override:1');
   });
 });
+
+// Self-service consent: a user may only grant or revoke for themselves, so the
+// user_ref approval-service receives must come from the signed-in session.
+describe('consent routes', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  const ok = () =>
+    jest.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } }));
+
+  async function post(srv: { url: string }, path: string, body: unknown, user = 'user:default/alice') {
+    return fetch(`${srv.url}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', [TEST_USER_HEADER]: user },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it.each(['grant', 'revoke'])('%s sends the verified user and ignores user_ref in the body', async op => {
+    const upstream = ok();
+    const srv = await setup(upstream);
+    try {
+      const res = await post(srv, `/consent/${op}`, {
+        agent: 'provisioning-agent',
+        scope: 'scaffold_service',
+        user_ref: 'user:default/mallory',
+      });
+      expect(res.status).toBe(200);
+      const [target, init] = upstream.mock.calls[0];
+      expect(target).toBe(`http://approval.test/consent/${op}`);
+      expect(JSON.parse(init.body)).toEqual({
+        user_ref: 'user:default/alice',
+        agent: 'provisioning-agent',
+        scope: 'scaffold_service',
+      });
+      expect(init.headers.Authorization).toBe('Bearer decider-secret');
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it('lists only the caller\'s own grants', async () => {
+    const upstream = ok();
+    const srv = await setup(upstream);
+    try {
+      const res = await fetch(`${srv.url}/consent?user_ref=user:default/mallory`, {
+        headers: { [TEST_USER_HEADER]: 'user:default/alice' },
+      });
+      expect(res.status).toBe(200);
+      expect(upstream.mock.calls[0][0]).toBe('http://approval.test/consent?user_ref=user%3Adefault%2Falice');
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it.each([
+    [{ agent: 'provisioning-agent', scope: 'delete_everything' }, 'scope'],
+    [{ agent: '../admin', scope: 'scaffold_service' }, 'agent'],
+    [{ scope: 'scaffold_service' }, 'agent'],
+  ])('rejects %j without calling approval-service', async (body, field) => {
+    const upstream = ok();
+    const srv = await setup(upstream);
+    try {
+      const res = await post(srv, '/consent/grant', body);
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain(field);
+      expect(upstream).not.toHaveBeenCalled();
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const upstream = ok();
+    const srv = await setup(upstream);
+    try {
+      const res = await fetch(`${srv.url}/consent/grant`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ agent: 'provisioning-agent', scope: 'scaffold_service' }),
+      });
+      expect(res.status).toBe(401);
+      expect(upstream).not.toHaveBeenCalled();
+    } finally {
+      await srv.close();
+    }
+  });
+});
